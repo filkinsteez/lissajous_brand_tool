@@ -13,6 +13,7 @@ export type UiState = {
   quality: Quality
   mounted: boolean
   showGuides: boolean // optional construction guides while composing
+  selectedBlockId: string
 }
 
 export type DeepPartial<T> = {
@@ -62,7 +63,14 @@ let preTransient: ProjectState | null = null
 
 export const useStore = create<StoreState>()((set, get) => ({
   project: createDefaultProject(),
-  ui: { mode: 'compose', activePanel: 'lissajous', quality: 'live', mounted: false, showGuides: false },
+  ui: {
+    mode: 'compose',
+    activePanel: 'lissajous',
+    quality: 'live',
+    mounted: false,
+    showGuides: false,
+    selectedBlockId: 'headline',
+  },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),
 

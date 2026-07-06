@@ -4,6 +4,7 @@ import type { ComponentType } from 'react'
 import { useStore, type PanelId } from '@/core/state/store'
 import { LissajousPanel } from './panels/LissajousPanel'
 import { GridPanel } from './panels/GridPanel'
+import { TypePanel } from './panels/TypePanel'
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'lissajous', label: 'LISSAJOUS' },
@@ -18,6 +19,7 @@ const PANELS: { id: PanelId; label: string }[] = [
 const PANEL_BODIES: Partial<Record<PanelId, ComponentType>> = {
   lissajous: LissajousPanel,
   grid: GridPanel,
+  type: TypePanel,
 }
 
 export function Inspector() {

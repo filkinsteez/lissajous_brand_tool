@@ -158,6 +158,25 @@
   height: 100%;
 }
 
+/* ---- type layer -------------------------------------------------------- */
+
+.type-layer {
+  pointer-events: none;
+}
+
+.type-block {
+  position: absolute;
+  pointer-events: auto;
+  cursor: default;
+  white-space: pre-wrap;
+  outline: 1.5px solid transparent;
+  outline-offset: 6px;
+}
+
+.type-block.selected {
+  outline-color: rgba(20, 20, 18, 0.25);
+}
+
 /* ---- panels & controls ------------------------------------------------- */
 
 .panel {
@@ -343,4 +362,20 @@
   background: var(--text);
   color: var(--chrome-0);
   border-color: var(--text);
+}
+
+.text-field {
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--chrome-0);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.text-field:focus {
+  outline: none;
+  border-color: var(--text-dim);
 }
