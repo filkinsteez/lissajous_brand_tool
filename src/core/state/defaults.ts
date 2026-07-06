@@ -105,7 +105,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
     material: {
       enabled: false,
       preset: 'grain-01',
-      pressure: 0.6,
+      pressure: 0.7,
       density: 0.5,
       grainSize: 0.35,
       drift: 0.2,

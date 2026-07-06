@@ -23,10 +23,21 @@ export function layoutTypeBlock(block: TypeBlockState, grid: EditorialGrid): Blo
   return { x, y, w, estH: estimateHeight(block, w) }
 }
 
-// Rough wrap estimate — good enough for pressure-mask footprints.
+// Greedy word-wrap estimate — good enough for pressure-mask footprints.
+// Words wrap whole in the DOM, so char-count division undershoots height.
 export function estimateHeight(block: TypeBlockState, width: number): number {
-  const avgChar = block.size * (0.5 + Math.max(0, block.width - 100) * 0.002 + block.tracking)
-  const charsPerLine = Math.max(1, Math.floor(width / Math.max(1, avgChar)))
-  const lines = Math.max(1, Math.ceil(block.text.length / charsPerLine))
+  const avgChar = block.size * (0.52 + Math.max(0, block.width - 100) * 0.002 + block.tracking)
+  const spaceW = avgChar * 0.55
+  let lines = 1
+  let lineW = 0
+  for (const word of block.text.split(/\s+/)) {
+    const wordW = Math.max(1, word.length) * avgChar
+    if (lineW > 0 && lineW + spaceW + wordW > width) {
+      lines++
+      lineW = wordW
+    } else {
+      lineW += (lineW > 0 ? spaceW : 0) + wordW
+    }
+  }
   return lines * block.size * block.lineHeight
 }

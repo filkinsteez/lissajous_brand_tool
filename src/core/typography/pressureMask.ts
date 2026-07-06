@@ -40,7 +40,7 @@ export function buildPressureMask(
     }
   }
 
-  const blurred = boxBlur(data, w, h, Math.max(2, Math.round(w * 0.02)))
+  const blurred = boxBlur(data, w, h, Math.max(3, Math.round(w * 0.035)))
   return { width: w, height: h, data: blurred }
 }
 

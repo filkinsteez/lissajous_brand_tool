@@ -1,6 +1,5 @@
 import type { CurveSample } from './sampler'
 import type { RankedNode } from './ranking'
-import { SpatialHash } from '@/core/math/spatialHash'
 
 // CPU-baked field derived from the curve. One RGBA texel per point:
 //   R: distance to curve, normalized by 0.35·diag, clamped 0..1
@@ -29,42 +28,70 @@ export function bakeFields(
   const distNorm = 0.35 * diag
   const data = new Float32Array(resX * resY * 4)
 
-  // hash curve sample points for nearest-point queries
-  const cell = diag * 0.02
-  const hash = new SpatialHash<number>(cell)
-  const n = samples.length - 1
-  for (let i = 0; i < n; i++) hash.insertPoint(samples[i].x, samples[i].y, i)
-
   const sx = artW / resX
   const sy = artH / resY
+  const texels = resX * resY
 
+  // Dead-reckoning distance transform: seed texels with their nearest
+  // curve sample, then two sweeps propagate nearest-sample indices.
+  // Exact enough for a field texture and O(texels) instead of per-texel
+  // spatial queries.
+  const nearest = new Int32Array(texels).fill(-1)
+  const distSq = new Float64Array(texels).fill(Infinity)
+  const n = samples.length - 1
+
+  const trySample = (t: number, i: number): void => {
+    const px = ((t % resX) + 0.5) * sx
+    const py = (Math.floor(t / resX) + 0.5) * sy
+    const dx = samples[i].x - px
+    const dy = samples[i].y - py
+    const d = dx * dx + dy * dy
+    if (d < distSq[t]) {
+      distSq[t] = d
+      nearest[t] = i
+    }
+  }
+
+  for (let i = 0; i < n; i++) {
+    const tx = Math.max(0, Math.min(resX - 1, Math.floor(samples[i].x / sx)))
+    const ty = Math.max(0, Math.min(resY - 1, Math.floor(samples[i].y / sy)))
+    trySample(ty * resX + tx, i)
+  }
+
+  const relax = (t: number, from: number): void => {
+    if (from >= 0 && nearest[from] >= 0) trySample(t, nearest[from])
+  }
+  // forward sweep (checks W, N, NW, NE neighbours)
   for (let ty = 0; ty < resY; ty++) {
     for (let tx = 0; tx < resX; tx++) {
-      const px = (tx + 0.5) * sx
-      const py = (ty + 0.5) * sy
-
-      // expanding ring query until a sample is found
-      let bestD = Infinity
-      let bestI = 0
-      for (let radius = cell; radius <= diag; radius *= 2) {
-        const found = hash.queryPoint(px, py, radius)
-        for (const i of found) {
-          const dx = samples[i].x - px
-          const dy = samples[i].y - py
-          const d = dx * dx + dy * dy
-          if (d < bestD) {
-            bestD = d
-            bestI = i
-          }
-        }
-        if (found.length > 0 && Math.sqrt(bestD) <= radius) break
+      const t = ty * resX + tx
+      if (tx > 0) relax(t, t - 1)
+      if (ty > 0) {
+        relax(t, t - resX)
+        if (tx > 0) relax(t, t - resX - 1)
+        if (tx < resX - 1) relax(t, t - resX + 1)
       }
-
-      const o = (ty * resX + tx) * 4
-      data[o] = Math.min(1, Math.sqrt(bestD) / distNorm)
-      data[o + 1] = Math.cos(samples[bestI].angle)
-      data[o + 2] = Math.sin(samples[bestI].angle)
     }
+  }
+  // backward sweep (checks E, S, SE, SW neighbours)
+  for (let ty = resY - 1; ty >= 0; ty--) {
+    for (let tx = resX - 1; tx >= 0; tx--) {
+      const t = ty * resX + tx
+      if (tx < resX - 1) relax(t, t + 1)
+      if (ty < resY - 1) {
+        relax(t, t + resX)
+        if (tx < resX - 1) relax(t, t + resX + 1)
+        if (tx > 0) relax(t, t + resX - 1)
+      }
+    }
+  }
+
+  for (let t = 0; t < texels; t++) {
+    const o = t * 4
+    const i = nearest[t] < 0 ? 0 : nearest[t]
+    data[o] = Math.min(1, Math.sqrt(distSq[t]) / distNorm)
+    data[o + 1] = Math.cos(samples[i].angle)
+    data[o + 2] = Math.sin(samples[i].angle)
   }
 
   // density: gaussian splat per ranked node, weighted by score
