@@ -34,6 +34,16 @@ describe('springLUT', () => {
     expect([...a]).toEqual([...b])
   })
 
+  it('motion occupies the full timeline — no dead tail', () => {
+    // an ease that finishes early and parks reads as "different speeds"
+    // against the time cursor; the trim keeps the object moving
+    for (const damping of [0.65, 1, 1.15, 1.5]) {
+      const lut = springLUT({ stiffness: 14, damping, initialVelocity: 0 })
+      // still away from target at 70% time — settling or ringing, but moving
+      expect(Math.abs(evalEase(lut, 0.7) - 1), `damping ${damping}`).toBeGreaterThan(0.008)
+    }
+  })
+
   it('linear bypass is the identity', () => {
     const lut = springLUT({ stiffness: 0, damping: 1, initialVelocity: 0 })
     expect(evalEase(lut, 0.25)).toBeCloseTo(0.25, 5)

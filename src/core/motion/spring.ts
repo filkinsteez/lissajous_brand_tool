@@ -54,8 +54,21 @@ export function springLUT(params: SpringParams, size = LUT_SIZE): Float32Array {
     xs[i] = x
   }
 
+  // Trim the dead tail: normalize the timeline to where motion actually
+  // ends (last time the spring is >1% away from target). Without this an
+  // ease finishes ~40% in and the object parks while the clock runs on —
+  // an eased move should occupy its full duration, like an AE keyframe pair.
+  let lastActive = steps
+  for (let i = steps; i >= 1; i--) {
+    if (Math.abs(xs[i] - 1) > 0.01) {
+      lastActive = i
+      break
+    }
+  }
+  const end = Math.min(steps, Math.ceil(lastActive * 1.08)) // soft landing margin
+
   for (let i = 0; i < size; i++) {
-    const f = (i / (size - 1)) * steps
+    const f = (i / (size - 1)) * end
     const i0 = Math.floor(f)
     const t = f - i0
     lut[i] = xs[i0] * (1 - t) + xs[Math.min(steps, i0 + 1)] * t

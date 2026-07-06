@@ -67,34 +67,38 @@ export function MotionLab() {
   const p = loopProgress(elapsedRef.current, ml.durationMs)
   const eased = evalEase(lut, p)
 
-  // plot geometry
-  const plotW = 640
-  const plotH = 220
+  // One drawing, one horizontal scale: graph on top, straight path below,
+  // a connector from the graph point to the moving circle. Same insets
+  // everywhere so time (cursor) and position (circle) share the track.
+  const W = 640
+  const PAD = 14
+  const plotTop = 6
+  const plotBottom = 226
+  const lineY = 292
+  const viewH = 320
+  const trackX = (v: number) => PAD + v * (W - 2 * PAD)
   const maxVal = Math.max(1.15, ...lut) + 0.05
-  const px = (t: number) => t * plotW
-  const py = (v: number) => plotH - (v / maxVal) * (plotH - 16) - 8
+  const py = (v: number) => plotBottom - (v / maxVal) * (plotBottom - plotTop - 10) - 5
+
   const positionPath = useMemo(() => {
-    let d = `M ${px(0)} ${py(lut[0])}`
+    let d = `M ${trackX(0).toFixed(1)} ${py(lut[0]).toFixed(1)}`
     for (let i = 1; i < lut.length; i++) {
-      d += ` L ${px(i / (lut.length - 1)).toFixed(1)} ${py(lut[i]).toFixed(1)}`
+      d += ` L ${trackX(i / (lut.length - 1)).toFixed(1)} ${py(lut[i]).toFixed(1)}`
     }
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lut, maxVal])
   const velocityPath = useMemo(() => {
-    let d = `M 0 ${plotH}`
+    let d = `M ${trackX(0)} ${plotBottom}`
     for (let i = 0; i < vel.length; i++) {
-      d += ` L ${px(i / (vel.length - 1)).toFixed(1)} ${(plotH - Math.abs(vel[i]) * (plotH * 0.55)).toFixed(1)}`
+      d += ` L ${trackX(i / (vel.length - 1)).toFixed(1)} ${(plotBottom - Math.abs(vel[i]) * ((plotBottom - plotTop) * 0.55)).toFixed(1)}`
     }
-    return d + ` L ${plotW} ${plotH} Z`
+    return d + ` L ${trackX(1)} ${plotBottom} Z`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vel])
 
-  // line lane geometry — same horizontal scale as the plot so the dot and
-  // the cursor line up vertically
-  const lineX0 = 0
-  const lineX1 = plotW
-  const dotX = lineX0 + 10 + eased * (lineX1 - lineX0 - 20)
+  const cursorX = trackX(p)
+  const dotX = trackX(eased)
 
   const sourceLabel =
     ml.easingSource === 'curve'
@@ -118,26 +122,29 @@ export function MotionLab() {
       </div>
 
       <div className="lane">
-        <div className="lane-label">POSITION / VELOCITY OVER TIME</div>
-        <svg viewBox={`0 0 ${plotW} ${plotH}`} className="lane-svg" data-testid="lane-plot">
-          <line x1={0} y1={py(1)} x2={plotW} y2={py(1)} className="lane-rule" />
-          <line x1={0} y1={py(0)} x2={plotW} y2={py(0)} className="lane-rule" />
+        <div className="lane-label">POSITION / VELOCITY OVER TIME — SAME MOVE ON THE PATH BELOW</div>
+        <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
+          {/* graph */}
+          <line x1={PAD} y1={py(1)} x2={W - PAD} y2={py(1)} className="lane-rule" />
+          <line x1={PAD} y1={py(0)} x2={W - PAD} y2={py(0)} className="lane-rule" />
           <path d={velocityPath} className="plot-velocity" />
           <path d={positionPath} className="plot-position" />
-          <line data-testid="plot-cursor" x1={px(p)} y1={0} x2={px(p)} y2={plotH} className="plot-cursor" />
-          <circle cx={px(p)} cy={py(eased)} r={4} className="plot-dot" />
-        </svg>
-      </div>
+          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={plotBottom} className="plot-cursor" />
+          <circle cx={cursorX} cy={py(eased)} r={4} className="plot-dot" />
 
-      <div className="lane">
-        <div className="lane-label">THE SAME EASING ON A STRAIGHT PATH</div>
-        <svg viewBox={`0 0 ${plotW} 64`} className="lane-svg" data-testid="lane-line">
-          <line x1={lineX0 + 10} y1={32} x2={lineX1 - 10} y2={32} className="lane-rule" />
+          {/* graph value → circle position */}
+          <line
+            x1={cursorX} y1={py(eased)} x2={dotX} y2={lineY - 11}
+            className="plot-connector"
+          />
+
+          {/* straight path */}
+          <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
           {Array.from({ length: 11 }, (_, i) => {
-            const tx = lineX0 + 10 + evalEase(lut, i / 10) * (lineX1 - lineX0 - 20)
-            return <line key={i} x1={tx} y1={24} x2={tx} y2={40} className="lane-tick" />
+            const tx = trackX(evalEase(lut, i / 10))
+            return <line key={i} x1={tx} y1={lineY - 8} x2={tx} y2={lineY + 8} className="lane-tick" />
           })}
-          <circle data-testid="line-dot" cx={dotX} cy={32} r={9} className="lane-dot" />
+          <circle data-testid="line-dot" cx={dotX} cy={lineY} r={9} className="lane-dot" />
         </svg>
         <div className="panel-note">
           Tick marks sit at equal time steps — their spacing is the velocity.
