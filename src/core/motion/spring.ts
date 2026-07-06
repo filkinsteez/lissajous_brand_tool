@@ -78,6 +78,15 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
     ],
   },
   {
+    // the circle's top half, halved: quarter arcs = the circ family
+    family: 'CIRC',
+    variants: [
+      { id: 'circ-out', label: 'CIRC OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position' },
+      { id: 'circ-in', label: 'CIRC IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position', reverse: true },
+      { id: 'circ-out-2', label: 'CIRC OUT+', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position', strength: 0.4 },
+    ],
+  },
+  {
     family: 'SPRING',
     variants: [
       { id: 'spring-1', label: 'SPRING I', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.6 },
@@ -214,6 +223,7 @@ export function curveArcEasing(
 
   // candidate windows: x = sin(a·t + φ) rises −1 → +1 on each of these
   let bestT0 = 0
+  let bestT1 = Math.PI / a
   let bestDy = 0
   for (let k = 0; k < a; k++) {
     const t0 = (-Math.PI / 2 - phase + TAU * k) / a
@@ -222,6 +232,28 @@ export function curveArcEasing(
     if (Math.abs(dy) > Math.abs(bestDy)) {
       bestDy = dy
       bestT0 = t0
+      bestT1 = t1
+    }
+  }
+
+  if (Math.abs(bestDy) < 0.2) {
+    // symmetric figure: full windows return to their start. Try QUARTER
+    // windows — the top half of the figure, halved. The circle's quarters
+    // are exactly the classic circ arcs (√(1−t²) family).
+    for (let k = 0; k < a; k++) {
+      for (const [u0, u1] of [
+        [-Math.PI / 2 + TAU * k, TAU * k],
+        [TAU * k, Math.PI / 2 + TAU * k],
+      ]) {
+        const t0 = (u0 - phase) / a
+        const t1 = (u1 - phase) / a
+        const dy = Math.sin(b * t1) - Math.sin(b * t0)
+        if (Math.abs(dy) > Math.abs(bestDy) + 1e-9) {
+          bestDy = dy
+          bestT0 = t0
+          bestT1 = t1
+        }
+      }
     }
   }
 
@@ -230,9 +262,8 @@ export function curveArcEasing(
   const arcUnit: { x: number; y: number }[] = []
 
   if (Math.abs(bestDy) < 0.2) {
-    // symmetric figure (e.g. 1:1 circle, 1:2 parabola) — every x-window's
-    // y returns to its start. Fall back to the y-oscillation's rising
-    // half-period: the projection of the oscillation itself, a sine ease.
+    // fully degenerate (e.g. 1:2 at phase 0) — fall back to the
+    // y-oscillation's rising half-period: a plain sine ease.
     const t0 = -Math.PI / (2 * b)
     const t1 = Math.PI / (2 * b)
     for (let i = 0; i < size; i++) {
@@ -249,7 +280,7 @@ export function curveArcEasing(
   // time axis = normalized x; sample the window finely, then resample the
   // (x, y) pairs onto a uniform time grid
   const t0 = bestT0
-  const t1 = bestT0 + Math.PI / a
+  const t1 = bestT1
   const fine = 1024
   const xs = new Float64Array(fine + 1)
   const ys = new Float64Array(fine + 1)
@@ -257,9 +288,13 @@ export function curveArcEasing(
   for (let i = 0; i <= fine; i++) {
     const t = t0 + (i / fine) * (t1 - t0)
     ts[i] = t
-    xs[i] = (Math.sin(a * t + phase) + 1) / 2 // 0..1, monotone
+    xs[i] = Math.sin(a * t + phase)
     ys[i] = Math.sin(b * t)
   }
+  const xStart = xs[0]
+  const xEnd = xs[fine]
+  const xSpan = xEnd - xStart || 1e-9
+  for (let i = 0; i <= fine; i++) xs[i] = (xs[i] - xStart) / xSpan // 0..1, monotone
   const y0 = ys[0]
   const yScale = bestDy
 
@@ -280,7 +315,7 @@ export function curveArcEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP, frame: { kind: 'x', x0: -1, x1: 1, y0, yScale } }
+  return { lut, arcUnit, tAtP, frame: { kind: 'x', x0: xStart, x1: xEnd, y0, yScale } }
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).

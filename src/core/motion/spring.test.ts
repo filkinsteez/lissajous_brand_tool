@@ -99,8 +99,20 @@ describe('curveArcEasing', () => {
     expect(maxDev).toBeGreaterThan(0.05)
   })
 
-  it('falls back to a sine ease for degenerate symmetric figures', () => {
-    const { lut } = curveArcEasing(liss(1, 1)) // circle: every x-window is symmetric
+  it('the circle yields the circ family — its quarter arc, not a fallback', () => {
+    // top half of the 1:1 circle, halved: e(p) = √(1 − (p−1)²) (circ out)
+    const { lut } = curveArcEasing(liss(1, 1))
+    for (const p of [0.25, 0.5, 0.75]) {
+      expect(evalEase(lut, p)).toBeCloseTo(Math.sqrt(1 - (p - 1) * (p - 1)), 2)
+    }
+    // reversed = circ in: 1 − √(1 − p²)
+    const circIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position', reverse: true })
+    expect(evalEase(circIn.lut, 0.5)).toBeCloseTo(1 - Math.sqrt(0.75), 2)
+  })
+
+  it('falls back to a sine ease only when even quarters degenerate', () => {
+    const { lut, frame } = curveArcEasing({ frequencyX: 1, frequencyY: 2, phase: 0 })
+    expect(frame).toBeNull() // 1:2 at phase 0: full and quarter windows all return to start
     expect(evalEase(lut, 0.5)).toBeCloseTo(0.5, 2)
     expect(evalEase(lut, 0.25)).toBeCloseTo((1 - Math.cos(Math.PI * 0.25)) / 2, 2)
   })
