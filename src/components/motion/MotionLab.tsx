@@ -43,8 +43,6 @@ export function MotionLab() {
     [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay],
   )
   const lut = arc.lut
-  // in velocity read the speed ghost IS the arc; otherwise differentiate
-  const vel = useMemo(() => arc.speed ?? velocityOf(lut), [arc, lut])
 
   useEffect(() => {
     lbsDebug('motion', {
@@ -114,30 +112,22 @@ export function MotionLab() {
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arc, shapingActive, maxVal, minVal])
-  const velocityPath = useMemo(() => {
-    let d = `M ${trackX(0)} ${plotBottom}`
-    for (let i = 0; i < vel.length; i++) {
-      d += ` L ${trackX(i / (vel.length - 1)).toFixed(1)} ${(plotBottom - Math.abs(vel[i]) * ((plotBottom - plotTop) * 0.45)).toFixed(1)}`
-    }
-    return d + ` L ${trackX(1)} ${plotBottom} Z`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vel])
-
   const cursorX = trackX(p)
   const dotX = trackX(Math.max(0, Math.min(1, eased)))
 
-  // ---- the source panel: the arc IN GRAPH FRAME ----
-  // The figure is rotated into time × value: the marked arc reads as a
-  // regular easing curve, and the figure's other branches ghost behind,
-  // cropped to the arc's time domain.
+  // ---- the SPEED GRAPH: AE's default editor view ----
+  // The source of every easing is its velocity. In speed-read recipes the
+  // displayed curve IS the figure's arc (ghosted context behind it); in
+  // value-read recipes (springs, circ) the speed is derived — cusps where
+  // the motion reverses, exactly like AE's speed graph of a bounce.
   const FIG = 300
   const figPad = 24
   const figure = useMemo(() => {
     const a = ml.ratioX
     const b = ml.ratioY
     const phase = ml.phase
-    const frame = arc.frame
-    const source = (ml.read === 'velocity' ? arc.rawSpeed : arc.rawLut) ?? arc.rawLut
+    const frame = ml.read === 'velocity' ? arc.frame : null
+    const source = arc.speed ?? velocityOf(arc.lut)
 
     // value range with headroom for lobes above/below
     let vMin = 0
@@ -221,7 +211,7 @@ export function MotionLab() {
       <div className="lane-row">
         <div className="lane lane-figure">
           <div className="lane-label">
-            SOURCE — ONE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE, AS A GRAPH
+            SPEED GRAPH — THE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE
           </div>
           <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
             <line x1={figPad} y1={figure.rule1} x2={FIG - figPad} y2={figure.rule1} className="lane-rule" />
@@ -232,16 +222,15 @@ export function MotionLab() {
           </svg>
           <div className="panel-note">
             {ml.read === 'velocity'
-              ? 'This arc is the SPEED curve; the rest of the figure ghosts behind it.'
-              : 'This arc is the position curve; the rest of the figure ghosts behind it.'}
+              ? 'Speed over time — the figure’s arc, its context ghosted behind. Position on the right is the integral.'
+              : 'Speed over time, derived from the figure’s arc — cusps are direction changes.'}
           </div>
         </div>
         <div className="lane">
-          <div className="lane-label">POSITION / VELOCITY OVER TIME — SAME MOVE ON THE PATH BELOW</div>
+          <div className="lane-label">VALUE GRAPH — POSITION OVER TIME, SAME MOVE ON THE PATH BELOW</div>
           <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
             <line x1={PAD} y1={py(1)} x2={W - PAD} y2={py(1)} className="lane-rule" />
             <line x1={PAD} y1={py(0)} x2={W - PAD} y2={py(0)} className="lane-rule" />
-            <path d={velocityPath} className="plot-velocity" />
             {rawPositionPath ? <path d={rawPositionPath} className="plot-raw" /> : null}
             <path d={positionPath} className="plot-position" />
             <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={plotBottom} className="plot-cursor" />

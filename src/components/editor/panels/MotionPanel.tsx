@@ -3,7 +3,7 @@
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { MOTION_PRESETS, MOTION_TOKENS, type EasingRead } from '@/core/motion/spring'
+import { MOTION_PRESETS, MOTION_TOKENS } from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -44,15 +44,6 @@ export function MotionPanel() {
           onChange={(ratioY) => setT({ motionLab: { ratioY, presetId: undefined } })} onCommit={commit} />
         <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
           onChange={(phase) => setT({ motionLab: { phase, presetId: undefined } })} onCommit={commit} />
-        <SegmentedControl<EasingRead>
-          label="READ ARC AS"
-          value={ml.read}
-          options={[
-            { value: 'velocity', label: 'SPEED GRAPH' },
-            { value: 'position', label: 'VALUE GRAPH' },
-          ]}
-          onChange={(read) => apply({ motionLab: { read, presetId: undefined } })}
-        />
         <SegmentedControl
           label="DIRECTION"
           value={ml.reverse ? 'reverse' : 'forward'}
@@ -84,8 +75,8 @@ export function MotionPanel() {
           MATCH SYSTEM CURVE ({project.lissajous.frequencyX}:{project.lissajous.frequencyY})
         </button>
         <div className="panel-note">
-          As a speed graph the arc is AE&apos;s default view: an arch means ease in and
-          out. As a value graph the arc is the position itself — lobes overshoot.
+          The source is the velocity: the figure&apos;s arc is the speed graph, and
+          position is its integral — same as After Effects.
         </div>
       </div>
       <div className="panel-section">
