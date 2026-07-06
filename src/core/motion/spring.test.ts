@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { buildArcLUT } from './arcLength'
 import {
+  cssMotionSystem,
   curveArcEasing,
   evalEase,
+  lissajousEasing,
   MOTION_PRESETS,
+  MOTION_TOKENS,
   overshootOf,
   springLUT,
   toCssLinear,
@@ -121,13 +124,53 @@ describe('curveArcEasing', () => {
     expect([...a.lut]).toEqual([...b.lut])
   })
 
-  it('every motion preset yields a valid 0→1 easing', () => {
-    for (const p of MOTION_PRESETS) {
-      const { lut } = curveArcEasing({ frequencyX: p.ratioX, frequencyY: p.ratioY, phase: p.phase })
+  it('every motion preset and token yields a valid 0→1 easing', () => {
+    for (const p of [...MOTION_PRESETS, ...MOTION_TOKENS]) {
+      const { lut } = lissajousEasing(p)
       expect(lut[0], p.id).toBe(0)
       expect(lut[lut.length - 1], p.id).toBe(1)
       for (const v of lut) expect(Number.isFinite(v), p.id).toBe(true)
     }
+  })
+
+  it('velocity read of the 1:2 arch is an eased speed bump', () => {
+    const arch = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    // speed graph: near zero at the ends, full peak between — the AE bump
+    // (the Lissajous arch is asymmetric; that skew is the family's character)
+    expect(arch.speed![0]).toBeLessThan(0.08)
+    expect(arch.speed![arch.speed!.length - 1]).toBeLessThan(0.08)
+    expect(Math.max(...arch.speed!)).toBeCloseTo(1, 5)
+    // position: monotone, slow at both ends
+    for (let i = 1; i < arch.lut.length; i++) {
+      expect(arch.lut[i]).toBeGreaterThanOrEqual(arch.lut[i - 1] - 1e-6)
+    }
+    expect(evalEase(arch.lut, 0.1)).toBeLessThan(0.12)
+    expect(evalEase(arch.lut, 0.9)).toBeGreaterThan(0.94)
+    const mid = evalEase(arch.lut, 0.5)
+    expect(mid).toBeGreaterThan(0.2)
+    expect(mid).toBeLessThan(0.7)
+  })
+
+  it('enter decelerates, exit accelerates, and they mirror each other', () => {
+    const enter = lissajousEasing(MOTION_TOKENS.find((t) => t.id === 'enter')!)
+    const exit = lissajousEasing(MOTION_TOKENS.find((t) => t.id === 'exit')!)
+    // enter: speed falls over time → position covers most ground early
+    expect(evalEase(enter.lut, 0.4)).toBeGreaterThan(0.5)
+    // exit: speed rises over time → position covers most ground late
+    expect(evalEase(exit.lut, 0.6)).toBeLessThan(0.5)
+    // time-mirror relationship
+    expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
+  })
+
+  it('exports a complete CSS motion system', () => {
+    const css = cssMotionSystem(1100)
+    expect(css).toContain('--ease-standard: linear(')
+    expect(css).toContain('--ease-enter: linear(')
+    expect(css).toContain('--ease-exit: linear(')
+    expect(css).toContain('--ease-emphasis: linear(')
+    expect(css).toContain('--duration-base: 1100ms')
+    expect(css.startsWith(':root {')).toBe(true)
+    expect(css.endsWith('}')).toBe(true)
   })
 
   it('the preset family spans linear → springy', () => {

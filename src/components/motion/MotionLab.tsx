@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
 import {
-  curveArcEasing,
   evalEase,
+  lissajousEasing,
   overshootOf,
   toCssLinear,
   velocityOf,
@@ -31,24 +31,30 @@ export function MotionLab() {
   const elapsedRef = useRef(0)
   const [, setFrame] = useState(0)
 
-  // the easing IS a Lissajous figure: ratio + phase pick the member,
-  // its x-rising arc read as a graph is the curve
+  // the easing IS a Lissajous figure: ratio + phase pick the member; the
+  // read decides whether its arc is the value graph or the speed graph
   const arc = useMemo(
-    () => curveArcEasing({ frequencyX: ml.ratioX, frequencyY: ml.ratioY, phase: ml.phase }),
-    [ml.ratioX, ml.ratioY, ml.phase],
+    () =>
+      lissajousEasing({
+        ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read, reverse: ml.reverse,
+      }),
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse],
   )
   const lut = arc.lut
-  const vel = useMemo(() => velocityOf(lut), [lut])
+  // in velocity read the speed ghost IS the arc; otherwise differentiate
+  const vel = useMemo(() => arc.speed ?? velocityOf(lut), [arc, lut])
 
   useEffect(() => {
     lbsDebug('motion', {
       ratio: `${ml.ratioX}:${ml.ratioY}`,
       phase: ml.phase,
+      read: ml.read,
       overshoot: +overshootOf(lut).toFixed(4),
       easeMid: +evalEase(lut, 0.5).toFixed(4),
+      speedMid: arc.speed ? +arc.speed[Math.floor(arc.speed.length / 2)].toFixed(4) : null,
       cssLinear: toCssLinear(lut),
     })
-  }, [lut, ml.ratioX, ml.ratioY, ml.phase])
+  }, [lut, arc, ml.ratioX, ml.ratioY, ml.phase, ml.read])
 
   useEffect(() => {
     if (!playing) return
@@ -132,7 +138,8 @@ export function MotionLab() {
       <div className="lab-header">
         <span className="lab-title">MOTION</span>
         <span className="lab-sub">
-          {ml.ratioX}:{ml.ratioY} · phase {Math.round((ml.phase * 180) / Math.PI)}°
+          {ml.ratioX}:{ml.ratioY} · phase {Math.round((ml.phase * 180) / Math.PI)}° · read as{' '}
+          {ml.read}
           {overshoot > 0.001 ? ` · overshoot ${(overshoot * 100).toFixed(0)}%` : ''}
         </span>
         <button
@@ -155,7 +162,9 @@ export function MotionLab() {
             <circle data-testid="figure-tracer" cx={tracer.x} cy={tracer.y} r={6} className="lane-dot" />
           </svg>
           <div className="panel-note">
-            The marked arc, read left to right, is the position curve on the right.
+            {ml.read === 'velocity'
+              ? 'The marked arc, read left to right, is the SPEED curve — its integral is the position.'
+              : 'The marked arc, read left to right, is the position curve on the right.'}
           </div>
         </div>
         <div className="lane">

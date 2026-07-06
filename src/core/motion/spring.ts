@@ -10,24 +10,45 @@ export type SpringParams = {
   initialVelocity: number // in target-distances per second, normalized
 }
 
-// The easing presets are members of the Lissajous family itself — the
-// MathWorld n:1 / 1:n chart read as easing curves. 1:1 is the diagonal
-// (linear); 2:1's top arc is the classic ease; adding lobes goes elastic.
-export type MotionPreset = {
-  id: string
-  label: string
+// An arc of a Lissajous figure can be read two ways, matching AE's two
+// graph editors:
+//   position — the arc IS the value graph (y over the x-sweep)
+//   velocity — the arc IS the speed graph (an arch = ease speed bump);
+//              integrating it gives the position curve
+export type EasingRead = 'position' | 'velocity'
+
+export type MotionRecipe = {
   ratioX: number
   ratioY: number
   phase: number
+  read: EasingRead
+  reverse?: boolean // time-mirror: enter/decelerate is the reversed exit
 }
 
+export type MotionPreset = MotionRecipe & { id: string; label: string }
+
+// Family members read as easings — the MathWorld chart, both readings.
+// EASE is the user's rotated 2:1 arch: ratio 1:2 at 90°, read as speed.
 export const MOTION_PRESETS: MotionPreset[] = [
-  { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0 },
-  { id: 'soft', label: 'SOFT', ratioX: 3, ratioY: 1, phase: 0 },
-  { id: 'ease', label: 'EASE', ratioX: 2, ratioY: 1, phase: 0 },
-  { id: 'ease-out', label: 'EASE OUT', ratioX: 2, ratioY: 1, phase: Math.PI / 2 },
-  { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0 },
-  { id: 'elastic', label: 'ELASTIC', ratioX: 1, ratioY: 5, phase: 0 },
+  { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0, read: 'position' },
+  { id: 'soft', label: 'SOFT', ratioX: 3, ratioY: 1, phase: 0, read: 'position' },
+  { id: 'ease', label: 'EASE', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 2, ratioY: 1, phase: Math.PI / 2, read: 'position' },
+  { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position' },
+  { id: 'elastic', label: 'ELASTIC', ratioX: 1, ratioY: 5, phase: 0, read: 'position' },
+]
+
+// The derived motion system: named roles a brand actually uses, each a
+// family member. One figure family → grid, texture, type, and motion.
+//   standard — the arch: speed rises and falls, the symmetric move
+//   enter    — decelerate into place (speed ramp down)
+//   exit     — accelerate away (speed ramp up)
+//   emphasis — the 1:3 swing, for attention
+export const MOTION_TOKENS: MotionPreset[] = [
+  { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
+  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' },
+  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true },
+  { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position' },
 ]
 
 export const LUT_SIZE = 240
@@ -205,6 +226,146 @@ export function curveArcEasing(
   }
 
   return { lut, arcUnit, tAtP }
+}
+
+// Velocity read: the arc IS the speed graph (AE's default editor view).
+// Candidate windows are the rising QUARTERS of the x-oscillation; |y| over
+// the window is speed. Scoring prefers arch-shaped speed (zero at both
+// ends) — the traditional eased-keyframe speed bump. Position is the
+// normalized integral, monotone by construction.
+function arcVelocityEasing(
+  params: { frequencyX: number; frequencyY: number; phase: number },
+  size = LUT_SIZE,
+): CurveArcEasing & { speed: Float32Array } {
+  const a = Math.max(1, Math.round(params.frequencyX))
+  const b = Math.max(1, Math.round(params.frequencyY))
+  const phase = params.phase
+  const TAU = Math.PI * 2
+  const fine = 1024
+
+  // quarters of the x-oscillation where x rises: [-90°..0°] and [0..90°]
+  // in (a·t + phase) space, per period
+  let bestScore = -Infinity
+  let bestT0 = 0
+  let bestT1 = Math.PI / (2 * a)
+  for (let k = 0; k < a; k++) {
+    for (const [u0, u1] of [
+      [-Math.PI / 2 + TAU * k, TAU * k],
+      [TAU * k, Math.PI / 2 + TAU * k],
+    ]) {
+      const t0 = (u0 - phase) / a
+      const t1 = (u1 - phase) / a
+      let sum = 0
+      const probes = 64
+      for (let i = 0; i <= probes; i++) {
+        sum += Math.abs(Math.sin(b * (t0 + (i / probes) * (t1 - t0))))
+      }
+      const mean = sum / (probes + 1)
+      const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
+      const score = mean - 0.75 * endPenalty
+      // epsilon: symmetric windows tie mathematically — keep the first
+      // rather than letting float noise pick
+      if (score > bestScore + 1e-9) {
+        bestScore = score
+        bestT0 = t0
+        bestT1 = t1
+      }
+    }
+  }
+
+  // sample the window; time axis = normalized x (monotone within a quarter)
+  const ts = new Float64Array(fine + 1)
+  const xs = new Float64Array(fine + 1)
+  const sp = new Float64Array(fine + 1)
+  for (let i = 0; i <= fine; i++) {
+    const t = bestT0 + (i / fine) * (bestT1 - bestT0)
+    ts[i] = t
+    xs[i] = Math.sin(a * t + phase)
+    sp[i] = Math.abs(Math.sin(b * t))
+  }
+  const x0 = xs[0]
+  const xSpan = xs[fine] - x0 || 1e-9
+
+  const speed = new Float32Array(size)
+  const tAtP = new Float32Array(size)
+  let j = 0
+  for (let i = 0; i < size; i++) {
+    const p = i / (size - 1)
+    const targetX = x0 + p * xSpan
+    while (j < fine - 1 && (xs[j + 1] - targetX) * Math.sign(xSpan) < 0) j++
+    const span = xs[j + 1] - xs[j] || 1e-9
+    const f = Math.max(0, Math.min(1, (targetX - xs[j]) / span))
+    speed[i] = sp[j] * (1 - f) + sp[j + 1] * f
+    tAtP[i] = ts[j] * (1 - f) + ts[j + 1] * f
+  }
+
+  // integrate speed → position, normalize to land at 1
+  const lut = new Float32Array(size)
+  for (let i = 1; i < size; i++) lut[i] = lut[i - 1] + (speed[i] + speed[i - 1]) / 2
+  const total = lut[size - 1]
+  if (total < 1e-3) {
+    // degenerate (speed ~0 everywhere): smooth bell fallback
+    for (let i = 0; i < size; i++) {
+      const p = i / (size - 1)
+      lut[i] = (1 - Math.cos(Math.PI * p)) / 2
+      speed[i] = Math.sin(Math.PI * p)
+    }
+  } else {
+    for (let i = 0; i < size; i++) lut[i] /= total
+  }
+  lut[0] = 0
+  lut[size - 1] = 1
+
+  // normalize speed display to peak 1
+  let peak = 1e-6
+  for (const v of speed) if (v > peak) peak = v
+  for (let i = 0; i < size; i++) speed[i] /= peak
+
+  const arcUnit: { x: number; y: number }[] = []
+  const arcStep = Math.max(1, Math.floor(fine / 160))
+  for (let i = 0; i <= fine; i += arcStep) {
+    arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
+  }
+
+  return { lut, arcUnit, tAtP, speed }
+}
+
+// One entry point for both readings of a figure, plus optional time-mirror.
+export function lissajousEasing(
+  recipe: MotionRecipe,
+  size = LUT_SIZE,
+): CurveArcEasing & { speed?: Float32Array } {
+  const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
+  const out: CurveArcEasing & { speed?: Float32Array } =
+    recipe.read === 'velocity' ? arcVelocityEasing(params, size) : curveArcEasing(params, size)
+  if (!recipe.reverse) return out
+
+  const n = out.lut.length
+  const lut = new Float32Array(n)
+  const tAtP = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    lut[i] = 1 - out.lut[n - 1 - i]
+    tAtP[i] = out.tAtP[n - 1 - i] // tracer runs the same arc backwards
+  }
+  const speed = out.speed ? new Float32Array(n) : undefined
+  if (speed && out.speed) {
+    for (let i = 0; i < n; i++) speed[i] = out.speed[n - 1 - i]
+  }
+  return { lut, tAtP, arcUnit: out.arcUnit, speed }
+}
+
+// Full motion-system export: the four role tokens + a duration scale,
+// as CSS custom properties ready to paste into a stylesheet.
+export function cssMotionSystem(baseDurationMs: number): string {
+  const lines = [':root {']
+  for (const token of MOTION_TOKENS) {
+    lines.push(`  --ease-${token.id}: ${toCssLinear(lissajousEasing(token).lut)};`)
+  }
+  lines.push(`  --duration-quick: ${Math.round(baseDurationMs * 0.45)}ms;`)
+  lines.push(`  --duration-base: ${Math.round(baseDurationMs)}ms;`)
+  lines.push(`  --duration-slow: ${Math.round(baseDurationMs * 1.8)}ms;`)
+  lines.push('}')
+  return lines.join('\n')
 }
 
 // CSS `linear()` easing token — the LUT verbatim, usable anywhere.

@@ -3,7 +3,15 @@
 import { useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
-import { curveArcEasing, MOTION_PRESETS, toCssLinear } from '@/core/motion/spring'
+import { SegmentedControl } from '@/components/controls/SegmentedControl'
+import {
+  cssMotionSystem,
+  lissajousEasing,
+  MOTION_PRESETS,
+  MOTION_TOKENS,
+  toCssLinear,
+  type EasingRead,
+} from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -21,6 +29,15 @@ export function MotionPanel() {
     setTimeout(() => setNote(''), 2500)
   }
 
+  const copy = async (text: string, msg: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      flash(msg)
+    } catch {
+      flash('CLIPBOARD BLOCKED')
+    }
+  }
+
   return (
     <div className="panel">
       <div className="panel-section">
@@ -32,7 +49,10 @@ export function MotionPanel() {
               className={ml.presetId === p.id ? 'preset-chip active' : 'preset-chip'}
               onClick={() =>
                 apply({
-                  motionLab: { ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, presetId: p.id },
+                  motionLab: {
+                    ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, read: p.read,
+                    reverse: !!p.reverse, presetId: p.id,
+                  },
                 })
               }
             >
@@ -46,6 +66,24 @@ export function MotionPanel() {
           onChange={(ratioY) => setT({ motionLab: { ratioY, presetId: undefined } })} onCommit={commit} />
         <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
           onChange={(phase) => setT({ motionLab: { phase, presetId: undefined } })} onCommit={commit} />
+        <SegmentedControl<EasingRead>
+          label="READ ARC AS"
+          value={ml.read}
+          options={[
+            { value: 'velocity', label: 'SPEED GRAPH' },
+            { value: 'position', label: 'VALUE GRAPH' },
+          ]}
+          onChange={(read) => apply({ motionLab: { read, presetId: undefined } })}
+        />
+        <SegmentedControl
+          label="DIRECTION"
+          value={ml.reverse ? 'reverse' : 'forward'}
+          options={[
+            { value: 'forward', label: 'FORWARD' },
+            { value: 'reverse', label: 'REVERSED' },
+          ]}
+          onChange={(v) => apply({ motionLab: { reverse: v === 'reverse', presetId: undefined } })}
+        />
         <button
           className="ctl-action"
           onClick={() =>
@@ -62,8 +100,8 @@ export function MotionPanel() {
           MATCH SYSTEM CURVE ({project.lissajous.frequencyX}:{project.lissajous.frequencyY})
         </button>
         <div className="panel-note">
-          Ratio and phase pick a figure from the same family as the grid; one arc of
-          it, read left to right, is the easing. 1:1 is linear — more lobes, more spring.
+          As a speed graph the arc is AE&apos;s default view: an arch means ease in and
+          out. As a value graph the arc is the position itself — lobes overshoot.
         </div>
       </div>
       <div className="panel-section">
@@ -72,26 +110,51 @@ export function MotionPanel() {
           onChange={(durationMs) => setT({ motionLab: { durationMs } })} onCommit={commit} />
       </div>
       <div className="panel-section">
-        <div className="panel-heading">TOKENS</div>
+        <div className="panel-heading">MOTION SYSTEM</div>
+        <div className="preset-strip">
+          {MOTION_TOKENS.map((t) => (
+            <button
+              key={t.id}
+              className="preset-chip"
+              onClick={() =>
+                apply({
+                  motionLab: {
+                    ratioX: t.ratioX, ratioY: t.ratioY, phase: t.phase, read: t.read,
+                    reverse: !!t.reverse, presetId: undefined,
+                  },
+                })
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          className="ctl-action primary"
+          onClick={() => copy(cssMotionSystem(ml.durationMs), 'MOTION SYSTEM COPIED')}
+        >
+          COPY MOTION SYSTEM (CSS)
+        </button>
         <button
           className="ctl-action"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(
-                toCssLinear(curveArcEasing({
-                  frequencyX: ml.ratioX, frequencyY: ml.ratioY, phase: ml.phase,
-                }).lut),
-              )
-              flash('CSS EASING COPIED')
-            } catch {
-              flash('CLIPBOARD BLOCKED')
-            }
-          }}
+          onClick={() =>
+            copy(
+              toCssLinear(lissajousEasing({
+                ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
+                reverse: ml.reverse,
+              }).lut),
+              'CSS EASING COPIED',
+            )
+          }
         >
-          COPY CSS EASING
+          COPY CURRENT EASING
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
-        <div className="panel-note">A linear() easing function, usable in CSS and JS animation.</div>
+        <div className="panel-note">
+          Four roles from one family: standard (the arch), enter (decelerate),
+          exit (accelerate), emphasis (the 1:3 swing) — plus a duration scale.
+          Click a role to inspect it above.
+        </div>
       </div>
     </div>
   )
