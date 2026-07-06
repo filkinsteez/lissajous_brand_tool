@@ -11,6 +11,7 @@ import {
   velocityOf,
 } from '@/core/motion/spring'
 import { lbsDebug } from '@/core/state/debug'
+import { EasingLibrary } from './EasingLibrary'
 
 const HOLD_MS = 600
 
@@ -260,6 +261,8 @@ export function MotionLab() {
           </div>
         </div>
       </div>
+
+      <EasingLibrary p={p} />
 
       <div className="lane">
         <div className="lane-label">PRODUCT — THE SAME EASING ON REAL ELEMENTS</div>

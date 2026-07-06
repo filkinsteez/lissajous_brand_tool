@@ -5,6 +5,7 @@ import {
   curveArcEasing,
   evalEase,
   lissajousEasing,
+  MOTION_LIBRARY,
   MOTION_PRESETS,
   MOTION_TOKENS,
   overshootOf,
@@ -148,13 +149,44 @@ describe('curveArcEasing', () => {
     expect([...a.lut]).toEqual([...b.lut])
   })
 
-  it('every motion preset and token yields a valid 0→1 easing', () => {
-    for (const p of [...MOTION_PRESETS, ...MOTION_TOKENS]) {
+  it('every motion preset, token, and library card yields a valid 0→1 easing', () => {
+    const all = [
+      ...MOTION_PRESETS,
+      ...MOTION_TOKENS,
+      ...MOTION_LIBRARY.flatMap((row) => row.variants),
+    ]
+    for (const p of all) {
       const { lut } = lissajousEasing(p)
       expect(lut[0], p.id).toBe(0)
       expect(lut[lut.length - 1], p.id).toBe(1)
       for (const v of lut) expect(Number.isFinite(v), p.id).toBe(true)
     }
+  })
+
+  it('library intensities actually escalate within each family', () => {
+    // OUT: stronger variants cover more ground early
+    const outs = MOTION_LIBRARY.find((r) => r.family === 'OUT')!.variants.map(
+      (v) => lissajousEasing(v).lut,
+    )
+    expect(evalEase(outs[1], 0.3)).toBeGreaterThan(evalEase(outs[0], 0.3))
+    expect(evalEase(outs[2], 0.3)).toBeGreaterThan(evalEase(outs[1], 0.3))
+    // SPRING: higher variants swing more times
+    const swings = (lut: Float32Array) => {
+      let count = 0
+      let dir = 0
+      for (let i = 1; i < lut.length; i++) {
+        const d = Math.sign(lut[i] - lut[i - 1])
+        if (d !== 0 && d !== dir) {
+          if (dir !== 0) count++
+          dir = d
+        }
+      }
+      return count
+    }
+    const springs = MOTION_LIBRARY.find((r) => r.family === 'SPRING')!.variants.map(
+      (v) => lissajousEasing(v).lut,
+    )
+    expect(swings(springs[2])).toBeGreaterThan(swings(springs[0]))
   })
 
   it('velocity read of the 1:2 arch is an eased speed bump', () => {

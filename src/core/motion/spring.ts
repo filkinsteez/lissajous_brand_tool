@@ -49,6 +49,44 @@ export const MOTION_PRESETS: MotionPreset[] = [
 //   enter    — decelerate into place (speed ramp down)
 //   exit     — accelerate away (speed ramp up)
 //   emphasis — the 1:3 swing, for attention
+// The easing library: the family enumerated as a wall of position-vs-time
+// charts (easings.net style), ordered by increasing intensity within each
+// row. Every path is a Lissajous arc — the figure IS the path.
+export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
+  {
+    family: 'OUT',
+    variants: [
+      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' },
+      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.35 },
+      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.7 },
+    ],
+  },
+  {
+    family: 'IN',
+    variants: [
+      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true },
+      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.35 },
+      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.7 },
+    ],
+  },
+  {
+    family: 'IN-OUT',
+    variants: [
+      { id: 'inout-1', label: 'IN-OUT I', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
+      { id: 'inout-2', label: 'IN-OUT II', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
+      { id: 'inout-3', label: 'IN-OUT III', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
+    ],
+  },
+  {
+    family: 'SPRING',
+    variants: [
+      { id: 'spring-1', label: 'SPRING I', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.6 },
+      { id: 'spring-2', label: 'SPRING II', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
+      { id: 'spring-3', label: 'SPRING III', ratioX: 1, ratioY: 7, phase: 0, read: 'position', decay: 0.45 },
+    ],
+  },
+]
+
 export const MOTION_TOKENS: MotionPreset[] = [
   { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
   { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.3 },
