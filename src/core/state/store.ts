@@ -12,6 +12,7 @@ export type UiState = {
   activePanel: PanelId
   quality: Quality
   mounted: boolean
+  showGuides: boolean // optional construction guides while composing
 }
 
 export type DeepPartial<T> = {
@@ -61,7 +62,7 @@ let preTransient: ProjectState | null = null
 
 export const useStore = create<StoreState>()((set, get) => ({
   project: createDefaultProject(),
-  ui: { mode: 'compose', activePanel: 'lissajous', quality: 'live', mounted: false },
+  ui: { mode: 'compose', activePanel: 'lissajous', quality: 'live', mounted: false, showGuides: false },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),
 

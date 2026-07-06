@@ -11,10 +11,12 @@
   --paper: #f4f2ed;
   --ink: #141412;
 
-  /* Construction geometry (setup overlay) */
-  --guide: rgba(232, 230, 225, 0.14);
-  --guide-strong: rgba(232, 230, 225, 0.38);
-  --node: rgba(232, 230, 225, 0.65);
+  /* Construction geometry (setup overlay, drawn over paper) */
+  --overlay-curve: rgba(20, 20, 18, 0.16);
+  --overlay-line: rgba(20, 20, 18, 0.12);
+  --overlay-strong: rgba(20, 20, 18, 0.45);
+  --overlay-node: rgba(20, 20, 18, 0.5);
+  --overlay-node-strong: rgba(20, 20, 18, 0.9);
 }
 
 * {

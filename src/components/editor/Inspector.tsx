@@ -1,7 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ComponentType } from 'react'
 import { useStore, type PanelId } from '@/core/state/store'
+import { LissajousPanel } from './panels/LissajousPanel'
+import { GridPanel } from './panels/GridPanel'
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'lissajous', label: 'LISSAJOUS' },
@@ -13,7 +15,10 @@ const PANELS: { id: PanelId; label: string }[] = [
 ]
 
 // Panel bodies register here as phases land.
-const PANEL_BODIES: Partial<Record<PanelId, () => ReactNode>> = {}
+const PANEL_BODIES: Partial<Record<PanelId, ComponentType>> = {
+  lissajous: LissajousPanel,
+  grid: GridPanel,
+}
 
 export function Inspector() {
   const activePanel = useStore((s) => s.ui.activePanel)
