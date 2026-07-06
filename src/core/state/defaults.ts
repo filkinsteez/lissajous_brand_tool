@@ -120,6 +120,18 @@ export function createDefaultProject(seed = 1913): ProjectState {
       ink: INK,
       paper: PAPER,
     },
+    motionLab: {
+      stiffness: 14,
+      damping: 1.15,
+      initialVelocity: 0,
+      durationMs: 1100,
+      presetId: 'ease',
+      pathShape: 'circle',
+      pathText: 'MOTION BECOMES STRUCTURE — ',
+      pathTextSize: 46,
+      pathSpeed: 0.25,
+      pathEased: false,
+    },
     export: { scale: 2 },
   }
 }

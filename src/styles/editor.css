@@ -422,3 +422,112 @@
   outline: none;
   border-color: var(--text-dim);
 }
+
+/* ---- motion lab --------------------------------------------------------- */
+
+.motion-lab {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lab-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.lab-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+}
+
+.lab-sub {
+  flex: 1;
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+}
+
+.lane {
+  border: 1px solid var(--line);
+  background: var(--chrome-1);
+  padding: 10px 12px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lane-row {
+  display: flex;
+  gap: 16px;
+}
+
+.lane-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+
+.lane-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lane-rule {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.lane-tick {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+}
+
+.lane-dot {
+  fill: var(--text);
+}
+
+.lane-curve-path {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.2;
+  opacity: 0.55;
+}
+
+.lane-curve-path.faint {
+  opacity: 0.25;
+}
+
+.plot-position {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.6;
+}
+
+.plot-velocity {
+  fill: var(--text-faint);
+  opacity: 0.16;
+  stroke: none;
+}
+
+.plot-cursor {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.plot-dot {
+  fill: var(--text);
+}
+
+.path-text {
+  fill: var(--text);
+  letter-spacing: 0.06em;
+}

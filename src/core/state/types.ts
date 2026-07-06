@@ -102,6 +102,23 @@ export type ImageState = {
   opacity: number
 }
 
+export type PathShape = 'circle' | 'oval' | 'eight' | 'system'
+
+// The motion system: a damped harmonic oscillator — the 1D sibling of the
+// Lissajous curve. damping ≥ 1 reads as a smooth ease, < 1 goes springy.
+export type MotionLabState = {
+  stiffness: number // ω, 4..40
+  damping: number // ζ, 0.15..2
+  initialVelocity: number // -3..3
+  durationMs: number
+  presetId?: string
+  pathShape: PathShape
+  pathText: string
+  pathTextSize: number
+  pathSpeed: number // path lengths per second (or pulses/sec when eased)
+  pathEased: boolean // constant glide vs eased spring pulses
+}
+
 export type ExportState = { scale: 1 | 2 | 4 }
 
 export type ProjectState = {
@@ -114,6 +131,7 @@ export type ProjectState = {
   typeBlocks: TypeBlockState[]
   glyphField: GlyphFieldState
   material: MaterialState
+  motionLab: MotionLabState
   image?: ImageState
   export: ExportState
 }
