@@ -29,22 +29,20 @@ debug counters) for automation and verification.
 
 ## Motion
 
-The third editor mode prototypes easing/velocity curves. Two sources:
+The third editor mode prototypes easing/velocity curves — and the easing
+family IS the Lissajous family. Pick a ratio and phase; one arc of that
+figure, read left to right, is the easing curve. 1:1 is the diagonal
+(linear), 2:1's top arc is the classic ease, 1:3 swings once (bounce),
+more lobes go elastic. Same two controls as the grid; MATCH SYSTEM CURVE
+copies the poster's ratio into the easing.
 
-- **Spring** — a damped oscillator with two controls (stiffness, damping),
-  covering linear through smooth ease to bouncy.
-- **System curve** — the easing is derived from the Lissajous curve itself:
-  distance covered while tracing the curve at constant rate. Change the
-  curve, the easing changes with it.
-
-The lab shows the position/velocity plot and a dot moving on a straight
-line, animated together in the same direction, so you can read the curve
-against the actual motion. Tick marks on the line sit at equal time steps —
-their spacing is the velocity.
+The lab shows the figure with its arc marked and a tracer riding it, the
+position/velocity plot, and a dot moving on a straight line — all on one
+clock. Tick marks on the line sit at equal time steps — their spacing is
+the velocity.
 
 Motion settings live in recipes and share links like everything else, and
-export as tokens: a CSS `linear()` easing function and (for springs) a
-parameter JSON that maps 1:1 to Framer Motion / react-spring.
+the easing exports as a CSS `linear()` token.
 
 ## North star
 

@@ -10,14 +10,24 @@ export type SpringParams = {
   initialVelocity: number // in target-distances per second, normalized
 }
 
-export type MotionPreset = { id: string; label: string; params: SpringParams }
+// The easing presets are members of the Lissajous family itself — the
+// MathWorld n:1 / 1:n chart read as easing curves. 1:1 is the diagonal
+// (linear); 2:1's top arc is the classic ease; adding lobes goes elastic.
+export type MotionPreset = {
+  id: string
+  label: string
+  ratioX: number
+  ratioY: number
+  phase: number
+}
 
 export const MOTION_PRESETS: MotionPreset[] = [
-  { id: 'linear', label: 'LINEAR', params: { stiffness: 0, damping: 1, initialVelocity: 0 } },
-  { id: 'ease', label: 'EASE', params: { stiffness: 14, damping: 1.15, initialVelocity: 0 } },
-  { id: 'soft', label: 'SOFT SPRING', params: { stiffness: 12, damping: 0.65, initialVelocity: 0 } },
-  { id: 'bounce', label: 'BOUNCE', params: { stiffness: 18, damping: 0.32, initialVelocity: 0 } },
-  { id: 'snap', label: 'SNAP', params: { stiffness: 34, damping: 0.9, initialVelocity: 0.5 } },
+  { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0 },
+  { id: 'soft', label: 'SOFT', ratioX: 3, ratioY: 1, phase: 0 },
+  { id: 'ease', label: 'EASE', ratioX: 2, ratioY: 1, phase: 0 },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 2, ratioY: 1, phase: Math.PI / 2 },
+  { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0 },
+  { id: 'elastic', label: 'ELASTIC', ratioX: 1, ratioY: 5, phase: 0 },
 ]
 
 export const LUT_SIZE = 240

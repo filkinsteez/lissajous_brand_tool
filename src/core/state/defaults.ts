@@ -121,10 +121,9 @@ export function createDefaultProject(seed = 1913): ProjectState {
       paper: PAPER,
     },
     motionLab: {
-      easingSource: 'spring',
-      stiffness: 14,
-      damping: 1.15,
-      initialVelocity: 0,
+      ratioX: 2,
+      ratioY: 1,
+      phase: 0,
       durationMs: 1100,
       presetId: 'ease',
       pathShape: 'circle',

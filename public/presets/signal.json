@@ -34,8 +34,6 @@
     "fold": 0.1, "ring": 0.85, "contrast": 0.8, "voidStrength": 0.4, "motion": 0
   },
   "motionLab": {
-    "easingSource": "spring",
-    "stiffness": 18, "damping": 0.32, "initialVelocity": 0, "durationMs": 1000,
-    "presetId": "bounce"
+    "ratioX": 1, "ratioY": 3, "phase": 0, "durationMs": 1000, "presetId": "bounce"
   }
 }

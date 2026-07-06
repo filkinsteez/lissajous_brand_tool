@@ -104,14 +104,13 @@ export type ImageState = {
 
 export type PathShape = 'circle' | 'oval' | 'eight' | 'system'
 
-// The motion system. Two easing sources: a damped spring (ω/ζ — smooth
-// ease through bouncy), or the system curve itself (its velocity rhythm
-// becomes the acceleration profile).
+// The motion system IS the Lissajous family: an easing is one arc of a
+// ratio:ratio figure read as a graph. 1:1 is linear, 2:1 an ease, 1:3 the
+// S-wave, higher ratios go elastic — same two controls as the grid.
 export type MotionLabState = {
-  easingSource: 'spring' | 'curve'
-  stiffness: number // ω, 4..40
-  damping: number // ζ, 0.15..2
-  initialVelocity: number // -3..3
+  ratioX: number // 1..8
+  ratioY: number // 1..8
+  phase: number // radians
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

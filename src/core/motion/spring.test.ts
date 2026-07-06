@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { buildArcLUT } from './arcLength'
-import { curveArcEasing, evalEase, overshootOf, springLUT, toCssLinear, velocityOf } from './spring'
+import {
+  curveArcEasing,
+  evalEase,
+  MOTION_PRESETS,
+  overshootOf,
+  springLUT,
+  toCssLinear,
+  velocityOf,
+} from './spring'
 import { samplePathShape } from './pathShapes'
 import { createDefaultProject } from '@/core/state/defaults'
 
@@ -111,6 +119,38 @@ describe('curveArcEasing', () => {
     const a = curveArcEasing(liss(7, 6))
     const b = curveArcEasing(liss(7, 6))
     expect([...a.lut]).toEqual([...b.lut])
+  })
+
+  it('every motion preset yields a valid 0→1 easing', () => {
+    for (const p of MOTION_PRESETS) {
+      const { lut } = curveArcEasing({ frequencyX: p.ratioX, frequencyY: p.ratioY, phase: p.phase })
+      expect(lut[0], p.id).toBe(0)
+      expect(lut[lut.length - 1], p.id).toBe(1)
+      for (const v of lut) expect(Number.isFinite(v), p.id).toBe(true)
+    }
+  })
+
+  it('the preset family spans linear → springy', () => {
+    const linear = curveArcEasing({ frequencyX: 1, frequencyY: 1, phase: 0 }).lut
+    expect(evalEase(linear, 0.5)).toBeCloseTo(0.5, 2)
+    let maxDevLinear = 0
+    for (let i = 0; i < linear.length; i++) {
+      maxDevLinear = Math.max(maxDevLinear, Math.abs(linear[i] - i / (linear.length - 1)))
+    }
+    expect(maxDevLinear).toBeLessThan(0.02)
+
+    // elastic member swings past/back before landing
+    const elastic = curveArcEasing({ frequencyX: 1, frequencyY: 5, phase: 0 }).lut
+    let swings = 0
+    let dir = 0
+    for (let i = 1; i < elastic.length; i++) {
+      const d = Math.sign(elastic[i] - elastic[i - 1])
+      if (d !== 0 && d !== dir) {
+        if (dir !== 0) swings++
+        dir = d
+      }
+    }
+    expect(swings).toBeGreaterThanOrEqual(2)
   })
 })
 
