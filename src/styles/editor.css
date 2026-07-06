@@ -517,6 +517,12 @@
   opacity: 0.25;
 }
 
+.lane-arc {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+}
+
 .plot-position {
   fill: none;
   stroke: var(--text);

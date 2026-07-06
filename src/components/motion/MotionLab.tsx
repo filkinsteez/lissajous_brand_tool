@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
-import { getDerived } from '@/core/pipeline'
 import {
-  curveEasingLUT,
+  curveArcEasing,
   evalEase,
   overshootOf,
   springLUT,
@@ -33,18 +32,18 @@ export function MotionLab() {
   const elapsedRef = useRef(0)
   const [, setFrame] = useState(0)
 
+  const curveArc = useMemo(
+    () => (ml.easingSource === 'curve' ? curveArcEasing(project.lissajous) : null),
+    [ml.easingSource, project.lissajous],
+  )
   const lut = useMemo(() => {
-    if (ml.easingSource === 'curve') {
-      return curveEasingLUT(getDerived(project).samples)
-    }
+    if (curveArc) return curveArc.lut
     return springLUT({
       stiffness: ml.stiffness,
       damping: ml.damping,
       initialVelocity: ml.initialVelocity,
     })
-    // getDerived is memoized on the same project fields we care about
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ml.easingSource, ml.stiffness, ml.damping, ml.initialVelocity, project.lissajous, project.artboard.width, project.artboard.height])
+  }, [curveArc, ml.stiffness, ml.damping, ml.initialVelocity])
   const vel = useMemo(() => velocityOf(lut), [lut])
 
   useEffect(() => {
@@ -108,30 +107,35 @@ export function MotionLab() {
   const FIG = 300
   const figPad = 26
   const figure = useMemo(() => {
-    if (ml.easingSource === 'curve') {
-      const samples = getDerived(project).samples
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-      for (const s of samples) {
-        if (s.x < minX) minX = s.x
-        if (s.x > maxX) maxX = s.x
-        if (s.y < minY) minY = s.y
-        if (s.y > maxY) maxY = s.y
-      }
-      const scale = Math.min(
-        (FIG - 2 * figPad) / Math.max(1, maxX - minX),
-        (FIG - 2 * figPad) / Math.max(1, maxY - minY),
-      )
-      const ox = FIG / 2 - ((minX + maxX) / 2) * scale
-      const oy = FIG / 2 - ((minY + maxY) / 2) * scale
-      const map = (s: { x: number; y: number }) => ({ x: s.x * scale + ox, y: s.y * scale + oy })
-      const step = Math.max(1, Math.floor(samples.length / 500))
+    if (curveArc) {
+      // unit-space figure; the chosen arc gets drawn bold on top
+      const a = project.lissajous.frequencyX
+      const b = project.lissajous.frequencyY
+      const phase = project.lissajous.phase
+      const map = (u: { x: number; y: number }) => ({
+        x: FIG / 2 + u.x * (FIG / 2 - figPad),
+        y: FIG / 2 - u.y * (FIG / 2 - figPad),
+      })
       let d = ''
-      for (let i = 0; i < samples.length; i += step) {
-        const m = map(samples[i])
+      const n = 720
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * Math.PI * 2
+        const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
         d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
       }
-      const tracerAt = (t: number) => map(samples[Math.round(t * (samples.length - 1))])
-      return { d: d + ' Z', tracerAt, target: null, label: `THE ${project.lissajous.frequencyX}:${project.lissajous.frequencyY} CURVE, TRACED AT CONSTANT RATE` }
+      let arcD = ''
+      for (const u of curveArc.arcUnit) {
+        const m = map(u)
+        arcD += `${arcD ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+      }
+      const tracerAt = (p: number) => {
+        const t = curveArc.tAtP[Math.round(p * (curveArc.tAtP.length - 1))]
+        return map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+      }
+      return {
+        d: d + ' Z', arcD, tracerAt, target: null,
+        label: `THE ${a}:${b} FIGURE — THE MARKED ARC IS THE EASING`,
+      }
     }
     // spring phase portrait: x = position (0..max), y = velocity (normalized)
     const xMin = Math.min(0, ...lut) - 0.04
@@ -146,9 +150,9 @@ export function MotionLab() {
       d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
     }
     const tracerAt = (t: number) => mapP(evalEase(lut, t), evalEase(vel, t))
-    return { d, tracerAt, target: mapP(1, 0), label: 'PHASE PORTRAIT — POSITION × VELOCITY' }
+    return { d, arcD: '', tracerAt, target: mapP(1, 0), label: 'PHASE PORTRAIT — POSITION × VELOCITY' }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ml.easingSource, lut, vel, maxVal, project.lissajous, project.artboard.width, project.artboard.height])
+  }, [curveArc, lut, vel, maxVal, project.lissajous])
   const tracer = figure.tracerAt(p)
 
   const sourceLabel =
@@ -176,7 +180,8 @@ export function MotionLab() {
       <div className="lane lane-figure">
         <div className="lane-label">{figure.label}</div>
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
-          <path d={figure.d} className="lane-curve-path" />
+          <path d={figure.d} className="lane-curve-path faint" />
+          {figure.arcD ? <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" /> : null}
           {figure.target ? (
             <>
               <line x1={figure.target.x - 6} y1={figure.target.y} x2={figure.target.x + 6} y2={figure.target.y} className="lane-tick" />
@@ -187,7 +192,7 @@ export function MotionLab() {
         </svg>
         <div className="panel-note">
           {ml.easingSource === 'curve'
-            ? 'Distance covered by this tracer is the position curve on the right.'
+            ? 'The marked arc, read left to right, is the position curve on the right.'
             : 'The spring spirals into its target — same oscillator family as the curve.'}
         </div>
       </div>

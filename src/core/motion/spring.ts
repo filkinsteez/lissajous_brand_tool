@@ -104,29 +104,97 @@ export function overshootOf(lut: Float32Array): number {
   return Math.max(0, max - 1)
 }
 
-// Easing derived from the system curve itself: trace the curve at constant
-// parameter speed and use distance-covered-so-far as the position profile.
-// Monotone by construction, and its acceleration rhythm IS the curve's
-// lobes — the grid and the motion share one source.
-export function curveEasingLUT(
-  samples: { x: number; y: number }[],
+// Easing taken directly FROM the figure: pick the arc of the Lissajous
+// where the x-oscillation rises through its full sweep (x is the time
+// axis), and read the y-oscillation over that window as position. The
+// easing curve IS a lobe of the figure — same arc, drawn as a graph.
+// Different ratios and phases give the arc a different character.
+export type CurveArcEasing = {
+  lut: Float32Array
+  // the chosen arc in unit space [-1,1]², for highlighting on the figure
+  arcUnit: { x: number; y: number }[]
+  // curve parameter per normalized-time step, for the synced tracer
+  tAtP: Float32Array
+}
+
+export function curveArcEasing(
+  params: { frequencyX: number; frequencyY: number; phase: number },
   size = LUT_SIZE,
-): Float32Array {
-  const n = samples.length
-  const cum = new Float64Array(n)
-  for (let i = 1; i < n; i++) {
-    cum[i] = cum[i - 1] + Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y)
+): CurveArcEasing {
+  const a = Math.max(1, Math.round(params.frequencyX))
+  const b = Math.max(1, Math.round(params.frequencyY))
+  const phase = params.phase
+  const TAU = Math.PI * 2
+
+  // candidate windows: x = sin(a·t + φ) rises −1 → +1 on each of these
+  let bestT0 = 0
+  let bestDy = 0
+  for (let k = 0; k < a; k++) {
+    const t0 = (-Math.PI / 2 - phase + TAU * k) / a
+    const t1 = t0 + Math.PI / a
+    const dy = Math.sin(b * t1) - Math.sin(b * t0)
+    if (Math.abs(dy) > Math.abs(bestDy)) {
+      bestDy = dy
+      bestT0 = t0
+    }
   }
-  const total = cum[n - 1] || 1
+
   const lut = new Float32Array(size)
-  for (let i = 0; i < size; i++) {
-    const f = (i / (size - 1)) * (n - 1)
-    const i0 = Math.floor(f)
-    const t = f - i0
-    lut[i] = (cum[i0] * (1 - t) + cum[Math.min(n - 1, i0 + 1)] * t) / total
+  const tAtP = new Float32Array(size)
+  const arcUnit: { x: number; y: number }[] = []
+
+  if (Math.abs(bestDy) < 0.2) {
+    // symmetric figure (e.g. 1:1 circle, 1:2 parabola) — every x-window's
+    // y returns to its start. Fall back to the y-oscillation's rising
+    // half-period: the projection of the oscillation itself, a sine ease.
+    const t0 = -Math.PI / (2 * b)
+    const t1 = Math.PI / (2 * b)
+    for (let i = 0; i < size; i++) {
+      const p = i / (size - 1)
+      const t = t0 + p * (t1 - t0)
+      lut[i] = (1 - Math.cos(Math.PI * p)) / 2
+      tAtP[i] = t
+      arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+    }
+    lut[size - 1] = 1
+    return { lut, arcUnit, tAtP }
   }
+
+  // time axis = normalized x; sample the window finely, then resample the
+  // (x, y) pairs onto a uniform time grid
+  const t0 = bestT0
+  const t1 = bestT0 + Math.PI / a
+  const fine = 1024
+  const xs = new Float64Array(fine + 1)
+  const ys = new Float64Array(fine + 1)
+  const ts = new Float64Array(fine + 1)
+  for (let i = 0; i <= fine; i++) {
+    const t = t0 + (i / fine) * (t1 - t0)
+    ts[i] = t
+    xs[i] = (Math.sin(a * t + phase) + 1) / 2 // 0..1, monotone
+    ys[i] = Math.sin(b * t)
+  }
+  const y0 = ys[0]
+  const yScale = bestDy
+
+  let j = 0
+  for (let i = 0; i < size; i++) {
+    const p = i / (size - 1)
+    while (j < fine - 1 && xs[j + 1] < p) j++
+    const span = xs[j + 1] - xs[j] || 1e-9
+    const f = Math.max(0, Math.min(1, (p - xs[j]) / span))
+    lut[i] = (ys[j] * (1 - f) + ys[j + 1] * f - y0) / yScale
+    tAtP[i] = ts[j] * (1 - f) + ts[j + 1] * f
+  }
+  lut[0] = 0
   lut[size - 1] = 1
-  return lut
+
+  const arcStep = Math.max(1, Math.floor(fine / 160))
+  for (let i = 0; i <= fine; i += arcStep) {
+    arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
+  }
+
+  return { lut, arcUnit, tAtP }
 }
 
 // CSS `linear()` easing token — the LUT verbatim, usable anywhere.

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildArcLUT } from './arcLength'
-import { curveEasingLUT, evalEase, overshootOf, springLUT, toCssLinear, velocityOf } from './spring'
+import { curveArcEasing, evalEase, overshootOf, springLUT, toCssLinear, velocityOf } from './spring'
 import { samplePathShape } from './pathShapes'
-import { sampleCurve } from '@/core/lissajous/sampler'
 import { createDefaultProject } from '@/core/state/defaults'
 
 describe('springLUT', () => {
@@ -65,27 +64,53 @@ describe('springLUT', () => {
   })
 })
 
-describe('curveEasingLUT', () => {
-  it('is monotone, starts at 0, ends at 1', () => {
-    const project = createDefaultProject()
-    const samples = sampleCurve(project.lissajous, 1200, 1600)
-    const lut = curveEasingLUT(samples)
-    expect(lut[0]).toBe(0)
-    expect(lut[lut.length - 1]).toBe(1)
-    for (let i = 1; i < lut.length; i++) {
-      expect(lut[i]).toBeGreaterThanOrEqual(lut[i - 1])
+describe('curveArcEasing', () => {
+  const liss = (frequencyX: number, frequencyY: number, phase = Math.PI / 2) => ({
+    frequencyX, frequencyY, phase,
+  })
+
+  it('starts at 0 and ends at 1 across ratios', () => {
+    for (const [a, b] of [[3, 2], [5, 4], [7, 6], [8, 5], [1, 1], [1, 2]]) {
+      const { lut } = curveArcEasing(liss(a, b))
+      expect(lut[0], `${a}:${b}`).toBe(0)
+      expect(lut[lut.length - 1], `${a}:${b}`).toBe(1)
+      for (const v of lut) expect(Number.isFinite(v)).toBe(true)
     }
   })
 
-  it('is not linear — the curve rhythm shows in the profile', () => {
-    const project = createDefaultProject()
-    const samples = sampleCurve(project.lissajous, 1200, 1600)
-    const lut = curveEasingLUT(samples)
+  it('is visibly non-linear — the arc has real easing character', () => {
+    const { lut } = curveArcEasing(liss(3, 2))
     let maxDev = 0
     for (let i = 0; i < lut.length; i++) {
       maxDev = Math.max(maxDev, Math.abs(lut[i] - i / (lut.length - 1)))
     }
-    expect(maxDev).toBeGreaterThan(0.005)
+    expect(maxDev).toBeGreaterThan(0.05)
+  })
+
+  it('falls back to a sine ease for degenerate symmetric figures', () => {
+    const { lut } = curveArcEasing(liss(1, 1)) // circle: every x-window is symmetric
+    expect(evalEase(lut, 0.5)).toBeCloseTo(0.5, 2)
+    expect(evalEase(lut, 0.25)).toBeCloseTo((1 - Math.cos(Math.PI * 0.25)) / 2, 2)
+  })
+
+  it('exposes the arc for the figure highlight, synced with time', () => {
+    const arc = curveArcEasing(liss(3, 2))
+    expect(arc.arcUnit.length).toBeGreaterThan(50)
+    expect(arc.tAtP.length).toBe(arc.lut.length)
+    for (const u of arc.arcUnit) {
+      expect(Math.abs(u.x)).toBeLessThanOrEqual(1.001)
+      expect(Math.abs(u.y)).toBeLessThanOrEqual(1.001)
+    }
+    // time lookup is monotone: the tracer never runs backwards
+    for (let i = 1; i < arc.tAtP.length; i++) {
+      expect(arc.tAtP[i]).toBeGreaterThanOrEqual(arc.tAtP[i - 1])
+    }
+  })
+
+  it('is deterministic', () => {
+    const a = curveArcEasing(liss(7, 6))
+    const b = curveArcEasing(liss(7, 6))
+    expect([...a.lut]).toEqual([...b.lut])
   })
 })
 

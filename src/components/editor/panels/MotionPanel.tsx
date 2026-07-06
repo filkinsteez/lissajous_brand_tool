@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { getDerived } from '@/core/pipeline'
-import { curveEasingLUT, MOTION_PRESETS, springLUT, toCssLinear } from '@/core/motion/spring'
+import { curveArcEasing, MOTION_PRESETS, springLUT, toCssLinear } from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const dec = (v: number) => v.toFixed(2)
@@ -34,7 +33,7 @@ export function MotionPanel() {
 
   const activeLUT = () =>
     ml.easingSource === 'curve'
-      ? curveEasingLUT(getDerived(project).samples)
+      ? curveArcEasing(project.lissajous).lut
       : springLUT({ stiffness: ml.stiffness, damping: ml.damping, initialVelocity: ml.initialVelocity })
 
   return (
@@ -51,9 +50,9 @@ export function MotionPanel() {
         />
         {ml.easingSource === 'curve' ? (
           <div className="panel-note">
-            The easing is the curve&apos;s own velocity: distance covered while tracing
-            the {project.lissajous.frequencyX}:{project.lissajous.frequencyY} curve at
-            constant rate. Change the curve in SYSTEM and the easing follows.
+            The easing is one arc of the {project.lissajous.frequencyX}:
+            {project.lissajous.frequencyY} figure — its x-sweep is time, its y is
+            position. Change the curve in SYSTEM and the easing follows.
           </div>
         ) : null}
       </div>
