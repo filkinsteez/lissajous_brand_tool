@@ -145,16 +145,16 @@ export function overshootOf(lut: Float32Array): number {
 // axis), and read the y-oscillation over that window as position. The
 // easing curve IS a lobe of the figure — same arc, drawn as a graph.
 // Different ratios and phases give the arc a different character.
-// Maps figure space into the arc's graph frame: h = (x − x0)/(x1 − x0) is
-// time, v = (|y|or y − y0)/yScale is value. The arc plotted in this frame
-// IS the easing curve; the rest of the figure ghosts behind it.
-export type ArcFrame = {
-  x0: number
-  x1: number
-  y0: number
-  yScale: number
-  abs: boolean // velocity read uses |y|
-}
+// Maps figure space into the arc's graph frame so the source panel can
+// ghost the rest of the figure behind the arc.
+//   'x' — position read: time is the projected x-coordinate (the figure
+//         literally read as a graph; keeps 1:1 exactly linear)
+//   't' — velocity read: time is the curve's own parameter (constant
+//         trace rate — the oscilloscope reading; keeps speed bumps
+//         symmetric, matching AE's standard curves)
+export type ArcFrame =
+  | { kind: 'x'; x0: number; x1: number; y0: number; yScale: number }
+  | { kind: 't'; t0: number; t1: number; yScale: number }
 
 export type CurveArcEasing = {
   lut: Float32Array
@@ -242,7 +242,7 @@ export function curveArcEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP, frame: { x0: -1, x1: 1, y0, yScale, abs: false } }
+  return { lut, arcUnit, tAtP, frame: { kind: 'x', x0: -1, x1: 1, y0, yScale } }
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).
@@ -258,7 +258,6 @@ function arcVelocityEasing(
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
   const TAU = Math.PI * 2
-  const fine = 1024
 
   // quarters of the x-oscillation where x rises: [-90°..0°] and [0..90°]
   // in (a·t + phase) space, per period
@@ -290,30 +289,16 @@ function arcVelocityEasing(
     }
   }
 
-  // sample the window; time axis = normalized x (monotone within a quarter)
-  const ts = new Float64Array(fine + 1)
-  const xs = new Float64Array(fine + 1)
-  const sp = new Float64Array(fine + 1)
-  for (let i = 0; i <= fine; i++) {
-    const t = bestT0 + (i / fine) * (bestT1 - bestT0)
-    ts[i] = t
-    xs[i] = Math.sin(a * t + phase)
-    sp[i] = Math.abs(Math.sin(b * t))
-  }
-  const x0 = xs[0]
-  const xSpan = xs[fine] - x0 || 1e-9
-
+  // time axis = the curve's own parameter at constant rate (the
+  // oscilloscope reading). This keeps speed lobes symmetric: the 1:2 arch
+  // becomes exactly sin(πp) — the classic eased-move speed bump — instead
+  // of the skewed shape the projected-x axis produced.
   const speed = new Float32Array(size)
   const tAtP = new Float32Array(size)
-  let j = 0
   for (let i = 0; i < size; i++) {
-    const p = i / (size - 1)
-    const targetX = x0 + p * xSpan
-    while (j < fine - 1 && (xs[j + 1] - targetX) * Math.sign(xSpan) < 0) j++
-    const span = xs[j + 1] - xs[j] || 1e-9
-    const f = Math.max(0, Math.min(1, (targetX - xs[j]) / span))
-    speed[i] = sp[j] * (1 - f) + sp[j + 1] * f
-    tAtP[i] = ts[j] * (1 - f) + ts[j + 1] * f
+    const t = bestT0 + (i / (size - 1)) * (bestT1 - bestT0)
+    speed[i] = Math.abs(Math.sin(b * t))
+    tAtP[i] = t
   }
 
   // integrate speed → position, normalize to land at 1
@@ -339,14 +324,14 @@ function arcVelocityEasing(
   for (let i = 0; i < size; i++) speed[i] /= peak
 
   const arcUnit: { x: number; y: number }[] = []
-  const arcStep = Math.max(1, Math.floor(fine / 160))
-  for (let i = 0; i <= fine; i += arcStep) {
-    arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
+  for (let i = 0; i <= 160; i++) {
+    const t = bestT0 + (i / 160) * (bestT1 - bestT0)
+    arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
   }
 
   return {
     lut, arcUnit, tAtP, speed,
-    frame: { x0: xs[0], x1: xs[fine], y0: 0, yScale: peak, abs: true },
+    frame: { kind: 't', t0: bestT0, t1: bestT1, yScale: peak },
   }
 }
 

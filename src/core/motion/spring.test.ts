@@ -105,15 +105,18 @@ describe('curveArcEasing', () => {
   })
 
   it('exposes the graph frame so the source panel matches the easing', () => {
-    // position read: frame spans the full x sweep
+    // position read: x-projected frame spanning the full sweep
     const pos = curveArcEasing(liss(3, 2))
     expect(pos.frame).not.toBeNull()
-    expect(pos.frame!.x0).toBe(-1)
-    expect(pos.frame!.x1).toBe(1)
-    // velocity read: quarter window frame + abs values
+    expect(pos.frame!.kind).toBe('x')
+    if (pos.frame!.kind === 'x') {
+      expect(pos.frame!.x0).toBe(-1)
+      expect(pos.frame!.x1).toBe(1)
+    }
+    // velocity read: constant-rate t frame
     const vel = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
     expect(vel.frame).not.toBeNull()
-    expect(vel.frame!.abs).toBe(true)
+    expect(vel.frame!.kind).toBe('t')
     // rawLut equals lut when no shaping is applied
     expect([...vel.rawLut]).toEqual([...vel.lut])
     // with shaping they differ but raw stays 0→1
@@ -181,6 +184,27 @@ describe('curveArcEasing', () => {
     expect(evalEase(exit.lut, 0.6)).toBeLessThan(0.5)
     // time-mirror relationship
     expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
+  })
+
+  it('at strength 0 the trio lands on the classic sine easing family', () => {
+    // ease-in-out arch ≡ (1 − cos πp)/2 — the standard symmetric ease
+    const inOut = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    for (const p of [0.1, 0.25, 0.5, 0.75, 0.9]) {
+      expect(evalEase(inOut.lut, p)).toBeCloseTo((1 - Math.cos(Math.PI * p)) / 2, 2)
+    }
+    expect(evalEase(inOut.lut, 0.5)).toBeCloseTo(0.5, 3) // symmetric, like AE easy-ease
+
+    // ease-out ramp ≡ sin(πp/2)
+    const easeOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' })
+    for (const p of [0.25, 0.5, 0.75]) {
+      expect(evalEase(easeOut.lut, p)).toBeCloseTo(Math.sin((Math.PI * p) / 2), 2)
+    }
+
+    // ease-in ≡ 1 − cos(πp/2) (the mirrored ramp)
+    const easeIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true })
+    for (const p of [0.25, 0.5, 0.75]) {
+      expect(evalEase(easeIn.lut, p)).toBeCloseTo(1 - Math.cos((Math.PI * p) / 2), 2)
+    }
   })
 
   it('strength concentrates travel — stronger ease at the ends', () => {

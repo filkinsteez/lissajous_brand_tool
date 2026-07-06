@@ -142,21 +142,30 @@ export function MotionLab() {
       arcD += `${arcD ? ' L' : 'M'} ${hx(i / (source.length - 1)).toFixed(1)} ${vy(source[i]).toFixed(1)}`
     }
 
-    // ghost = the whole figure pushed through the same frame, clipped to
-    // the arc's time domain — the "rotate it and halve it" view
+    // ghost = the figure's surrounding context through the same frame,
+    // clipped to the arc's time domain — the "rotate it and halve it" view
     let ghostD = ''
     if (frame) {
-      const xSpan = frame.x1 - frame.x0 || 1e-9
       let pen = false
       const n = 1440
       for (let i = 0; i <= n; i++) {
-        const t = (i / n) * Math.PI * 2
-        const x = Math.sin(a * t + phase)
-        const yRaw = Math.sin(b * t)
-        let h = (x - frame.x0) / xSpan
+        let h: number
+        let v: number
+        if (frame.kind === 'x') {
+          const t = (i / n) * Math.PI * 2
+          const x = Math.sin(a * t + phase)
+          h = (x - frame.x0) / (frame.x1 - frame.x0 || 1e-9)
+          v = (Math.sin(b * t) - frame.y0) / frame.yScale
+        } else {
+          // t-frame: show one window-width of the oscillation on each side
+          const span = frame.t1 - frame.t0
+          const t = frame.t0 - span + (i / n) * span * 3
+          h = (t - frame.t0) / span
+          v = Math.abs(Math.sin(b * t)) / frame.yScale
+        }
         if (ml.reverse) h = 1 - h
-        const v = frame.abs ? Math.abs(yRaw) / frame.yScale : (yRaw - frame.y0) / frame.yScale
-        if (h < -0.02 || h > 1.02 || v < vMin || v > vMax) {
+        const hLimit = frame.kind === 't' ? 0.09 : 0.02
+        if (h < -hLimit || h > 1 + hLimit || v < vMin || v > vMax) {
           pen = false
           continue
         }
