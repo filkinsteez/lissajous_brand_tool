@@ -1,0 +1,151 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- top bar ---------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--chrome-1);
+  flex: none;
+}
+
+.wordmark {
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.wordmark-dim {
+  color: var(--text-faint);
+}
+
+.topbar-right {
+  min-width: 120px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mode-switcher {
+  display: flex;
+  border: 1px solid var(--line-strong);
+}
+
+.mode-tab {
+  padding: 6px 14px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.mode-tab.active {
+  background: var(--text);
+  color: var(--chrome-0);
+}
+
+/* ---- body ------------------------------------------------------------- */
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.stage-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.canvas-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artboard-scaler {
+  position: relative;
+  flex: none;
+}
+
+.artboard-origin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.artboard {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.artboard-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- inspector -------------------------------------------------------- */
+
+.inspector-wrap {
+  width: 280px;
+  flex: none;
+  border-left: 1px solid var(--line);
+  background: var(--chrome-1);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.inspector-tab {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.inspector-tab.active {
+  color: var(--text);
+  background: var(--chrome-2);
+}
+
+.inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.inspector-empty {
+  height: 100%;
+}

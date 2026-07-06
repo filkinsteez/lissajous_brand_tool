@@ -1,0 +1,114 @@
+export const PROJECT_VERSION = 1
+
+export type ArtboardPresetId = 'portrait' | 'a-series' | 'square' | 'wide'
+
+export type ArtboardState = {
+  preset: ArtboardPresetId
+  width: number
+  height: number
+  background: string
+}
+
+export type LissajousState = {
+  frequencyX: number
+  frequencyY: number
+  phase: number // radians
+  amplitudeX: number // 0..1 of artboard half-extent
+  amplitudeY: number
+  rotation: number // radians
+  offsetX: number // -1..1, normalized to half-extent
+  offsetY: number
+  sampleDensity: number // live sample count; export uses a higher ladder
+  presetId?: string
+}
+
+export type GridMode = 'strict' | 'projection'
+
+export type GridState = {
+  mode: GridMode
+  marginRestraint: number // 0..1
+  columnBias: number // target column count 2..8
+  rowBias: number // target row count 2..12
+  gutterScale: number // 0..2
+  baselineRhythm: number // multiplier on base leading
+  selectedNodeIds: number[]
+  snapStrength: number // 0..1
+}
+
+export type TypeRole = 'headline' | 'caption' | 'metadata'
+export type FontFamilyId = 'flex' | 'fraunces' | 'mono'
+export type TypeCase = 'none' | 'upper' | 'lower'
+export type TypeAlign = 'left' | 'center' | 'right'
+
+export type TypeBlockState = {
+  id: string
+  role: TypeRole
+  text: string
+  fontFamily: FontFamilyId
+  size: number // px in artboard space
+  weight: number // wght 100..1000
+  width: number // wdth 25..151 (Roboto Flex range)
+  opticalSize: number // opsz
+  lineHeight: number // multiplier
+  tracking: number // em
+  textCase: TypeCase
+  align: TypeAlign
+  anchor: { col: number; row: number; colSpan: number }
+  materialInfluence: number // 0..1, weight in the pressure mask
+}
+
+export type GlyphFieldMode = 'sparse' | 'dense' | 'verticalStream' | 'fieldContour'
+export type GlyphOrientation = 'grid' | 'tangent' | 'normal' | 'vertical' | 'mixed'
+
+export type GlyphFieldState = {
+  enabled: boolean
+  sourceText: string
+  charset: string // '' = use sourceText order
+  mode: GlyphFieldMode
+  density: number // 0..1
+  scale: number // base glyph size, px in artboard space
+  tracking: number // em
+  lineRhythm: number // leading multiplier
+  orientation: GlyphOrientation
+  overprint: boolean
+  pressureResponse: number // 0..1, how strongly type pressure clears glyphs
+  randomness: number // 0..1
+  seedOffset: number
+}
+
+export type MaterialState = {
+  enabled: boolean
+  preset: string
+  pressure: number // 0..1
+  density: number // 0..1
+  grainSize: number // 0..1
+  drift: number // 0..1
+  fold: number // 0..1
+  ring: number // 0..1
+  contrast: number // 0..1
+  voidStrength: number // 0..1
+  motion: number // 0..1
+  ink: string
+  paper: string
+}
+
+// Post-MVP; reserved so recipes stay forward-compatible.
+export type ImageState = {
+  transform: { x: number; y: number; scale: number }
+  opacity: number
+}
+
+export type ExportState = { scale: 1 | 2 | 4 }
+
+export type ProjectState = {
+  version: typeof PROJECT_VERSION
+  seed: number
+  artboard: ArtboardState
+  lissajous: LissajousState
+  grid: GridState
+  typeBlocks: TypeBlockState[]
+  glyphField: GlyphFieldState
+  material: MaterialState
+  image?: ImageState
+  export: ExportState
+}

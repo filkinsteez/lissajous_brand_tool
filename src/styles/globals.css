@@ -1,0 +1,59 @@
+:root {
+  /* Instrument chrome — near-monochrome, no gradients, no glass. */
+  --chrome-0: #101012;
+  --chrome-1: #161618;
+  --chrome-2: #1d1d20;
+  --line: #2a2a2e;
+  --line-strong: #3a3a40;
+  --text: #e8e6e1;
+  --text-dim: #8f8d86;
+  --text-faint: #5c5b56;
+  --paper: #f4f2ed;
+  --ink: #141412;
+
+  /* Construction geometry (setup overlay) */
+  --guide: rgba(232, 230, 225, 0.14);
+  --guide-strong: rgba(232, 230, 225, 0.38);
+  --node: rgba(232, 230, 225, 0.65);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--chrome-0);
+  color: var(--text);
+  font-family: var(--font-mono), 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--text);
+  color: var(--chrome-0);
+}
