@@ -197,7 +197,7 @@
   user-select: none;
   white-space: pre-wrap;
   outline: 1.5px solid transparent;
-  outline-offset: 6px;
+  outline-offset: 0;
   touch-action: none;
 }
 
@@ -465,6 +465,18 @@
 .lane-row {
   display: flex;
   gap: 16px;
+  align-items: stretch;
+}
+
+.lane-figure {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lane-figure .lane-svg {
+  flex: 1;
+  min-height: 0;
 }
 
 .lane-label {

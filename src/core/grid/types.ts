@@ -24,17 +24,21 @@ export function columnCount(grid: EditorialGrid): number {
   return grid.columnBoundaries.length - 1
 }
 
-// Rect spanning columns [col, col+span) minus gutters.
+// Rect spanning columns [col, col+span). FLUSH by default: edges sit
+// exactly on the drawn boundary lines — snapped type must land ON the
+// line, not a half-gutter beside it. gutterInset=true is for texture
+// layers (glyph columns) that need breathing room between runs.
 export function columnSpanRect(
   grid: EditorialGrid,
   col: number,
   span: number,
+  gutterInset = false,
 ): { x: number; w: number } {
   const bounds = grid.columnBoundaries
   const nCols = bounds.length - 1
   const c0 = Math.max(0, Math.min(nCols - 1, col))
   const c1 = Math.max(c0 + 1, Math.min(nCols, c0 + span))
-  const half = grid.gutter / 2
+  const half = gutterInset ? grid.gutter / 2 : 0
   const x0 = bounds[c0].pos + (c0 > 0 ? half : 0)
   const x1 = bounds[c1].pos - (c1 < nCols ? half : 0)
   return { x: x0, w: Math.max(8, x1 - x0) }

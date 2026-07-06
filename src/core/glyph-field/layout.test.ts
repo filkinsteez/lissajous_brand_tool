@@ -90,7 +90,7 @@ describe('glyph field layout', () => {
     const project = createDefaultProject()
     const grid = getDerived(project).grid
     const nCols = grid.columnBoundaries.length - 1
-    const rects = Array.from({ length: nCols }, (_, c) => columnSpanRect(grid, c, 1))
+    const rects = Array.from({ length: nCols }, (_, c) => columnSpanRect(grid, c, 1, true))
     for (const g of build('dense')) {
       const inColumn = rects.some((r) => g.x >= r.x - 0.5 && g.x <= r.x + r.w + 0.5)
       expect(inColumn, `x=${g.x}`).toBe(true)

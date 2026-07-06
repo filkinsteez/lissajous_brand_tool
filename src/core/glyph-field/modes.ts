@@ -108,7 +108,7 @@ export function placeDense(ctx: GlyphContext): PlacedGlyph[] {
   const out: PlacedGlyph[] = []
 
   for (let col = 0; col < nCols; col++) {
-    const rect = columnSpanRect(grid, col, 1)
+    const rect = columnSpanRect(grid, col, 1, true) // gutters stay empty
     for (let y = box.y + leading; y < box.y + box.h - 2; y += leading) {
       // line-level energy decides whether this line typesets at all
       let lineDensity = 0

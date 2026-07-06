@@ -100,6 +100,57 @@ export function MotionLab() {
   const cursorX = trackX(p)
   const dotX = trackX(eased)
 
+  // ---- the generating figure, synchronized with the graph ----
+  // curve source: the Lissajous traced at constant parameter rate — the
+  //   distance the tracer covers IS the easing curve on the right.
+  // spring source: the phase portrait (position × velocity) — the damped
+  //   oscillator's spiral, the Lissajous figure's damped cousin.
+  const FIG = 300
+  const figPad = 26
+  const figure = useMemo(() => {
+    if (ml.easingSource === 'curve') {
+      const samples = getDerived(project).samples
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const s of samples) {
+        if (s.x < minX) minX = s.x
+        if (s.x > maxX) maxX = s.x
+        if (s.y < minY) minY = s.y
+        if (s.y > maxY) maxY = s.y
+      }
+      const scale = Math.min(
+        (FIG - 2 * figPad) / Math.max(1, maxX - minX),
+        (FIG - 2 * figPad) / Math.max(1, maxY - minY),
+      )
+      const ox = FIG / 2 - ((minX + maxX) / 2) * scale
+      const oy = FIG / 2 - ((minY + maxY) / 2) * scale
+      const map = (s: { x: number; y: number }) => ({ x: s.x * scale + ox, y: s.y * scale + oy })
+      const step = Math.max(1, Math.floor(samples.length / 500))
+      let d = ''
+      for (let i = 0; i < samples.length; i += step) {
+        const m = map(samples[i])
+        d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+      }
+      const tracerAt = (t: number) => map(samples[Math.round(t * (samples.length - 1))])
+      return { d: d + ' Z', tracerAt, target: null, label: `THE ${project.lissajous.frequencyX}:${project.lissajous.frequencyY} CURVE, TRACED AT CONSTANT RATE` }
+    }
+    // spring phase portrait: x = position (0..max), y = velocity (normalized)
+    const xMin = Math.min(0, ...lut) - 0.04
+    const xMax = maxVal
+    const mapP = (x: number, v: number) => ({
+      x: figPad + ((x - xMin) / (xMax - xMin)) * (FIG - 2 * figPad),
+      y: FIG / 2 - v * (FIG / 2 - figPad),
+    })
+    let d = ''
+    for (let i = 0; i < lut.length; i++) {
+      const m = mapP(lut[i], vel[i])
+      d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+    }
+    const tracerAt = (t: number) => mapP(evalEase(lut, t), evalEase(vel, t))
+    return { d, tracerAt, target: mapP(1, 0), label: 'PHASE PORTRAIT — POSITION × VELOCITY' }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ml.easingSource, lut, vel, maxVal, project.lissajous, project.artboard.width, project.artboard.height])
+  const tracer = figure.tracerAt(p)
+
   const sourceLabel =
     ml.easingSource === 'curve'
       ? `easing derived from the ${project.lissajous.frequencyX}:${project.lissajous.frequencyY} curve`
@@ -121,6 +172,25 @@ export function MotionLab() {
         </button>
       </div>
 
+      <div className="lane-row">
+      <div className="lane lane-figure">
+        <div className="lane-label">{figure.label}</div>
+        <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
+          <path d={figure.d} className="lane-curve-path" />
+          {figure.target ? (
+            <>
+              <line x1={figure.target.x - 6} y1={figure.target.y} x2={figure.target.x + 6} y2={figure.target.y} className="lane-tick" />
+              <line x1={figure.target.x} y1={figure.target.y - 6} x2={figure.target.x} y2={figure.target.y + 6} className="lane-tick" />
+            </>
+          ) : null}
+          <circle data-testid="figure-tracer" cx={tracer.x} cy={tracer.y} r={6} className="lane-dot" />
+        </svg>
+        <div className="panel-note">
+          {ml.easingSource === 'curve'
+            ? 'Distance covered by this tracer is the position curve on the right.'
+            : 'The spring spirals into its target — same oscillator family as the curve.'}
+        </div>
+      </div>
       <div className="lane">
         <div className="lane-label">POSITION / VELOCITY OVER TIME — SAME MOVE ON THE PATH BELOW</div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
@@ -149,6 +219,7 @@ export function MotionLab() {
         <div className="panel-note">
           Tick marks sit at equal time steps — their spacing is the velocity.
         </div>
+      </div>
       </div>
     </div>
   )
