@@ -11,15 +11,16 @@ export function LissajousOverlay() {
   const project = useStore((s) => s.project)
   const mode = useStore((s) => s.ui.mode)
   const systemAdjusting = useStore((s) => s.ui.systemAdjusting)
+  const dragging = useStore((s) => s.ui.dragging)
   const apply = useStore((s) => s.apply)
   const [hover, setHover] = useState<{ kind: 'node' | 'guide'; id: number | string } | null>(null)
 
   const { width: W, height: H } = project.artboard
   const derived = getDerived(project)
   const isSetup = mode === 'setup'
-  // the curve is the backbone: it surfaces during ANY system adjustment,
-  // not only in setup mode
-  const showCurve = isSetup || systemAdjusting
+  // the curve is the backbone: it surfaces during ANY adjustment — system
+  // sliders or dragging things on the compose canvas — not only in setup
+  const showCurve = isSetup || systemAdjusting || dragging
 
   const curvePath = useMemo(() => {
     const pts = derived.samples

@@ -51,7 +51,8 @@ export function MotionPanel() {
                 apply({
                   motionLab: {
                     ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, read: p.read,
-                    reverse: !!p.reverse, presetId: p.id,
+                    reverse: !!p.reverse, strength: p.strength ?? 0, decay: p.decay ?? 0,
+                    presetId: p.id,
                   },
                 })
               }
@@ -84,6 +85,12 @@ export function MotionPanel() {
           ]}
           onChange={(v) => apply({ motionLab: { reverse: v === 'reverse', presetId: undefined } })}
         />
+        <Slider label="STRENGTH" value={ml.strength} min={0} max={1}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(strength) => setT({ motionLab: { strength, presetId: undefined } })} onCommit={commit} />
+        <Slider label="DECAY" value={ml.decay} min={0} max={1}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(decay) => setT({ motionLab: { decay, presetId: undefined } })} onCommit={commit} />
         <button
           className="ctl-action"
           onClick={() =>
@@ -120,7 +127,8 @@ export function MotionPanel() {
                 apply({
                   motionLab: {
                     ratioX: t.ratioX, ratioY: t.ratioY, phase: t.phase, read: t.read,
-                    reverse: !!t.reverse, presetId: undefined,
+                    reverse: !!t.reverse, strength: t.strength ?? 0, decay: t.decay ?? 0,
+                    presetId: undefined,
                   },
                 })
               }
@@ -141,7 +149,7 @@ export function MotionPanel() {
             copy(
               toCssLinear(lissajousEasing({
                 ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
-                reverse: ml.reverse,
+                reverse: ml.reverse, strength: ml.strength, decay: ml.decay,
               }).lut),
               'CSS EASING COPIED',
             )

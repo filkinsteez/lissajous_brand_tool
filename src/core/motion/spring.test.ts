@@ -162,6 +162,51 @@ describe('curveArcEasing', () => {
     expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
   })
 
+  it('strength concentrates travel — stronger ease at the ends', () => {
+    const raw = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    const strong = lissajousEasing({
+      ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.6,
+    })
+    expect(evalEase(strong.lut, 0.1)).toBeLessThan(evalEase(raw.lut, 0.1))
+    expect(evalEase(strong.lut, 0.9)).toBeGreaterThan(evalEase(raw.lut, 0.9))
+    expect(strong.lut[0]).toBe(0)
+    expect(strong.lut[strong.lut.length - 1]).toBe(1)
+  })
+
+  it('decay makes bounce settle — no full return to the start', () => {
+    // raw 1:3 swings all the way back to 0 mid-flight; decayed must not
+    const raw = lissajousEasing({ ratioX: 1, ratioY: 3, phase: 0, read: 'position' })
+    const bounce = lissajousEasing({ ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 })
+    const minAfter = (lut: Float32Array, from: number) => {
+      let min = Infinity
+      for (let i = Math.floor(from * lut.length); i < lut.length; i++) min = Math.min(min, lut[i])
+      return min
+    }
+    expect(minAfter(raw.lut, 0.4)).toBeLessThan(0.1) // the broken full return
+    expect(minAfter(bounce.lut, 0.4)).toBeGreaterThan(0.6) // settles near target
+    expect(bounce.lut[bounce.lut.length - 1]).toBe(1)
+  })
+
+  it('spring preset oscillates but converges', () => {
+    const spring = lissajousEasing(MOTION_PRESETS.find((p) => p.id === 'spring')!)
+    let swings = 0
+    let dir = 0
+    for (let i = 1; i < spring.lut.length; i++) {
+      const d = Math.sign(spring.lut[i] - spring.lut[i - 1])
+      if (d !== 0 && d !== dir) {
+        if (dir !== 0) swings++
+        dir = d
+      }
+    }
+    expect(swings).toBeGreaterThanOrEqual(2) // still springy
+    // late swings are small — it converges
+    let lateDev = 0
+    for (let i = Math.floor(spring.lut.length * 0.75); i < spring.lut.length; i++) {
+      lateDev = Math.max(lateDev, Math.abs(spring.lut[i] - 1))
+    }
+    expect(lateDev).toBeLessThan(0.25)
+  })
+
   it('exports a complete CSS motion system', () => {
     const css = cssMotionSystem(1100)
     expect(css).toContain('--ease-standard: linear(')

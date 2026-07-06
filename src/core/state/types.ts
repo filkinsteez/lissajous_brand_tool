@@ -112,7 +112,9 @@ export type MotionLabState = {
   ratioY: number // 1..8
   phase: number // radians
   read: 'position' | 'velocity' // value graph vs speed graph (AE's two editors)
-  reverse: boolean // time-mirror (enter = reversed exit)
+  reverse: boolean // time-mirror (ease-out ↔ ease-in)
+  strength: number // 0..1 influence: powers the speed profile
+  decay: number // 0..1 damping: oscillations settle instead of returning
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

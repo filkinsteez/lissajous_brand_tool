@@ -36,9 +36,10 @@ export function MotionLab() {
   const arc = useMemo(
     () =>
       lissajousEasing({
-        ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read, reverse: ml.reverse,
+        ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
+        reverse: ml.reverse, strength: ml.strength, decay: ml.decay,
       }),
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay],
   )
   const lut = arc.lut
   // in velocity read the speed ghost IS the arc; otherwise differentiate

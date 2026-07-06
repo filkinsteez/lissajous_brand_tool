@@ -22,20 +22,25 @@ export type MotionRecipe = {
   ratioY: number
   phase: number
   read: EasingRead
-  reverse?: boolean // time-mirror: enter/decelerate is the reversed exit
+  reverse?: boolean // time-mirror: turns an ease-out ramp into an ease-in
+  strength?: number // 0..1 — AE-style influence: powers the speed profile
+  decay?: number // 0..1 — damping envelope: oscillations settle into the
+  // target instead of swinging all the way back (fixes bounce/spring)
 }
 
 export type MotionPreset = MotionRecipe & { id: string; label: string }
 
-// Family members read as easings — the MathWorld chart, both readings.
-// EASE is the user's rotated 2:1 arch: ratio 1:2 at 90°, read as speed.
+// Family members read as easings — the traditional AE set, all from the
+// figure family. The in-out arch is the rotated 2:1; the ramps are 1:1
+// quarters (mirrored for ease-in); bounce/spring are lobed figures with
+// a damping envelope so they settle instead of swinging fully back.
 export const MOTION_PRESETS: MotionPreset[] = [
   { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0, read: 'position' },
-  { id: 'soft', label: 'SOFT', ratioX: 3, ratioY: 1, phase: 0, read: 'position' },
-  { id: 'ease', label: 'EASE', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
-  { id: 'ease-out', label: 'EASE OUT', ratioX: 2, ratioY: 1, phase: Math.PI / 2, read: 'position' },
-  { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position' },
-  { id: 'elastic', label: 'ELASTIC', ratioX: 1, ratioY: 5, phase: 0, read: 'position' },
+  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.3 },
+  { id: 'ease-in-out', label: 'EASE IN-OUT', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
+  { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
+  { id: 'spring', label: 'SPRING', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
 ]
 
 // The derived motion system: named roles a brand actually uses, each a
@@ -45,10 +50,10 @@ export const MOTION_PRESETS: MotionPreset[] = [
 //   exit     — accelerate away (speed ramp up)
 //   emphasis — the 1:3 swing, for attention
 export const MOTION_TOKENS: MotionPreset[] = [
-  { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
-  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' },
-  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true },
-  { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position' },
+  { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
+  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.3 },
+  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
 ]
 
 export const LUT_SIZE = 240
@@ -330,28 +335,81 @@ function arcVelocityEasing(
   return { lut, arcUnit, tAtP, speed }
 }
 
-// One entry point for both readings of a figure, plus optional time-mirror.
+// AE-style influence: raise the (signed) speed profile to a power and
+// re-integrate. >1 concentrates travel into the fast section — stronger
+// ease. Endpoints re-normalized to land exactly 0→1.
+export function applyStrength(lut: Float32Array, strength: number): Float32Array {
+  if (strength <= 0.001) return lut
+  const power = 1 + strength * 2.5
+  const n = lut.length
+  const out = new Float32Array(n)
+  for (let i = 1; i < n; i++) {
+    const v = (lut[i] - lut[i - 1]) * (n - 1) // de/dp
+    out[i] = out[i - 1] + Math.sign(v) * Math.pow(Math.abs(v), power)
+  }
+  const start = out[0]
+  const span = out[n - 1] - start
+  if (Math.abs(span) < 1e-9) return lut
+  for (let i = 0; i < n; i++) out[i] = (out[i] - start) / span
+  out[n - 1] = 1
+  return out
+}
+
+// Damping envelope: swings around the target shrink exponentially, so a
+// 1:3 "bounce" settles into place instead of returning all the way to the
+// start. e'(p) = 1 + (e(p) − 1)·exp(−k·p); endpoints preserved.
+export function applyDecay(lut: Float32Array, decay: number): Float32Array {
+  if (decay <= 0.001) return lut
+  const k = decay * 6
+  const n = lut.length
+  const out = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const p = i / (n - 1)
+    out[i] = 1 + (lut[i] - 1) * Math.exp(-k * p)
+  }
+  out[0] = 0
+  out[n - 1] = 1
+  return out
+}
+
+// One entry point: figure → read → mirror → strength → decay.
 export function lissajousEasing(
   recipe: MotionRecipe,
   size = LUT_SIZE,
 ): CurveArcEasing & { speed?: Float32Array } {
   const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
-  const out: CurveArcEasing & { speed?: Float32Array } =
+  const raw: CurveArcEasing & { speed?: Float32Array } =
     recipe.read === 'velocity' ? arcVelocityEasing(params, size) : curveArcEasing(params, size)
-  if (!recipe.reverse) return out
 
-  const n = out.lut.length
-  const lut = new Float32Array(n)
-  const tAtP = new Float32Array(n)
-  for (let i = 0; i < n; i++) {
-    lut[i] = 1 - out.lut[n - 1 - i]
-    tAtP[i] = out.tAtP[n - 1 - i] // tracer runs the same arc backwards
+  let lut = raw.lut
+  let tAtP = raw.tAtP
+  let speed = raw.speed
+
+  if (recipe.reverse) {
+    const n = lut.length
+    const rl = new Float32Array(n)
+    const rt = new Float32Array(n)
+    for (let i = 0; i < n; i++) {
+      rl[i] = 1 - lut[n - 1 - i]
+      rt[i] = tAtP[n - 1 - i] // tracer runs the same arc backwards
+    }
+    lut = rl
+    tAtP = rt
+    if (speed) {
+      const rs = new Float32Array(n)
+      for (let i = 0; i < n; i++) rs[i] = speed[n - 1 - i]
+      speed = rs
+    }
   }
-  const speed = out.speed ? new Float32Array(n) : undefined
-  if (speed && out.speed) {
-    for (let i = 0; i < n; i++) speed[i] = out.speed[n - 1 - i]
+
+  const shaped = applyDecay(applyStrength(lut, recipe.strength ?? 0), recipe.decay ?? 0)
+  if (shaped !== lut) {
+    // speed display must match what actually plays
+    speed = velocityOf(shaped)
+    lut = shaped
   }
-  return { lut, tAtP, arcUnit: out.arcUnit, speed }
+
+  return { lut, tAtP, arcUnit: raw.arcUnit, speed }
 }
 
 // Full motion-system export: the four role tokens + a duration scale,
