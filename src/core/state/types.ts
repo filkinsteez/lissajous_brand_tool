@@ -68,7 +68,9 @@ export type GlyphFieldState = {
   charset: string // '' = use sourceText order
   mode: GlyphFieldMode
   density: number // 0..1
+  contrast: number // 0..1 — bimodal shaping: hot zones pack, quiet zones empty
   scale: number // base glyph size, px in artboard space
+  sizeLevels: number // 1..3 quantized size steps (scale × 0.62 / 1 / 1.7)
   tracking: number // em
   lineRhythm: number // leading multiplier
   orientation: GlyphOrientation

@@ -53,8 +53,20 @@ export function GlyphFieldPanel() {
       <div className="panel-section">
         <Slider label="DENSITY" value={gf.density} min={0} max={1} format={pct}
           onChange={(density) => setT({ glyphField: { density } })} onCommit={commit} />
+        <Slider label="CONTRAST" value={gf.contrast} min={0} max={1} format={pct}
+          onChange={(contrast) => setT({ glyphField: { contrast } })} onCommit={commit} />
         <Slider label="SCALE" value={gf.scale} min={8} max={64} step={1} format={int}
           onChange={(scale) => setT({ glyphField: { scale } })} onCommit={commit} />
+        <SegmentedControl
+          label="SIZE LEVELS"
+          value={String(gf.sizeLevels)}
+          options={[
+            { value: '1', label: 'ONE' },
+            { value: '2', label: 'TWO' },
+            { value: '3', label: 'THREE' },
+          ]}
+          onChange={(v) => apply({ glyphField: { sizeLevels: Number(v) } })}
+        />
         <Slider label="TRACKING" value={gf.tracking} min={-0.1} max={0.8} step={0.01}
           format={(v) => v.toFixed(2)}
           onChange={(tracking) => setT({ glyphField: { tracking } })} onCommit={commit} />
