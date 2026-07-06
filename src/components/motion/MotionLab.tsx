@@ -89,6 +89,16 @@ export function MotionLab() {
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lut, maxVal, minVal])
+  const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
+  const rawPositionPath = useMemo(() => {
+    if (!shapingActive) return ''
+    let d = `M ${trackX(0).toFixed(1)} ${py(arc.rawLut[0]).toFixed(1)}`
+    for (let i = 1; i < arc.rawLut.length; i++) {
+      d += ` L ${trackX(i / (arc.rawLut.length - 1)).toFixed(1)} ${py(arc.rawLut[i]).toFixed(1)}`
+    }
+    return d
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arc, shapingActive, maxVal, minVal])
   const velocityPath = useMemo(() => {
     let d = `M ${trackX(0)} ${plotBottom}`
     for (let i = 0; i < vel.length; i++) {
@@ -101,35 +111,67 @@ export function MotionLab() {
   const cursorX = trackX(p)
   const dotX = trackX(Math.max(0, Math.min(1, eased)))
 
-  // ---- the figure itself, arc bold, tracer synced ----
+  // ---- the source panel: the arc IN GRAPH FRAME ----
+  // The figure is rotated into time × value: the marked arc reads as a
+  // regular easing curve, and the figure's other branches ghost behind,
+  // cropped to the arc's time domain.
   const FIG = 300
-  const figPad = 26
+  const figPad = 24
   const figure = useMemo(() => {
     const a = ml.ratioX
     const b = ml.ratioY
     const phase = ml.phase
-    const map = (u: { x: number; y: number }) => ({
-      x: FIG / 2 + u.x * (FIG / 2 - figPad),
-      y: FIG / 2 - u.y * (FIG / 2 - figPad),
-    })
-    let d = ''
-    const n = 720
-    for (let i = 0; i <= n; i++) {
-      const t = (i / n) * Math.PI * 2
-      const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
-      d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+    const frame = arc.frame
+    const source = (ml.read === 'velocity' ? arc.rawSpeed : arc.rawLut) ?? arc.rawLut
+
+    // value range with headroom for lobes above/below
+    let vMin = 0
+    let vMax = 1
+    for (const v of source) {
+      if (v < vMin) vMin = v
+      if (v > vMax) vMax = v
     }
+    vMin -= 0.06
+    vMax += 0.06
+    const hx = (h: number) => figPad + h * (FIG - 2 * figPad)
+    const vy = (v: number) => FIG - figPad - ((v - vMin) / (vMax - vMin)) * (FIG - 2 * figPad)
+
+    // bold arc = the raw source profile, plotted as a graph
     let arcD = ''
-    for (const u of arc.arcUnit) {
-      const m = map(u)
-      arcD += `${arcD ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+    for (let i = 0; i < source.length; i++) {
+      arcD += `${arcD ? ' L' : 'M'} ${hx(i / (source.length - 1)).toFixed(1)} ${vy(source[i]).toFixed(1)}`
     }
-    const tracerAt = (t: number) => {
-      const tt = arc.tAtP[Math.round(t * (arc.tAtP.length - 1))]
-      return map({ x: Math.sin(a * tt + phase), y: Math.sin(b * tt) })
+
+    // ghost = the whole figure pushed through the same frame, clipped to
+    // the arc's time domain — the "rotate it and halve it" view
+    let ghostD = ''
+    if (frame) {
+      const xSpan = frame.x1 - frame.x0 || 1e-9
+      let pen = false
+      const n = 1440
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * Math.PI * 2
+        const x = Math.sin(a * t + phase)
+        const yRaw = Math.sin(b * t)
+        let h = (x - frame.x0) / xSpan
+        if (ml.reverse) h = 1 - h
+        const v = frame.abs ? Math.abs(yRaw) / frame.yScale : (yRaw - frame.y0) / frame.yScale
+        if (h < -0.02 || h > 1.02 || v < vMin || v > vMax) {
+          pen = false
+          continue
+        }
+        ghostD += `${pen ? ' L' : ' M'} ${hx(h).toFixed(1)} ${vy(v).toFixed(1)}`
+        pen = true
+      }
     }
-    return { d: d + ' Z', arcD, tracerAt }
-  }, [ml.ratioX, ml.ratioY, ml.phase, arc])
+
+    const valueAt = (t: number) => source[Math.round(t * (source.length - 1))]
+    return {
+      arcD, ghostD,
+      rule0: vy(0), rule1: vy(1),
+      tracerAt: (t: number) => ({ x: hx(t), y: vy(valueAt(t)) }),
+    }
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
   const tracer = figure.tracerAt(p)
 
   const overshoot = overshootOf(lut)
@@ -155,17 +197,19 @@ export function MotionLab() {
       <div className="lane-row">
         <div className="lane lane-figure">
           <div className="lane-label">
-            THE {ml.ratioX}:{ml.ratioY} FIGURE — THE MARKED ARC IS THE EASING
+            SOURCE — ONE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE, AS A GRAPH
           </div>
           <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
-            <path d={figure.d} className="lane-curve-path faint" />
+            <line x1={figPad} y1={figure.rule1} x2={FIG - figPad} y2={figure.rule1} className="lane-rule" />
+            <line x1={figPad} y1={figure.rule0} x2={FIG - figPad} y2={figure.rule0} className="lane-rule" />
+            {figure.ghostD ? <path d={figure.ghostD} className="lane-curve-path faint" /> : null}
             <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" />
             <circle data-testid="figure-tracer" cx={tracer.x} cy={tracer.y} r={6} className="lane-dot" />
           </svg>
           <div className="panel-note">
             {ml.read === 'velocity'
-              ? 'The marked arc, read left to right, is the SPEED curve — its integral is the position.'
-              : 'The marked arc, read left to right, is the position curve on the right.'}
+              ? 'This arc is the SPEED curve; the rest of the figure ghosts behind it.'
+              : 'This arc is the position curve; the rest of the figure ghosts behind it.'}
           </div>
         </div>
         <div className="lane">
@@ -174,6 +218,7 @@ export function MotionLab() {
             <line x1={PAD} y1={py(1)} x2={W - PAD} y2={py(1)} className="lane-rule" />
             <line x1={PAD} y1={py(0)} x2={W - PAD} y2={py(0)} className="lane-rule" />
             <path d={velocityPath} className="plot-velocity" />
+            {rawPositionPath ? <path d={rawPositionPath} className="plot-raw" /> : null}
             <path d={positionPath} className="plot-position" />
             <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={plotBottom} className="plot-cursor" />
             <circle cx={cursorX} cy={py(eased)} r={4} className="plot-dot" />

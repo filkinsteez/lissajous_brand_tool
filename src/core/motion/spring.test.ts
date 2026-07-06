@@ -104,6 +104,27 @@ describe('curveArcEasing', () => {
     expect(evalEase(lut, 0.25)).toBeCloseTo((1 - Math.cos(Math.PI * 0.25)) / 2, 2)
   })
 
+  it('exposes the graph frame so the source panel matches the easing', () => {
+    // position read: frame spans the full x sweep
+    const pos = curveArcEasing(liss(3, 2))
+    expect(pos.frame).not.toBeNull()
+    expect(pos.frame!.x0).toBe(-1)
+    expect(pos.frame!.x1).toBe(1)
+    // velocity read: quarter window frame + abs values
+    const vel = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    expect(vel.frame).not.toBeNull()
+    expect(vel.frame!.abs).toBe(true)
+    // rawLut equals lut when no shaping is applied
+    expect([...vel.rawLut]).toEqual([...vel.lut])
+    // with shaping they differ but raw stays 0→1
+    const shaped = lissajousEasing({
+      ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.5,
+    })
+    expect([...shaped.rawLut]).not.toEqual([...shaped.lut])
+    expect(shaped.rawLut[0]).toBe(0)
+    expect(shaped.rawLut[shaped.rawLut.length - 1]).toBe(1)
+  })
+
   it('exposes the arc for the figure highlight, synced with time', () => {
     const arc = curveArcEasing(liss(3, 2))
     expect(arc.arcUnit.length).toBeGreaterThan(50)

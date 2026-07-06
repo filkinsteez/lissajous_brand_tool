@@ -145,12 +145,24 @@ export function overshootOf(lut: Float32Array): number {
 // axis), and read the y-oscillation over that window as position. The
 // easing curve IS a lobe of the figure — same arc, drawn as a graph.
 // Different ratios and phases give the arc a different character.
+// Maps figure space into the arc's graph frame: h = (x − x0)/(x1 − x0) is
+// time, v = (|y|or y − y0)/yScale is value. The arc plotted in this frame
+// IS the easing curve; the rest of the figure ghosts behind it.
+export type ArcFrame = {
+  x0: number
+  x1: number
+  y0: number
+  yScale: number
+  abs: boolean // velocity read uses |y|
+}
+
 export type CurveArcEasing = {
   lut: Float32Array
   // the chosen arc in unit space [-1,1]², for highlighting on the figure
   arcUnit: { x: number; y: number }[]
   // curve parameter per normalized-time step, for the synced tracer
   tAtP: Float32Array
+  frame: ArcFrame | null // null for degenerate fallbacks
 }
 
 export function curveArcEasing(
@@ -193,7 +205,7 @@ export function curveArcEasing(
       arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
     }
     lut[size - 1] = 1
-    return { lut, arcUnit, tAtP }
+    return { lut, arcUnit, tAtP, frame: null }
   }
 
   // time axis = normalized x; sample the window finely, then resample the
@@ -230,7 +242,7 @@ export function curveArcEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP }
+  return { lut, arcUnit, tAtP, frame: { x0: -1, x1: 1, y0, yScale, abs: false } }
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).
@@ -332,7 +344,10 @@ function arcVelocityEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP, speed }
+  return {
+    lut, arcUnit, tAtP, speed,
+    frame: { x0: xs[0], x1: xs[fine], y0: 0, yScale: peak, abs: true },
+  }
 }
 
 // AE-style influence: raise the (signed) speed profile to a power and
@@ -373,10 +388,12 @@ export function applyDecay(lut: Float32Array, decay: number): Float32Array {
 }
 
 // One entry point: figure → read → mirror → strength → decay.
+// rawLut/rawSpeed are the pre-shaping source (post-mirror) so the UI can
+// show the arc it came from next to the curve it became.
 export function lissajousEasing(
   recipe: MotionRecipe,
   size = LUT_SIZE,
-): CurveArcEasing & { speed?: Float32Array } {
+): CurveArcEasing & { speed?: Float32Array; rawLut: Float32Array; rawSpeed?: Float32Array } {
   const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
   const raw: CurveArcEasing & { speed?: Float32Array } =
     recipe.read === 'velocity' ? arcVelocityEasing(params, size) : curveArcEasing(params, size)
@@ -402,6 +419,9 @@ export function lissajousEasing(
     }
   }
 
+  const rawLut = lut
+  const rawSpeed = speed
+
   const shaped = applyDecay(applyStrength(lut, recipe.strength ?? 0), recipe.decay ?? 0)
   if (shaped !== lut) {
     // speed display must match what actually plays
@@ -409,7 +429,7 @@ export function lissajousEasing(
     lut = shaped
   }
 
-  return { lut, tAtP, arcUnit: raw.arcUnit, speed }
+  return { lut, tAtP, arcUnit: raw.arcUnit, speed, rawLut, rawSpeed, frame: raw.frame }
 }
 
 // Full motion-system export: the four role tokens + a duration scale,

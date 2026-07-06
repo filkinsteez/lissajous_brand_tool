@@ -552,6 +552,14 @@
   opacity: 0.7;
 }
 
+.plot-raw {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+
 .path-text {
   fill: var(--text);
   letter-spacing: 0.06em;
