@@ -13,13 +13,14 @@ export function Artboard() {
   const mode = useStore((s) => s.ui.mode)
   const showGuides = useStore((s) => s.ui.showGuides)
   const dragging = useStore((s) => s.ui.dragging)
+  const systemAdjusting = useStore((s) => s.ui.systemAdjusting)
 
   return (
     <div className="artboard" style={{ background }}>
       <MaterialLayer />
       <GlyphFieldLayer />
       <TypeLayer />
-      {mode === 'setup' || showGuides || dragging ? <LissajousOverlay /> : null}
+      {mode === 'setup' || showGuides || dragging || systemAdjusting ? <LissajousOverlay /> : null}
     </div>
   )
 }

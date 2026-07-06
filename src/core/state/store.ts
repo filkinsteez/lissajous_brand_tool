@@ -3,8 +3,8 @@ import type { ProjectState } from './types'
 import { createDefaultProject } from './defaults'
 import { History } from './history'
 
-export type EditorMode = 'compose' | 'setup'
-export type PanelId = 'lissajous' | 'grid' | 'type' | 'glyphField' | 'material' | 'export'
+export type EditorMode = 'compose' | 'setup' | 'motion'
+export type PanelId = 'system' | 'type' | 'glyphField' | 'material' | 'motion' | 'export'
 export type Quality = 'live' | 'hq'
 
 export type UiState = {
@@ -15,6 +15,8 @@ export type UiState = {
   showGuides: boolean // optional construction guides while composing
   selectedBlockId: string
   dragging: boolean // a type block is being dragged — guides show while true
+  systemAdjusting: boolean // a SYSTEM control is being worked — curve reveals itself
+  motionPlaying: boolean
 }
 
 export type DeepPartial<T> = {
@@ -66,12 +68,14 @@ export const useStore = create<StoreState>()((set, get) => ({
   project: createDefaultProject(),
   ui: {
     mode: 'compose',
-    activePanel: 'lissajous',
+    activePanel: 'system',
     quality: 'live',
     mounted: false,
     showGuides: false,
     selectedBlockId: 'headline',
     dragging: false,
+    systemAdjusting: false,
+    motionPlaying: true,
   },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),

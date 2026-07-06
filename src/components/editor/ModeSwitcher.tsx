@@ -5,6 +5,7 @@ import { useStore, type EditorMode } from '@/core/state/store'
 const MODES: { id: EditorMode; label: string }[] = [
   { id: 'compose', label: 'COMPOSE' },
   { id: 'setup', label: 'LISSAJOUS SETUP' },
+  { id: 'motion', label: 'MOTION' },
 ]
 
 export function ModeSwitcher() {
@@ -18,7 +19,9 @@ export function ModeSwitcher() {
           role="tab"
           aria-selected={mode === m.id}
           className={mode === m.id ? 'mode-tab active' : 'mode-tab'}
-          onClick={() => setUi({ mode: m.id })}
+          onClick={() =>
+            setUi(m.id === 'motion' ? { mode: m.id, activePanel: 'motion' } : { mode: m.id })
+          }
         >
           {m.label}
         </button>

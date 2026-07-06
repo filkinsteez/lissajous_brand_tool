@@ -2,29 +2,28 @@
 
 import type { ComponentType } from 'react'
 import { useStore, type PanelId } from '@/core/state/store'
-import { LissajousPanel } from './panels/LissajousPanel'
-import { GridPanel } from './panels/GridPanel'
+import { SystemPanel } from './panels/SystemPanel'
 import { TypePanel } from './panels/TypePanel'
 import { GlyphFieldPanel } from './panels/GlyphFieldPanel'
 import { MaterialPanel } from './panels/MaterialPanel'
+import { MotionPanel } from './panels/MotionPanel'
 import { ExportPanel } from './panels/ExportPanel'
 
 const PANELS: { id: PanelId; label: string }[] = [
-  { id: 'lissajous', label: 'LISSAJOUS' },
-  { id: 'grid', label: 'GRID' },
+  { id: 'system', label: 'SYSTEM' },
   { id: 'type', label: 'TYPE' },
   { id: 'glyphField', label: 'GLYPH FIELD' },
   { id: 'material', label: 'MATERIAL' },
+  { id: 'motion', label: 'MOTION' },
   { id: 'export', label: 'EXPORT' },
 ]
 
-// Panel bodies register here as phases land.
 const PANEL_BODIES: Partial<Record<PanelId, ComponentType>> = {
-  lissajous: LissajousPanel,
-  grid: GridPanel,
+  system: SystemPanel,
   type: TypePanel,
   glyphField: GlyphFieldPanel,
   material: MaterialPanel,
+  motion: MotionPanel,
   export: ExportPanel,
 }
 

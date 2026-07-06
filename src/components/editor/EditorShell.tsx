@@ -9,11 +9,13 @@ import { deserializeProject, serializeProject } from '@/core/state/serialize'
 import { CanvasStage } from './CanvasStage'
 import { Inspector } from './Inspector'
 import { ModeSwitcher } from './ModeSwitcher'
+import { MotionLab } from '@/components/motion/MotionLab'
 
 const AUTOSAVE_KEY = 'lbs-autosave'
 
 export function EditorShell() {
   const mounted = useStore((s) => s.ui.mounted)
+  const mode = useStore((s) => s.ui.mode)
 
   useEffect(() => {
     installDebugHook()
@@ -68,7 +70,9 @@ export function EditorShell() {
         <div className="topbar-right" />
       </header>
       <div className="editor-body">
-        <main className="stage-wrap">{mounted ? <CanvasStage /> : null}</main>
+        <main className="stage-wrap">
+          {mounted ? (mode === 'motion' ? <MotionLab /> : <CanvasStage />) : null}
+        </main>
         <aside className="inspector-wrap">
           <Inspector />
         </aside>
