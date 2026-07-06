@@ -183,10 +183,16 @@
 .type-block {
   position: absolute;
   pointer-events: auto;
-  cursor: default;
+  cursor: grab;
+  user-select: none;
   white-space: pre-wrap;
   outline: 1.5px solid transparent;
   outline-offset: 6px;
+  touch-action: none;
+}
+
+.type-block:active {
+  cursor: grabbing;
 }
 
 .type-block.selected {

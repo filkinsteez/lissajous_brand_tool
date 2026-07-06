@@ -14,6 +14,7 @@ export type UiState = {
   mounted: boolean
   showGuides: boolean // optional construction guides while composing
   selectedBlockId: string
+  dragging: boolean // a type block is being dragged — guides show while true
 }
 
 export type DeepPartial<T> = {
@@ -70,6 +71,7 @@ export const useStore = create<StoreState>()((set, get) => ({
     mounted: false,
     showGuides: false,
     selectedBlockId: 'headline',
+    dragging: false,
   },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),

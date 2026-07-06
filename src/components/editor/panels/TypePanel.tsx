@@ -6,6 +6,7 @@ import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { TextField } from '@/components/controls/TextField'
 import { FONT_LABELS } from '@/core/typography/fonts'
 import { getDerived } from '@/core/pipeline'
+import { shuffleLayout } from '@/core/typography/layoutShuffle'
 import type { FontFamilyId, TypeAlign, TypeBlockState, TypeCase } from '@/core/state/types'
 
 const int = (v: number) => String(Math.round(v))
@@ -32,9 +33,25 @@ export function TypePanel() {
   const patchAnchor = (patch: Partial<TypeBlockState['anchor']>) => {
     patchBlock({ anchor: { ...block.anchor, ...patch } })
   }
+  const applyLayoutSeed = (layoutSeed: number, transient: boolean) => {
+    const patch = { layoutSeed, typeBlocks: shuffleLayout(project, grid, layoutSeed) }
+    if (transient) setT(patch)
+    else useStore.getState().apply(patch)
+  }
 
   return (
     <div className="panel">
+      <div className="panel-section">
+        <button className="ctl-action primary" onClick={() => applyLayoutSeed(project.layoutSeed + 1, false)}>
+          SHUFFLE LAYOUT
+        </button>
+        <Slider label="LAYOUT" value={project.layoutSeed} min={0} max={99} step={1} format={int}
+          onChange={(v) => applyLayoutSeed(v, true)} onCommit={commit} />
+        <div className="panel-note">
+          Layouts are grid archetypes, deterministic per seed. Drag blocks on the
+          artboard to snap them to columns and baselines.
+        </div>
+      </div>
       <div className="panel-section">
         <SegmentedControl
           value={block.id}

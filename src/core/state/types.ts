@@ -53,7 +53,9 @@ export type TypeBlockState = {
   tracking: number // em
   textCase: TypeCase
   align: TypeAlign
-  anchor: { col: number; row: number; colSpan: number }
+  // col/row index into the grid boundaries; baselineOffset shifts the block
+  // down from its row boundary in baseline-rhythm steps (drag snapping)
+  anchor: { col: number; row: number; colSpan: number; baselineOffset?: number }
   materialInfluence: number // 0..1, weight in the pressure mask
 }
 
@@ -103,6 +105,7 @@ export type ExportState = { scale: 1 | 2 | 4 }
 export type ProjectState = {
   version: typeof PROJECT_VERSION
   seed: number
+  layoutSeed: number // drives the type-layout shuffle; anchors store the result
   artboard: ArtboardState
   lissajous: LissajousState
   grid: GridState

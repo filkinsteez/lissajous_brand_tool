@@ -14,6 +14,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
   return {
     version: PROJECT_VERSION,
     seed,
+    layoutSeed: 0,
     artboard: { preset: 'portrait', ...ARTBOARD_PRESETS.portrait, background: PAPER },
     lissajous: {
       frequencyX: 3,
@@ -67,7 +68,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
         tracking: 0,
         textCase: 'none',
         align: 'left',
-        anchor: { col: 0, row: 1, colSpan: 2 },
+        anchor: { col: 4, row: 1, colSpan: 2 },
         materialInfluence: 0.6,
       },
       {

@@ -18,7 +18,7 @@ export function layoutTypeBlock(block: TypeBlockState, grid: EditorialGrid): Blo
 
   const rows = grid.rowBoundaries
   const row = Math.max(0, Math.min(rows.length - 1, block.anchor.row))
-  const y = rows[row].pos
+  const y = rows[row].pos + (block.anchor.baselineOffset ?? 0) * grid.baseline
 
   return { x, y, w, estH: estimateHeight(block, w) }
 }

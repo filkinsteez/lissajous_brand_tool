@@ -12,13 +12,14 @@ export function Artboard() {
   const background = useStore((s) => s.project.artboard.background)
   const mode = useStore((s) => s.ui.mode)
   const showGuides = useStore((s) => s.ui.showGuides)
+  const dragging = useStore((s) => s.ui.dragging)
 
   return (
     <div className="artboard" style={{ background }}>
       <MaterialLayer />
       <GlyphFieldLayer />
       <TypeLayer />
-      {mode === 'setup' || showGuides ? <LissajousOverlay /> : null}
+      {mode === 'setup' || showGuides || dragging ? <LissajousOverlay /> : null}
     </div>
   )
 }
