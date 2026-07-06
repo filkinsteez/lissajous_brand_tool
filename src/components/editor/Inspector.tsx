@@ -5,6 +5,7 @@ import { useStore, type PanelId } from '@/core/state/store'
 import { LissajousPanel } from './panels/LissajousPanel'
 import { GridPanel } from './panels/GridPanel'
 import { TypePanel } from './panels/TypePanel'
+import { GlyphFieldPanel } from './panels/GlyphFieldPanel'
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'lissajous', label: 'LISSAJOUS' },
@@ -20,6 +21,7 @@ const PANEL_BODIES: Partial<Record<PanelId, ComponentType>> = {
   lissajous: LissajousPanel,
   grid: GridPanel,
   type: TypePanel,
+  glyphField: GlyphFieldPanel,
 }
 
 export function Inspector() {
