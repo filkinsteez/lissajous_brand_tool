@@ -5,13 +5,13 @@
   "grid": { "mode": "projection", "marginRestraint": 0.65, "rowBias": 9 },
   "typeBlocks": [
     {
-      "id": "headline", "role": "headline", "text": "SIGNAL BECOMES FORM",
+      "id": "headline", "role": "headline", "text": "SIGNAL 5:4",
       "fontFamily": "flex", "size": 132, "weight": 780, "width": 92, "opticalSize": 144,
       "lineHeight": 0.96, "tracking": -0.01, "textCase": "upper", "align": "left",
       "anchor": { "col": 0, "row": 6, "colSpan": 6 }, "materialInfluence": 1
     },
     {
-      "id": "caption", "role": "caption", "text": "Vertical streams of brand language hang from the intersection grid.",
+      "id": "caption", "role": "caption", "text": "Vertical text streams hang from the columns of a 5:4 projection grid.",
       "fontFamily": "flex", "size": 22, "weight": 460, "width": 100, "opticalSize": 14,
       "lineHeight": 1.45, "tracking": 0, "textCase": "none", "align": "left",
       "anchor": { "col": 4, "row": 1, "colSpan": 2 }, "materialInfluence": 0.6
@@ -34,8 +34,8 @@
     "fold": 0.1, "ring": 0.85, "contrast": 0.8, "voidStrength": 0.4, "motion": 0
   },
   "motionLab": {
+    "easingSource": "spring",
     "stiffness": 18, "damping": 0.32, "initialVelocity": 0, "durationMs": 1000,
-    "presetId": "bounce", "pathShape": "eight", "pathText": "SIGNAL BECOMES FORM — ",
-    "pathTextSize": 40, "pathSpeed": 0.3, "pathEased": true
+    "presetId": "bounce"
   }
 }

@@ -32,6 +32,19 @@ export function Inspector() {
   const setUi = useStore((s) => s.setUi)
   const Body = PANEL_BODIES[activePanel]
 
+  // Tabs drive the stage too: MOTION opens the lab, anything else returns
+  // to the poster; leaving SYSTEM exits setup view.
+  const selectTab = (id: PanelId) => {
+    const mode = useStore.getState().ui.mode
+    if (id === 'motion') {
+      setUi({ activePanel: id, mode: 'motion' })
+    } else if (mode === 'motion' || (mode === 'setup' && id !== 'system')) {
+      setUi({ activePanel: id, mode: 'compose' })
+    } else {
+      setUi({ activePanel: id })
+    }
+  }
+
   return (
     <div className="inspector">
       <nav className="inspector-tabs">
@@ -39,7 +52,7 @@ export function Inspector() {
           <button
             key={p.id}
             className={activePanel === p.id ? 'inspector-tab active' : 'inspector-tab'}
-            onClick={() => setUi({ activePanel: p.id })}
+            onClick={() => selectTab(p.id)}
           >
             {p.label}
           </button>

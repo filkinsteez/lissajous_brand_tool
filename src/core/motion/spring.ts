@@ -91,6 +91,31 @@ export function overshootOf(lut: Float32Array): number {
   return Math.max(0, max - 1)
 }
 
+// Easing derived from the system curve itself: trace the curve at constant
+// parameter speed and use distance-covered-so-far as the position profile.
+// Monotone by construction, and its acceleration rhythm IS the curve's
+// lobes — the grid and the motion share one source.
+export function curveEasingLUT(
+  samples: { x: number; y: number }[],
+  size = LUT_SIZE,
+): Float32Array {
+  const n = samples.length
+  const cum = new Float64Array(n)
+  for (let i = 1; i < n; i++) {
+    cum[i] = cum[i - 1] + Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y)
+  }
+  const total = cum[n - 1] || 1
+  const lut = new Float32Array(size)
+  for (let i = 0; i < size; i++) {
+    const f = (i / (size - 1)) * (n - 1)
+    const i0 = Math.floor(f)
+    const t = f - i0
+    lut[i] = (cum[i0] * (1 - t) + cum[Math.min(n - 1, i0 + 1)] * t) / total
+  }
+  lut[size - 1] = 1
+  return lut
+}
+
 // CSS `linear()` easing token — the LUT verbatim, usable anywhere.
 export function toCssLinear(lut: Float32Array, stops = 24): string {
   const parts: string[] = []

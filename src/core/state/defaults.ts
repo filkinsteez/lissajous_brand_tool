@@ -42,7 +42,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'headline',
         role: 'headline',
-        text: 'MOTION BECOMES STRUCTURE',
+        text: 'LISSAJOUS 3:2',
         fontFamily: 'flex',
         size: 120,
         weight: 640,
@@ -58,7 +58,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'caption',
         role: 'caption',
-        text: 'A single Lissajous curve generates the grid, the typography, and the material of this system.',
+        text: 'The grid on this poster is built from the self-intersections of a 3:2 curve. Adjust it in the System panel.',
         fontFamily: 'flex',
         size: 24,
         weight: 460,
@@ -121,13 +121,14 @@ export function createDefaultProject(seed = 1913): ProjectState {
       paper: PAPER,
     },
     motionLab: {
+      easingSource: 'spring',
       stiffness: 14,
       damping: 1.15,
       initialVelocity: 0,
       durationMs: 1100,
       presetId: 'ease',
       pathShape: 'circle',
-      pathText: 'MOTION BECOMES STRUCTURE — ',
+      pathText: 'LISSAJOUS — ',
       pathTextSize: 46,
       pathSpeed: 0.25,
       pathEased: false,

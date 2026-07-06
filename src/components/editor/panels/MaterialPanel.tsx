@@ -58,7 +58,7 @@ export function MaterialPanel() {
           REROLL SYSTEM SEED
         </button>
         <div className="panel-note">
-          The seed drives grain and glyph placement together — one system, one hand.
+          The seed drives grain and glyph placement together.
         </div>
       </div>
     </div>

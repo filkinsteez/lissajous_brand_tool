@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildArcLUT } from './arcLength'
-import { evalEase, overshootOf, springLUT, toCssLinear, velocityOf } from './spring'
+import { curveEasingLUT, evalEase, overshootOf, springLUT, toCssLinear, velocityOf } from './spring'
 import { samplePathShape } from './pathShapes'
+import { sampleCurve } from '@/core/lissajous/sampler'
 import { createDefaultProject } from '@/core/state/defaults'
 
 describe('springLUT', () => {
@@ -51,6 +52,30 @@ describe('springLUT', () => {
     expect(css.endsWith(')')).toBe(true)
     expect(css).toContain('1 100%')
     expect(css.split(',').length).toBe(24)
+  })
+})
+
+describe('curveEasingLUT', () => {
+  it('is monotone, starts at 0, ends at 1', () => {
+    const project = createDefaultProject()
+    const samples = sampleCurve(project.lissajous, 1200, 1600)
+    const lut = curveEasingLUT(samples)
+    expect(lut[0]).toBe(0)
+    expect(lut[lut.length - 1]).toBe(1)
+    for (let i = 1; i < lut.length; i++) {
+      expect(lut[i]).toBeGreaterThanOrEqual(lut[i - 1])
+    }
+  })
+
+  it('is not linear — the curve rhythm shows in the profile', () => {
+    const project = createDefaultProject()
+    const samples = sampleCurve(project.lissajous, 1200, 1600)
+    const lut = curveEasingLUT(samples)
+    let maxDev = 0
+    for (let i = 0; i < lut.length; i++) {
+      maxDev = Math.max(maxDev, Math.abs(lut[i] - i / (lut.length - 1)))
+    }
+    expect(maxDev).toBeGreaterThan(0.005)
   })
 })
 

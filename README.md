@@ -27,19 +27,24 @@ whole project as `#s=<lz-string>` in the URL hash.
 A scripting hook is exposed at `window.__lbs` (state get/set, undo/redo,
 debug counters) for automation and verification.
 
-## Motion Lab
+## Motion
 
-The third editor mode prototypes the brand's motion language. Its easing
-family is a damped harmonic oscillator — the 1D sibling of the Lissajous
-curve — spanning linear → smooth ease → soft spring → bounce with two
-physical controls (stiffness ω, damping ζ). The lab shows the
-position/velocity curve, an eased line traversal, a probe traveling the
-actual system curve, and brand text running a simplified Lissajous path
-(circle / oval / figure-eight / the system curve itself).
+The third editor mode prototypes easing/velocity curves. Two sources:
+
+- **Spring** — a damped oscillator with two controls (stiffness, damping),
+  covering linear through smooth ease to bouncy.
+- **System curve** — the easing is derived from the Lissajous curve itself:
+  distance covered while tracing the curve at constant rate. Change the
+  curve, the easing changes with it.
+
+The lab shows the position/velocity plot and a dot moving on a straight
+line, animated together in the same direction, so you can read the curve
+against the actual motion. Tick marks on the line sit at equal time steps —
+their spacing is the velocity.
 
 Motion settings live in recipes and share links like everything else, and
-export as tokens: a CSS `linear()` easing function and a spring parameter
-JSON that maps 1:1 to Framer Motion / react-spring.
+export as tokens: a CSS `linear()` easing function and (for springs) a
+parameter JSON that maps 1:1 to Framer Motion / react-spring.
 
 ## North star
 

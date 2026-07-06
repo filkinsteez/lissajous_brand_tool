@@ -5,13 +5,13 @@
   "grid": { "mode": "strict", "marginRestraint": 0.8, "columnBias": 4, "rowBias": 6 },
   "typeBlocks": [
     {
-      "id": "headline", "role": "headline", "text": "One rule, many forms",
+      "id": "headline", "role": "headline", "text": "Orbital 8:5",
       "fontFamily": "fraunces", "size": 110, "weight": 560, "width": 100, "opticalSize": 144,
       "lineHeight": 1.02, "tracking": -0.01, "textCase": "none", "align": "left",
       "anchor": { "col": 0, "row": 4, "colSpan": 4 }, "materialInfluence": 1
     },
     {
-      "id": "caption", "role": "caption", "text": "The same oscillation, read as texture: glyphs ride the offset rings of a hidden 8:5 curve.",
+      "id": "caption", "role": "caption", "text": "Glyphs placed on the offset rings of an 8:5 curve, oriented along its tangents.",
       "fontFamily": "fraunces", "size": 24, "weight": 420, "width": 100, "opticalSize": 18,
       "lineHeight": 1.5, "tracking": 0.005, "textCase": "none", "align": "left",
       "anchor": { "col": 0, "row": 1, "colSpan": 2 }, "materialInfluence": 0.6

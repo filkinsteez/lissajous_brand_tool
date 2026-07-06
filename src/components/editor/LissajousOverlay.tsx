@@ -10,12 +10,16 @@ import { getDerived } from '@/core/pipeline'
 export function LissajousOverlay() {
   const project = useStore((s) => s.project)
   const mode = useStore((s) => s.ui.mode)
+  const systemAdjusting = useStore((s) => s.ui.systemAdjusting)
   const apply = useStore((s) => s.apply)
   const [hover, setHover] = useState<{ kind: 'node' | 'guide'; id: number | string } | null>(null)
 
   const { width: W, height: H } = project.artboard
   const derived = getDerived(project)
   const isSetup = mode === 'setup'
+  // the curve is the backbone: it surfaces during ANY system adjustment,
+  // not only in setup mode
+  const showCurve = isSetup || systemAdjusting
 
   const curvePath = useMemo(() => {
     const pts = derived.samples
@@ -73,11 +77,13 @@ export function LissajousOverlay() {
         )
       })}
 
+      {showCurve ? (
+        /* the curve itself: construction geometry, low opacity */
+        <path d={curvePath} fill="none" stroke="var(--overlay-curve)" strokeWidth={2} />
+      ) : null}
+
       {isSetup ? (
         <>
-          {/* the curve itself: construction geometry, low opacity */}
-          <path d={curvePath} fill="none" stroke="var(--overlay-curve)" strokeWidth={2} />
-
           {/* intersection nodes */}
           {derived.ranked.map((n) => {
             const isPrimary = derived.primary.some((p) => p.id === n.id)

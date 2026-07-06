@@ -19,9 +19,12 @@ export function ModeSwitcher() {
           role="tab"
           aria-selected={mode === m.id}
           className={mode === m.id ? 'mode-tab active' : 'mode-tab'}
-          onClick={() =>
-            setUi(m.id === 'motion' ? { mode: m.id, activePanel: 'motion' } : { mode: m.id })
-          }
+          onClick={() => {
+            const activePanel = useStore.getState().ui.activePanel
+            if (m.id === 'motion') setUi({ mode: m.id, activePanel: 'motion' })
+            else if (m.id === 'setup') setUi({ mode: m.id, activePanel: 'system' })
+            else setUi({ mode: m.id, activePanel: activePanel === 'motion' ? 'system' : activePanel })
+          }}
         >
           {m.label}
         </button>

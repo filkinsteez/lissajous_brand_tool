@@ -104,19 +104,22 @@ export type ImageState = {
 
 export type PathShape = 'circle' | 'oval' | 'eight' | 'system'
 
-// The motion system: a damped harmonic oscillator — the 1D sibling of the
-// Lissajous curve. damping ≥ 1 reads as a smooth ease, < 1 goes springy.
+// The motion system. Two easing sources: a damped spring (ω/ζ — smooth
+// ease through bouncy), or the system curve itself (its velocity rhythm
+// becomes the acceleration profile).
 export type MotionLabState = {
+  easingSource: 'spring' | 'curve'
   stiffness: number // ω, 4..40
   damping: number // ζ, 0.15..2
   initialVelocity: number // -3..3
   durationMs: number
   presetId?: string
+  // reserved (path-following text was cut from the lab UI; recipes keep loading)
   pathShape: PathShape
   pathText: string
   pathTextSize: number
-  pathSpeed: number // path lengths per second (or pulses/sec when eased)
-  pathEased: boolean // constant glide vs eased spring pulses
+  pathSpeed: number
+  pathEased: boolean
 }
 
 export type ExportState = { scale: 1 | 2 | 4 }
