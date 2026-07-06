@@ -359,6 +359,17 @@
   border-color: var(--text-dim);
 }
 
+.ctl-action.primary {
+  background: var(--text);
+  color: var(--chrome-0);
+  border-color: var(--text);
+}
+
+.ctl-action.primary:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .preset-strip {
   display: flex;
   gap: 6px;

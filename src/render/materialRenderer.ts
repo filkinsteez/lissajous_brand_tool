@@ -99,7 +99,7 @@ export class MaterialRenderer {
   }
 
   // Render at arbitrary resolution and read back RGBA — the export path.
-  renderToPixels(mat: MaterialState, width: number, height: number, seed: number): Uint8ClampedArray | null {
+  renderToPixels(mat: MaterialState, width: number, height: number, seed: number): Uint8ClampedArray<ArrayBuffer> | null {
     const gl = this.gl
     if (!gl) return null
     const fb = createFramebuffer(gl, width, height)
