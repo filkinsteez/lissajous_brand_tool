@@ -564,3 +564,160 @@
   fill: var(--text);
   letter-spacing: 0.06em;
 }
+
+/* ---- product vignettes --------------------------------------------------- */
+
+.product-row {
+  display: flex;
+  gap: 12px;
+}
+
+.vignette {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v-stage {
+  position: relative;
+  height: 96px;
+  border: 1px solid var(--line);
+  background: var(--chrome-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.v-label {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.v-toggle {
+  width: 52px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 3px;
+}
+
+.v-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--text);
+}
+
+.v-button {
+  position: relative;
+  width: 104px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+}
+
+.v-button-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--text);
+}
+
+.v-button-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  mix-blend-mode: difference;
+}
+
+.v-card {
+  width: 96px;
+  height: 64px;
+  background: var(--paper);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v-card-bar {
+  width: 40%;
+  height: 8px;
+  background: var(--ink);
+}
+
+.v-card-line {
+  width: 90%;
+  height: 3px;
+  background: rgba(20, 20, 18, 0.4);
+}
+
+.v-card-line.short {
+  width: 60%;
+}
+
+.v-frame {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.v-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.v-sheet {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 56px;
+  background: var(--paper);
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 6px;
+}
+
+.v-sheet-handle {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(20, 20, 18, 0.35);
+}
+
+.v-list {
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.v-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v-row-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--text-dim);
+  flex: none;
+}
+
+.v-row-line {
+  flex: 1;
+  height: 4px;
+  background: var(--line-strong);
+}

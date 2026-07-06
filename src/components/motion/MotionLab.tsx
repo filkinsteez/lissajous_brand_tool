@@ -68,6 +68,14 @@ export function MotionLab() {
   const p = loopProgress(elapsedRef.current, ml.durationMs)
   const eased = evalEase(lut, p)
 
+  // shared cycle clock for the product vignettes; delays give the stagger
+  const easeAt = (delayMs: number) => {
+    const cycle = ml.durationMs + HOLD_MS
+    const t = elapsedRef.current % cycle
+    return evalEase(lut, Math.min(1, Math.max(0, (t - delayMs) / ml.durationMs)))
+  }
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
+
   // ---- geometry: figure left, graph + straight path right ----
   const W = 640
   const PAD = 14
@@ -243,6 +251,86 @@ export function MotionLab() {
           </svg>
           <div className="panel-note">
             Tick marks sit at equal time steps — their spacing is the velocity.
+          </div>
+        </div>
+      </div>
+
+      <div className="lane">
+        <div className="lane-label">PRODUCT — THE SAME EASING ON REAL ELEMENTS</div>
+        <div className="product-row" data-testid="product-row">
+          <div className="vignette">
+            <div className="v-stage">
+              <div className="v-toggle">
+                <div
+                  className="v-knob"
+                  data-testid="v-knob"
+                  style={{ transform: `translateX(${easeAt(0) * 24}px)` }}
+                />
+              </div>
+            </div>
+            <span className="v-label">TOGGLE</span>
+          </div>
+
+          <div className="vignette">
+            <div className="v-stage">
+              <div className="v-button">
+                <div className="v-button-fill" style={{ width: `${clamp01(easeAt(0)) * 100}%` }} />
+                <span className="v-button-label">CONTINUE</span>
+              </div>
+            </div>
+            <span className="v-label">BUTTON</span>
+          </div>
+
+          <div className="vignette">
+            <div className="v-stage">
+              <div
+                className="v-card"
+                style={{
+                  transform: `translateY(${(1 - easeAt(0)) * 26}px)`,
+                  opacity: 0.05 + clamp01(easeAt(0)) * 0.95,
+                }}
+              >
+                <div className="v-card-bar" />
+                <div className="v-card-line" />
+                <div className="v-card-line short" />
+              </div>
+            </div>
+            <span className="v-label">CARD ENTER</span>
+          </div>
+
+          <div className="vignette">
+            <div className="v-stage v-frame">
+              <div className="v-backdrop" style={{ opacity: clamp01(easeAt(0)) * 0.45 }} />
+              <div
+                className="v-sheet"
+                style={{ transform: `translateY(${(1 - easeAt(0)) * 100}%)` }}
+              >
+                <div className="v-sheet-handle" />
+              </div>
+            </div>
+            <span className="v-label">SHEET</span>
+          </div>
+
+          <div className="vignette">
+            <div className="v-stage v-list">
+              {[0, 1, 2].map((i) => {
+                const e = easeAt(i * Math.min(160, ml.durationMs * 0.18))
+                return (
+                  <div
+                    key={i}
+                    className="v-row"
+                    style={{
+                      transform: `translateY(${(1 - e) * 12}px)`,
+                      opacity: 0.05 + clamp01(e) * 0.95,
+                    }}
+                  >
+                    <div className="v-row-dot" />
+                    <div className="v-row-line" />
+                  </div>
+                )
+              })}
+            </div>
+            <span className="v-label">LIST STAGGER</span>
           </div>
         </div>
       </div>
