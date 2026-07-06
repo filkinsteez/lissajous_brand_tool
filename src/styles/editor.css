@@ -721,3 +721,24 @@
   height: 4px;
   background: var(--line-strong);
 }
+
+.v-loader-track {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 0.8;
+  opacity: 0.35;
+}
+
+.v-orbit-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+.v-breathe {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--text);
+}

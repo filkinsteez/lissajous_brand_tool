@@ -1,17 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import {
-  cssMotionSystem,
-  lissajousEasing,
-  MOTION_PRESETS,
-  MOTION_TOKENS,
-  toCssLinear,
-  type EasingRead,
-} from '@/core/motion/spring'
+import { MOTION_PRESETS, MOTION_TOKENS, type EasingRead } from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -22,21 +14,6 @@ export function MotionPanel() {
   const apply = useStore((s) => s.apply)
   const setT = useStore((s) => s.setTransient)
   const commit = useStore((s) => s.commitTransient)
-  const [note, setNote] = useState('')
-
-  const flash = (msg: string) => {
-    setNote(msg)
-    setTimeout(() => setNote(''), 2500)
-  }
-
-  const copy = async (text: string, msg: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      flash(msg)
-    } catch {
-      flash('CLIPBOARD BLOCKED')
-    }
-  }
 
   return (
     <div className="panel">
@@ -137,31 +114,10 @@ export function MotionPanel() {
             </button>
           ))}
         </div>
-        <button
-          className="ctl-action primary"
-          onClick={() => copy(cssMotionSystem(ml.durationMs), 'MOTION SYSTEM COPIED')}
-        >
-          COPY MOTION SYSTEM (CSS)
-        </button>
-        <button
-          className="ctl-action"
-          onClick={() =>
-            copy(
-              toCssLinear(lissajousEasing({
-                ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
-                reverse: ml.reverse, strength: ml.strength, decay: ml.decay,
-              }).lut),
-              'CSS EASING COPIED',
-            )
-          }
-        >
-          COPY CURRENT EASING
-        </button>
-        {note ? <div className="panel-note">{note}</div> : null}
         <div className="panel-note">
           Four roles from one family: standard (the arch), enter (decelerate),
-          exit (accelerate), emphasis (the 1:3 swing) — plus a duration scale.
-          Click a role to inspect it above.
+          exit (accelerate), emphasis (the 1:3 swing). Click a role to inspect
+          it above.
         </div>
       </div>
     </div>
