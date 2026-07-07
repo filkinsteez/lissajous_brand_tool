@@ -4,7 +4,10 @@ import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { TextField } from '@/components/controls/TextField'
+import { ColorField } from '@/components/controls/ColorField'
+import { Toggle } from '@/components/controls/Toggle'
 import { FONT_LABELS } from '@/core/typography/fonts'
+import { INK, PAPER } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import type { FontFamilyId, TypeAlign, TypeBlockState } from '@/core/state/types'
 
@@ -75,6 +78,24 @@ export function TypePanel() {
           ]}
           onChange={(align) => { patchBlock({ align }); commit() }}
         />
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">STYLE</div>
+        <ColorField label="COLOR" value={block.color ?? INK}
+          onChange={(color) => { patchBlock({ color }); commit() }} />
+        <Slider label="STROKE" value={block.strokeWidth ?? 0} min={0} max={4} step={0.5}
+          format={(v) => `${v.toFixed(1)}px`}
+          onChange={(strokeWidth) => patchBlock({ strokeWidth })} onCommit={commit} />
+        {(block.strokeWidth ?? 0) > 0 ? (
+          <ColorField label="STROKE CLR" value={block.strokeColor ?? INK}
+            onChange={(strokeColor) => { patchBlock({ strokeColor }); commit() }} />
+        ) : null}
+        <Toggle label="BACKGROUND" value={block.background != null}
+          onChange={(on) => { patchBlock({ background: on ? PAPER : undefined }); commit() }} />
+        {block.background != null ? (
+          <ColorField label="BG COLOR" value={block.background}
+            onChange={(background) => { patchBlock({ background }); commit() }} />
+        ) : null}
       </div>
       <div className="panel-section">
         <Slider label="COLUMN" value={block.anchor.col} min={0} max={nCols - 1} step={1} format={int}

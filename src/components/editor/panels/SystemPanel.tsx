@@ -199,9 +199,8 @@ export function SystemPanel() {
         </button>
         <div className="panel-note">
           Click a background or an upload to make it the full bleed; uploads
-          also sit on the grid and re-deal with SHUFFLE LAYOUT. Everything
-          renders in mono. Uploads stay local — share links carry only the
-          built-in backgrounds.
+          also sit on the grid and re-deal with SHUFFLE LAYOUT. Uploads stay
+          local — share links carry only the built-in backgrounds.
         </div>
       </div>
       <div className="panel-section">

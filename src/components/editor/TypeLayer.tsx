@@ -150,7 +150,11 @@ export function TypeLayer() {
               lineHeight: block.lineHeight,
               letterSpacing: `${block.tracking}em`,
               textAlign: block.align,
-              color: INK,
+              color: block.color ?? INK,
+              WebkitTextStroke: block.strokeWidth
+                ? `${block.strokeWidth}px ${block.strokeColor ?? INK}`
+                : undefined,
+              background: block.background,
             }}
           >
             {block.text}

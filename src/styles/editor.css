@@ -161,26 +161,56 @@
   pointer-events: none;
 }
 
-/* mono treatment: photographs join the ink-and-paper system */
 .bg-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.04);
 }
 
 .image-block {
   position: absolute;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.04);
 }
 
 .ctl-sub-label {
   font-size: 9px;
   letter-spacing: 0.14em;
   color: var(--text-faint);
+}
+
+/* color control: label / well / hex readout */
+.ctl-color {
+  display: grid;
+  grid-template-columns: 72px 1fr 64px;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.color-well {
+  width: 100%;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: none;
+  cursor: pointer;
+}
+
+.color-well::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-well::-webkit-color-swatch {
+  border: none;
+}
+
+.color-hex {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .thumb-strip {
@@ -200,7 +230,6 @@
   object-fit: cover;
   border: 1px solid var(--line-strong);
   cursor: pointer;
-  filter: grayscale(1);
 }
 
 .img-thumb.bg-active {
@@ -551,11 +580,6 @@
   font-family: var(--font-flex), sans-serif;
   font-weight: 640;
   letter-spacing: 0.05em;
-}
-
-/* mono treatment, same as the layout images: photos join the ink */
-.orbit-img {
-  filter: grayscale(1) contrast(1.05);
 }
 
 .orbit-tile-frame {

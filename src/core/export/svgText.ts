@@ -93,7 +93,9 @@ export async function renderTypeToCanvas(
         `line-height:${b.lineHeight}`,
         `letter-spacing:${b.tracking}em`,
         `text-align:${b.align}`,
-        `color:${INK}`,
+        `color:${b.color ?? INK}`,
+        ...(b.strokeWidth ? [`-webkit-text-stroke:${b.strokeWidth}px ${b.strokeColor ?? INK}`] : []),
+        ...(b.background ? [`background:${b.background}`] : []),
         `white-space:pre-wrap`,
         `margin:0`,
       ].join(';')

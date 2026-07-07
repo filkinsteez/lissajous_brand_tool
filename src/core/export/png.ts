@@ -4,8 +4,7 @@ import { columnSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
 import { renderTypeToCanvas } from './svgText'
 
-// object-fit: cover, in canvas terms — clipped, centered, grayscale like
-// the live layer
+// object-fit: cover, in canvas terms — clipped and centered
 function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -21,7 +20,6 @@ function drawCover(
   ctx.beginPath()
   ctx.rect(x, y, w, h)
   ctx.clip()
-  ctx.filter = 'grayscale(1)'
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
   ctx.restore()
 }

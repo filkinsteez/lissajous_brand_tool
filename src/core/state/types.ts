@@ -59,6 +59,12 @@ export type TypeBlockState = {
   // down from its row boundary in baseline-rhythm steps (drag snapping)
   anchor: { col: number; row: number; colSpan: number; baselineOffset?: number }
   materialInfluence: number // 0..1, weight in the pressure mask
+  // styling (all optional so old recipes keep loading): fill color,
+  // text outline, and a color plate behind the block
+  color?: string
+  strokeWidth?: number // px, 0/absent = no stroke
+  strokeColor?: string
+  background?: string // absent = no plate
 }
 
 export type GlyphFieldMode = 'sparse' | 'dense' | 'verticalStream' | 'fieldContour'
