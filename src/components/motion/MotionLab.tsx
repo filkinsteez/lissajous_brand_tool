@@ -191,7 +191,10 @@ export function MotionLab() {
     return { d: d + ' Z', arcD, lobePaths, tracerAt }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, arc])
-  const figTracer = figure.tracerAt(p)
+  // the tracer follows the EASED clock like everything else: it sweeps the
+  // marked arc fast where the arc is high — the figure demonstrates its own
+  // speed curve, mirroring the graph dot position-for-position
+  const figTracer = figure.tracerAt(eased)
 
   const overshoot = overshootOf(lut)
 
