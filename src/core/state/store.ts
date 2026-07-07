@@ -3,8 +3,8 @@ import type { ProjectState } from './types'
 import { createDefaultProject } from './defaults'
 import { History } from './history'
 
-export type EditorMode = 'compose' | 'setup' | 'motion'
-export type PanelId = 'compose' | 'motion'
+export type EditorMode = 'compose' | 'setup' | 'motion' | 'path'
+export type PanelId = 'compose' | 'motion' | 'path'
 export type Quality = 'live' | 'hq'
 
 export type UiState = {

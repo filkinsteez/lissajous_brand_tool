@@ -439,6 +439,65 @@
   border-color: var(--text-dim);
 }
 
+/* ---- path lab ----------------------------------------------------------- */
+
+.path-lab {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.path-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.path-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - 220px);
+}
+
+.path-ghost {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.flow-text {
+  fill: var(--text);
+  font-family: var(--font-flex), sans-serif;
+  font-weight: 640;
+  letter-spacing: 0.05em;
+}
+
+.orbit-tile {
+  fill: var(--chrome-2);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.orbit-tile-label {
+  fill: var(--text-dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+
+.asm-char {
+  fill: var(--text);
+  font-family: var(--font-flex), sans-serif;
+  font-weight: 640;
+  text-anchor: middle;
+}
+
 /* ---- motion lab --------------------------------------------------------- */
 
 .motion-lab {

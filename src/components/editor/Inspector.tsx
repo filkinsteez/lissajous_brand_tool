@@ -4,10 +4,11 @@ import { useStore } from '@/core/state/store'
 import { SystemPanel } from './panels/SystemPanel'
 import { TypePanel } from './panels/TypePanel'
 import { MotionPanel } from './panels/MotionPanel'
+import { PathPanel } from './panels/PathPanel'
 import { ExportPanel } from './panels/ExportPanel'
 
 // The mode switcher in the top bar decides what the inspector shows —
-// LAYOUT gets the poster controls (system, type, export), MOTION the lab.
+// LAYOUT the poster controls, MOTION the easing lab, PATH the animation lab.
 export function Inspector() {
   const mode = useStore((s) => s.ui.mode)
 
@@ -17,6 +18,12 @@ export function Inspector() {
         {mode === 'motion' ? (
           <>
             <MotionPanel />
+            <div className="panel-divider">EXPORT</div>
+            <ExportPanel variant="motion" />
+          </>
+        ) : mode === 'path' ? (
+          <>
+            <PathPanel />
             <div className="panel-divider">EXPORT</div>
             <ExportPanel variant="motion" />
           </>

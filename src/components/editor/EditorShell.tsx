@@ -10,6 +10,7 @@ import { CanvasStage } from './CanvasStage'
 import { Inspector } from './Inspector'
 import { ModeSwitcher } from './ModeSwitcher'
 import { MotionLab } from '@/components/motion/MotionLab'
+import { PathLab } from '@/components/path/PathLab'
 
 const AUTOSAVE_KEY = 'lbs-autosave'
 
@@ -71,7 +72,9 @@ export function EditorShell() {
       </header>
       <div className="editor-body">
         <main className="stage-wrap">
-          {mounted ? (mode === 'motion' ? <MotionLab /> : <CanvasStage />) : null}
+          {mounted ? (
+            mode === 'motion' ? <MotionLab /> : mode === 'path' ? <PathLab /> : <CanvasStage />
+          ) : null}
         </main>
         <aside className="inspector-wrap">
           <Inspector />

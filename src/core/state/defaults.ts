@@ -138,6 +138,17 @@ export function createDefaultProject(seed = 1913): ProjectState {
       pathSpeed: 0.25,
       pathEased: false,
     },
+    pathLab: {
+      scene: 'flow',
+      ratioX: 1,
+      ratioY: 2,
+      phase: Math.PI / 2,
+      text: 'LISSAJOUS BRAND SYSTEM — RATIO 1:2 — ',
+      textSize: 44,
+      speed: 0.05,
+      count: 6,
+      durationMs: 2600,
+    },
     export: { scale: 2 },
   }
 }
