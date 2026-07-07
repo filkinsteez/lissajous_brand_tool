@@ -156,8 +156,10 @@ export function MotionLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
 
-  const cursorX = trackX(p)
-  const speedAtCursor = evalEase(speed, p)
+  // one aligned playhead: cursor line, dot on the curve, and the circle
+  // all share the eased x — the whole assembly moves with the curve's speed
+  const cursorX = trackX(clamp01(eased))
+  const speedAtCursor = evalEase(speed, clamp01(eased))
 
   const overshoot = overshootOf(lut)
 
