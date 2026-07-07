@@ -216,11 +216,11 @@ export function MotionLab() {
         <div className="product-row" data-testid="product-row">
           <div className="vignette">
             <div className="v-stage">
-              <div className="v-track">
+              <div className="v-track-v">
                 <div
                   className="v-move-dot"
                   data-testid="v-move"
-                  style={{ transform: `translateX(${easeAt(0) * 64}px)` }}
+                  style={{ transform: `translateY(${-easeAt(0) * 54}px)` }}
                 />
               </div>
             </div>
