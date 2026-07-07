@@ -5,8 +5,8 @@ import {
   curveArcEasing,
   enumerateLobes,
   evalEase,
+  figureLibrary,
   lissajousEasing,
-  MOTION_LIBRARY,
   MOTION_PRESETS,
   MOTION_TOKENS,
   overshootOf,
@@ -226,7 +226,11 @@ describe('curveArcEasing', () => {
     const all = [
       ...MOTION_PRESETS,
       ...MOTION_TOKENS,
-      ...MOTION_LIBRARY.flatMap((row) => row.variants),
+      // the figure-derived wall, across a few very different figures
+      ...figureLibrary(1, 2, Math.PI / 2).flatMap((row) => row.variants),
+      ...figureLibrary(1, 1, Math.PI / 2).flatMap((row) => row.variants),
+      ...figureLibrary(1, 3, 0).flatMap((row) => row.variants),
+      ...figureLibrary(5, 3, (89 * Math.PI) / 180, 5).flatMap((row) => row.variants),
     ]
     for (const p of all) {
       const { lut } = lissajousEasing(p)
@@ -236,30 +240,53 @@ describe('curveArcEasing', () => {
     }
   })
 
-  it('library intensities actually escalate within each family', () => {
-    // OUT: stronger variants cover more ground early
-    const outs = MOTION_LIBRARY.find((r) => r.family === 'OUT')!.variants.map(
-      (v) => lissajousEasing(v).lut,
-    )
-    expect(evalEase(outs[1], 0.3)).toBeGreaterThan(evalEase(outs[0], 0.3))
-    expect(evalEase(outs[2], 0.3)).toBeGreaterThan(evalEase(outs[1], 0.3))
-    // SPRING: higher variants swing more times
-    const swings = (lut: Float32Array) => {
-      let count = 0
-      let dir = 0
-      for (let i = 1; i < lut.length; i++) {
-        const d = Math.sign(lut[i] - lut[i - 1])
-        if (d !== 0 && d !== dir) {
-          if (dir !== 0) count++
-          dir = d
-        }
+  it('the library is derived from the figure it shows', () => {
+    // 1:2@90: arches dedupe to the two distinct lobes, no VALUE row
+    // (its position read is degenerate)
+    const bowtie = figureLibrary(1, 2, Math.PI / 2)
+    const families = bowtie.map((r) => r.family)
+    expect(families).toContain('ARCHES')
+    expect(families).toContain('RAMPS')
+    expect(families).toContain('PUSH')
+    expect(families).not.toContain('VALUE')
+    const arches = bowtie.find((r) => r.family === 'ARCHES')!.variants
+    expect(arches.length).toBe(2)
+    // every card is THIS figure — same ratio and phase throughout
+    for (const row of bowtie) {
+      for (const v of row.variants) {
+        expect(v.ratioX, v.id).toBe(1)
+        expect(v.ratioY, v.id).toBe(2)
+        expect(v.phase, v.id).toBeCloseTo(Math.PI / 2, 12)
       }
-      return count
     }
-    const springs = MOTION_LIBRARY.find((r) => r.family === 'SPRING')!.variants.map(
-      (v) => lissajousEasing(v).lut,
-    )
-    expect(swings(springs[2])).toBeGreaterThan(swings(springs[0]))
+
+    // the circle: VALUE row present (circ family), no SETTLED (monotone)
+    const circle = figureLibrary(1, 1, Math.PI / 2)
+    const circleValue = circle.find((r) => r.family === 'VALUE')
+    expect(circleValue).toBeDefined()
+    expect(circleValue!.variants.some((v) => v.id === 'value-settled')).toBe(false)
+
+    // 1:3: value read swings past the target → SETTLED spring card appears
+    const wave = figureLibrary(1, 3, 0)
+    const waveValue = wave.find((r) => r.family === 'VALUE')
+    expect(waveValue).toBeDefined()
+    const settled = waveValue!.variants.find((v) => v.id === 'value-settled')
+    expect(settled).toBeDefined()
+    expect(settled!.decay ?? 0).toBeGreaterThan(0)
+  })
+
+  it('library pushes actually escalate on the picked arch', () => {
+    const rows = figureLibrary(1, 2, Math.PI / 2)
+    // PUSH cards derive from the picked arch (auto here) — compare to it raw
+    const raw = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' }).lut
+    const pushes = rows.find((r) => r.family === 'PUSH')!.variants.map((v) => lissajousEasing(v).lut)
+    const maxDev = (a: Float32Array, b: Float32Array) => {
+      let dev = 0
+      for (let i = 0; i < a.length; i++) dev = Math.max(dev, Math.abs(a[i] - b[i]))
+      return dev
+    }
+    expect(maxDev(pushes[0], raw)).toBeGreaterThan(0.01)
+    expect(maxDev(pushes[1], raw)).toBeGreaterThan(maxDev(pushes[0], raw))
   })
 
   it('velocity read of the 1:2 arch is an eased speed bump', () => {

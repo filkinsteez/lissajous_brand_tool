@@ -34,11 +34,18 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 // Arrays (typeBlocks, selectedNodeIds) are replaced wholesale; objects merge.
+// A key explicitly present with value undefined CLEARS the field (how
+// patches drop presetId when a manual tweak breaks the preset match);
+// absent keys fill from base, so partial recipes keep loading. JSON
+// parsing can never produce undefined, so deserialization is unaffected.
 export function mergeDeep<T>(base: T, patch: DeepPartial<T>): T {
   if (!isPlainObject(base) || !isPlainObject(patch)) return patch as T
   const out: Record<string, unknown> = { ...base }
   for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) continue
+    if (value === undefined) {
+      delete out[key]
+      continue
+    }
     const prev = (base as Record<string, unknown>)[key]
     out[key] = isPlainObject(prev) && isPlainObject(value) ? mergeDeep(prev, value) : value
   }

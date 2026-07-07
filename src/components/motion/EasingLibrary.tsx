@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
-import { evalEase, lissajousEasing, MOTION_LIBRARY, type MotionPreset } from '@/core/motion/spring'
+import { evalEase, figureLibrary, lissajousEasing, type MotionPreset } from '@/core/motion/spring'
 
 const CARD_W = 120
 const CARD_H = 76
@@ -21,29 +21,28 @@ function cardPath(lut: Float32Array): string {
   return d
 }
 
-// The family as a wall of position-vs-time charts. Every path is a
-// Lissajous arc; click a card to load it into the demos.
+// The current figure as a wall of position-vs-time charts: its distinct
+// arches, the picked arch's ramps and pushes, and its value read. Every
+// path is an arc of THE figure on the panel; click a card to load it.
 export function EasingLibrary({ p }: { p: number }) {
   const ml = useStore((s) => s.project.motionLab)
   const apply = useStore((s) => s.apply)
 
   const cards = useMemo(
     () =>
-      MOTION_LIBRARY.map((row) => ({
+      figureLibrary(ml.ratioX, ml.ratioY, ml.phase, ml.lobe).map((row) => ({
         family: row.family,
         variants: row.variants.map((v) => ({
           recipe: v,
           lut: lissajousEasing(v).lut,
         })),
       })),
-    [],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.lobe],
   )
 
   const isActive = (r: MotionPreset) =>
-    ml.ratioX === r.ratioX &&
-    ml.ratioY === r.ratioY &&
-    Math.abs(ml.phase - r.phase) < 1e-6 &&
     ml.read === r.read &&
+    ml.lobe === (r.lobe ?? -1) &&
     ml.reverse === !!r.reverse &&
     ml.half === (r.half ?? 'full') &&
     Math.abs(ml.strength - (r.strength ?? 0)) < 1e-6 &&
@@ -54,13 +53,15 @@ export function EasingLibrary({ p }: { p: number }) {
       motionLab: {
         ratioX: r.ratioX, ratioY: r.ratioY, phase: r.phase, read: r.read,
         reverse: !!r.reverse, strength: r.strength ?? 0, decay: r.decay ?? 0,
-        lobe: -1, half: r.half ?? 'full', presetId: undefined,
+        lobe: r.lobe ?? -1, half: r.half ?? 'full', presetId: undefined,
       },
     })
 
   return (
     <div className="lane">
-      <div className="lane-label">EASING LIBRARY — EVERY PATH IS AN ARC OF THE FAMILY</div>
+      <div className="lane-label">
+        EASING LIBRARY — EVERY PATH IS AN ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE
+      </div>
       <div className="lib-grid" data-testid="easing-library">
         {cards.map((row) => (
           <div key={row.family} className="lib-row">

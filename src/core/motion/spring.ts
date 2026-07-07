@@ -108,52 +108,80 @@ export const MOTION_PRESETS: MotionPreset[] = [
 //   enter    — decelerate into place (speed ramp down)
 //   exit     — accelerate away (speed ramp up)
 //   emphasis — the 1:3 swing, for attention
-// The easing library: the family enumerated as a wall of position-vs-time
-// charts (easings.net style), ordered by increasing intensity within each
-// row. Every path is a Lissajous arc — the figure IS the path.
-export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
-  {
-    family: 'OUT',
+// The easing library derived from ONE figure: every card is an arc of
+// the figure currently on the panel — its distinct arches, the ramps
+// split from the picked arch, strength pushes, and (when the figure's
+// value read isn't degenerate) the position read with its settle
+// variant. Change the figure, the whole vocabulary changes with it.
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI']
+
+export function figureLibrary(
+  ratioX: number,
+  ratioY: number,
+  phase: number,
+  lobe = -1,
+): { family: string; variants: MotionPreset[] }[] {
+  const base = { ratioX, ratioY, phase, read: 'velocity' as EasingRead }
+  const params = { frequencyX: ratioX, frequencyY: ratioY, phase }
+  const rows: { family: string; variants: MotionPreset[] }[] = []
+
+  // distinct full arches (overlapping draws dedupe to one card)
+  const seen = new Set<string>()
+  const arches: MotionPreset[] = []
+  const lobes = enumerateLobes(params)
+  for (let i = 0; i < lobes.length && arches.length < 6; i++) {
+    const e = lissajousEasing({ ...base, lobe: i })
+    const sig = [0.2, 0.35, 0.5, 0.65, 0.8].map((t) => evalEase(e.lut, t).toFixed(2)).join(',')
+    if (seen.has(sig)) continue
+    seen.add(sig)
+    arches.push({ ...base, id: `arch-${i}`, label: `ARCH ${ROMAN[arches.length]}`, lobe: i, half: 'full' })
+  }
+  if (arches.length) rows.push({ family: 'ARCHES', variants: arches })
+
+  // the picked arch split at its peak, and run backwards
+  rows.push({
+    family: 'RAMPS',
     variants: [
-      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall' },
-      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall', strength: 0.35 },
-      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall', strength: 0.7 },
+      { ...base, id: 'ramp-rise', label: 'RISE', lobe, half: 'rise' },
+      { ...base, id: 'ramp-fall', label: 'FALL', lobe, half: 'fall' },
+      { ...base, id: 'ramp-reverse', label: 'REVERSED', lobe, half: 'full', reverse: true },
     ],
-  },
-  {
-    family: 'IN',
+  })
+
+  // strength escalation on the picked arch
+  rows.push({
+    family: 'PUSH',
     variants: [
-      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise' },
-      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise', strength: 0.35 },
-      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise', strength: 0.7 },
+      { ...base, id: 'push-1', label: '+35', lobe, half: 'full', strength: 0.35 },
+      { ...base, id: 'push-2', label: '+70', lobe, half: 'full', strength: 0.7 },
     ],
-  },
-  {
-    family: 'IN-OUT',
-    variants: [
-      { id: 'inout-1', label: 'IN-OUT I', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
-      { id: 'inout-2', label: 'IN-OUT II', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-      { id: 'inout-3', label: 'IN-OUT III', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
-    ],
-  },
-  {
-    // the circle's top half, halved: quarter arcs = the circ family
-    family: 'CIRC',
-    variants: [
-      { id: 'circ-out', label: 'CIRC OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position' },
-      { id: 'circ-in', label: 'CIRC IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position', reverse: true },
-      { id: 'circ-out-2', label: 'CIRC OUT+', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'position', strength: 0.4 },
-    ],
-  },
-  {
-    family: 'SPRING',
-    variants: [
-      { id: 'spring-1', label: 'SPRING I', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.6 },
-      { id: 'spring-2', label: 'SPRING II', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
-      { id: 'spring-3', label: 'SPRING III', ratioX: 1, ratioY: 7, phase: 0, read: 'position', decay: 0.45 },
-    ],
-  },
-]
+  })
+
+  // the same figure read as a value graph, when that read isn't degenerate;
+  // if it swings past the target, decay gives the settling spring
+  const value = curveArcEasing(params)
+  if (value.frame) {
+    const variants: MotionPreset[] = [
+      { ...base, read: 'position', id: 'value-1', label: 'AS DRAWN' },
+      { ...base, read: 'position', id: 'value-2', label: 'REVERSED', reverse: true },
+    ]
+    let swings = 0
+    let dir = 0
+    for (let i = 1; i < value.lut.length; i++) {
+      const d = Math.sign(value.lut[i] - value.lut[i - 1])
+      if (d !== 0 && d !== dir) {
+        if (dir !== 0) swings++
+        dir = d
+      }
+    }
+    if (swings >= 2) {
+      variants.push({ ...base, read: 'position', id: 'value-settled', label: 'SETTLED', decay: 0.55 })
+    }
+    rows.push({ family: 'VALUE', variants })
+  }
+
+  return rows
+}
 
 export const MOTION_TOKENS: MotionPreset[] = [
   { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
