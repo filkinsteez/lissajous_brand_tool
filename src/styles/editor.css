@@ -663,6 +663,16 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  position: relative;
+}
+
+/* eased footprints on the MOVE track, mirroring the ruler ticks */
+.v-move-tick {
+  position: absolute;
+  left: -4px;
+  width: 7px;
+  height: 1px;
+  background: var(--line-strong);
 }
 
 .v-move-dot {

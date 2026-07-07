@@ -144,14 +144,12 @@ export function MotionLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
 
-  // the cursor is 'now' on the time axis: it sweeps linearly and the dot
-  // reads the curve — its height IS the current speed. The objects (ruler
-  // circle, examples, figure tracer) move with the eased position that
-  // speed produces: dot high on the graph ↔ everything moving fast.
-  // Reading the chart at eased x scrambled exactly this correspondence —
-  // crank STRENGTH and the dot teleported across the spike it should climb.
-  const cursorX = trackX(clamp01(p))
-  const speedAtCursor = evalEase(speed, clamp01(p))
+  // ONE playhead assembly, IN TANDEM: cursor line, dot on the curve, and
+  // the circle below all share the eased x — a standing rule, demanded
+  // three times. The time-distribution story is carried by the static
+  // footprint ticks (ruler + MOVE track), not by a second moving marker.
+  const cursorX = trackX(clamp01(eased))
+  const speedAtCursor = evalEase(speed, clamp01(eased))
 
   // ---- the underlying figure: the actual Lissajous these arcs come from,
   // with every harvestable lobe clickable
@@ -262,9 +260,7 @@ export function MotionLab() {
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="speed-arc" className="lane-arc" />
           {/* one playhead through the graph and the ruler — same clock */}
-          {/* the cursor stays inside the chart: the ruler below belongs to
-              the object, which runs eased — two displays, two speeds */}
-          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop - 6} x2={cursorX} y2={plotBottom + 6} className="plot-cursor" />
+          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop - 6} x2={cursorX} y2={lineY} className="plot-cursor" />
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
           {/* the move: the circle travels with the ease of the speed curve;
@@ -292,6 +288,15 @@ export function MotionLab() {
           <div className="vignette">
             <div className="v-stage">
               <div className="v-track-v">
+                {/* footprints at equal time steps — crank STRENGTH and they
+                    redistribute exactly like the ruler ticks */}
+                {Array.from({ length: 11 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="v-move-tick"
+                    style={{ bottom: `${7 + clamp01(evalEase(lut, i / 10)) * 54}px` }}
+                  />
+                ))}
                 <div
                   className="v-move-dot"
                   data-testid="v-move"
