@@ -3,8 +3,10 @@
 import { useStore } from '@/core/state/store'
 import { LissajousOverlay } from './LissajousOverlay'
 import { TypeLayer } from './TypeLayer'
-// Layer stack: L4 DOM type, L5 curve overlay — clean paper, grid, type.
-// (The grain material and glyph field were cut.)
+import { ImagesLayer } from './ImagesLayer'
+
+// Layer stack: L2 images, L4 DOM type, L5 curve overlay — paper, grid,
+// photographs in mono, type. (The grain material and glyph field were cut.)
 export function Artboard() {
   const background = useStore((s) => s.project.artboard.background)
   const mode = useStore((s) => s.ui.mode)
@@ -14,6 +16,7 @@ export function Artboard() {
 
   return (
     <div className="artboard" style={{ background }}>
+      <ImagesLayer />
       <TypeLayer />
       {mode === 'setup' || showGuides || dragging || systemAdjusting ? <LissajousOverlay /> : null}
     </div>

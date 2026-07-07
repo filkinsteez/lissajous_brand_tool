@@ -104,6 +104,15 @@ export type ImageState = {
   opacity: number
 }
 
+// Imported poster images: grid-snapped blocks, one of which can be
+// promoted to the full-bleed background. Sources are downscaled data
+// URLs — kept in autosave, STRIPPED from share links (URL size).
+export type ImageItem = {
+  id: string
+  src: string
+  anchor: { col: number; row: number; colSpan: number; rowSpan: number }
+}
+
 export type PathShape = 'circle' | 'oval' | 'eight' | 'system'
 
 // The motion system IS the Lissajous family: an easing is one arc of a
@@ -164,6 +173,8 @@ export type ProjectState = {
   material: MaterialState
   motionLab: MotionLabState
   pathLab: PathLabState
+  images: ImageItem[]
+  bgImageId: string | null
   image?: ImageState
   export: ExportState
 }

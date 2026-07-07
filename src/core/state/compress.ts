@@ -6,7 +6,11 @@ import { deserializeProject, serializeProject } from './serialize'
 // the server, has no practical length limit, and works identically in
 // dev, on Vercel, and in static export.
 export function encodeShareHash(project: ProjectState): string {
-  return 's=' + compressToEncodedURIComponent(serializeProject(project))
+  // imported image data URLs would blow the URL into the megabytes —
+  // share links carry everything EXCEPT the images themselves
+  return 's=' + compressToEncodedURIComponent(
+    serializeProject({ ...project, images: [], bgImageId: null }),
+  )
 }
 
 export function decodeShareHash(hash: string): ProjectState | null {

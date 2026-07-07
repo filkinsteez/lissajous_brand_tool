@@ -151,6 +151,8 @@ export function createDefaultProject(seed = 1913): ProjectState {
       lapMs: 9000,
       durationMs: 2600,
     },
+    images: [],
+    bgImageId: null,
     export: { scale: 2 },
   }
 }

@@ -9,7 +9,9 @@ import { PresetStrip } from '../PresetStrip'
 import { ARTBOARD_PRESETS } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
-import type { ArtboardPresetId } from '@/core/state/types'
+import { importImageFile } from '@/core/images'
+import { mulberry32, type Rng } from '@/core/math/random'
+import type { ArtboardPresetId, ImageItem } from '@/core/state/types'
 
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
 const pct = (v: number) => `${Math.round(v * 100)}`
@@ -47,9 +49,48 @@ export function SystemPanel() {
     setT(patch)
   }
 
+  // deal an image block onto the grid: 1-3 columns wide, 2-4 rows tall
+  const dealAnchor = (rng: Rng, nCols: number, nRows: number) => {
+    const colSpan = 1 + Math.floor(rng() * Math.min(3, nCols))
+    const col = Math.floor(rng() * Math.max(1, nCols - colSpan + 1))
+    const rowSpan = 2 + Math.floor(rng() * 3)
+    const row = Math.floor(rng() * Math.max(1, nRows - rowSpan))
+    return { col, row, colSpan, rowSpan }
+  }
+
   const shuffle = () => {
     const layoutSeed = project.layoutSeed + 1
-    apply({ layoutSeed, typeBlocks: shuffleLayout(project, getDerived(project).grid, layoutSeed) })
+    const derivedGrid = getDerived(project).grid
+    const rng = mulberry32((project.seed ^ 0x1b3d5f7) + layoutSeed * 911)
+    const nCols = derivedGrid.columnBoundaries.length - 1
+    const nRows = derivedGrid.rowBoundaries.length - 1
+    const images = project.images.map((im) => ({ ...im, anchor: dealAnchor(rng, nCols, nRows) }))
+    apply({ layoutSeed, typeBlocks: shuffleLayout(project, derivedGrid, layoutSeed), images })
+  }
+
+  const fileRef = useRef<HTMLInputElement>(null)
+  const addFiles = async (files: FileList | null) => {
+    if (!files?.length) return
+    const derivedGrid = getDerived(project).grid
+    const nCols = derivedGrid.columnBoundaries.length - 1
+    const nRows = derivedGrid.rowBoundaries.length - 1
+    const added: ImageItem[] = []
+    for (const file of Array.from(files)) {
+      try {
+        const src = await importImageFile(file)
+        const rng = mulberry32(project.seed + project.images.length + added.length * 7919)
+        added.push({ id: `img-${Date.now()}-${added.length}`, src, anchor: dealAnchor(rng, nCols, nRows) })
+      } catch {
+        // unreadable file — skip it
+      }
+    }
+    if (added.length) apply({ images: [...project.images, ...added] })
+  }
+
+  const shuffleBg = () => {
+    const ids: (string | null)[] = [null, ...project.images.map((im) => im.id)]
+    const idx = ids.indexOf(project.bgImageId)
+    apply({ bgImageId: ids[(idx + 1) % ids.length] })
   }
 
   return (
@@ -75,6 +116,63 @@ export function SystemPanel() {
         <button className="ctl-action primary" onClick={shuffle}>
           SHUFFLE LAYOUT
         </button>
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">IMAGES</div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            void addFiles(e.target.files)
+            e.target.value = ''
+          }}
+        />
+        <button className="ctl-action" onClick={() => fileRef.current?.click()}>
+          ADD IMAGES
+        </button>
+        {project.images.length ? (
+          <>
+            <div className="thumb-strip">
+              {project.images.map((im) => (
+                <div key={im.id} className="thumb-wrap">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={im.src}
+                    alt=""
+                    className={project.bgImageId === im.id ? 'img-thumb bg-active' : 'img-thumb'}
+                    onClick={() =>
+                      apply({ bgImageId: project.bgImageId === im.id ? null : im.id })
+                    }
+                  />
+                  <button
+                    className="thumb-remove"
+                    aria-label="Remove image"
+                    onClick={() =>
+                      apply({
+                        images: project.images.filter((x) => x.id !== im.id),
+                        bgImageId: project.bgImageId === im.id ? null : project.bgImageId,
+                      })
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="ctl-action" onClick={shuffleBg}>
+              SHUFFLE BG IMAGE
+            </button>
+            <div className="panel-note">
+              Images sit on the grid; SHUFFLE LAYOUT re-deals them with the
+              type. Click a thumbnail to make it the full-bleed background.
+              Everything renders in mono — photographs join the ink. Images
+              stay local: share links don&apos;t carry them.
+            </div>
+          </>
+        ) : null}
       </div>
       <div className="panel-section">
         <div className="panel-heading">RATIO</div>

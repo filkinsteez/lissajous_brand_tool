@@ -155,6 +155,72 @@
 
 /* ---- glyph field layer -------------------------------------------------- */
 
+/* ---- images layer ------------------------------------------------------ */
+
+.images-layer {
+  pointer-events: none;
+}
+
+/* mono treatment: photographs join the ink-and-paper system */
+.bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.04);
+}
+
+.image-block {
+  position: absolute;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.04);
+}
+
+.thumb-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.thumb-wrap {
+  position: relative;
+}
+
+.img-thumb {
+  display: block;
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  filter: grayscale(1);
+}
+
+.img-thumb.bg-active {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  font-size: 11px;
+  text-align: center;
+  border: 1px solid var(--line-strong);
+  background: var(--chrome-0);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.thumb-remove:hover {
+  color: var(--text);
+}
+
 /* ---- type layer -------------------------------------------------------- */
 
 .type-layer {
