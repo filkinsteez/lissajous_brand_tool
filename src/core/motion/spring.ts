@@ -550,10 +550,14 @@ function arcVelocityEasing(
 // ease. Endpoints re-normalized to land exactly 0→1.
 export function applyStrength(lut: Float32Array, strength: number): Float32Array {
   if (strength <= 0.001) return lut
-  // full crank = a genuinely narrow spike. The sine-family arches are wide
-  // by nature (peak ≈ 1.6× the average); AE-snappy easing runs 3.5-6×
-  // peak-over-average, and that ratio is what the eye reads as "snap".
-  const power = 1 + strength * 8
+  // Crawl–whip–settle, never wait–teleport–wait: the powered profile makes
+  // a genuinely narrow spike (AE-snappy is 3.5-6× peak-over-average), but a
+  // pure power crushes low speeds to LITERAL ZERO — dead zones where the
+  // object parks and footprint marks pile invisibly on one pixel. So the
+  // spike rides on a small constant-speed floor: the move is alive end to
+  // end, early footprints creep at even spacing, and the landing glides.
+  const power = 1 + strength * 11
+  const crawl = 0.1 * Math.sqrt(strength) // floor fraction, 0 at strength 0
   const n = lut.length
   const out = new Float32Array(n)
   for (let i = 1; i < n; i++) {
@@ -563,7 +567,11 @@ export function applyStrength(lut: Float32Array, strength: number): Float32Array
   const start = out[0]
   const span = out[n - 1] - start
   if (Math.abs(span) < 1e-9) return lut
-  for (let i = 0; i < n; i++) out[i] = (out[i] - start) / span
+  for (let i = 0; i < n; i++) {
+    const powered = (out[i] - start) / span
+    const linear = i / (n - 1)
+    out[i] = (1 - crawl) * powered + crawl * linear
+  }
   out[n - 1] = 1
   return out
 }
