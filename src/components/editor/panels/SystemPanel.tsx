@@ -47,10 +47,9 @@ export function SystemPanel() {
     setT(patch)
   }
 
-  const applyLayoutSeed = (layoutSeed: number, transient: boolean) => {
-    const patch = { layoutSeed, typeBlocks: shuffleLayout(project, getDerived(project).grid, layoutSeed) }
-    if (transient) setT(patch)
-    else apply(patch)
+  const shuffle = () => {
+    const layoutSeed = project.layoutSeed + 1
+    apply({ layoutSeed, typeBlocks: shuffleLayout(project, getDerived(project).grid, layoutSeed) })
   }
 
   return (
@@ -73,11 +72,9 @@ export function SystemPanel() {
             })
           }
         />
-        <button className="ctl-action primary" onClick={() => applyLayoutSeed(project.layoutSeed + 1, false)}>
+        <button className="ctl-action primary" onClick={shuffle}>
           SHUFFLE LAYOUT
         </button>
-        <Slider label="LAYOUT" value={project.layoutSeed} min={0} max={99} step={1} format={int}
-          onChange={(v) => applyLayoutSeed(v, true)} onCommit={commit} />
       </div>
       <div className="panel-section">
         <div className="panel-heading">RATIO</div>
@@ -112,12 +109,19 @@ export function SystemPanel() {
             { value: 'strict', label: 'SNAPPED' },
             { value: 'projection', label: 'AT CROSSINGS' },
           ]}
-          onChange={(mode) => apply({ grid: { mode } })}
+          onChange={(mode) => {
+            // reveal the grid + curve while switching so the difference is
+            // actually visible — the lines this changes are otherwise hidden
+            touch()
+            apply({ grid: { mode } })
+            settle()
+          }}
         />
         <div className="panel-note">
-          Lines come from where the curve crosses itself. SNAPPED disciplines
-          them into even columns and baselines; AT CROSSINGS keeps them exactly
-          where the crossings fall.
+          Both grids are built from the curve&apos;s crossings — watch the lines
+          when you flip this. SNAPPED evens them out into the column/row counts
+          below; AT CROSSINGS puts a line through every crossing, exactly where
+          it falls. Busier curves give AT CROSSINGS more to work with.
         </div>
         <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />
