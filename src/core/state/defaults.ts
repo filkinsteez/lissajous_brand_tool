@@ -129,6 +129,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       strength: 0,
       decay: 0,
       lobe: -1,
+      half: 'full',
       durationMs: 1400,
       presetId: 'ease-in-out',
       pathShape: 'circle',

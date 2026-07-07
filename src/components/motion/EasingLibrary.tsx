@@ -45,6 +45,7 @@ export function EasingLibrary({ p }: { p: number }) {
     Math.abs(ml.phase - r.phase) < 1e-6 &&
     ml.read === r.read &&
     ml.reverse === !!r.reverse &&
+    ml.half === (r.half ?? 'full') &&
     Math.abs(ml.strength - (r.strength ?? 0)) < 1e-6 &&
     Math.abs(ml.decay - (r.decay ?? 0)) < 1e-6
 
@@ -53,7 +54,7 @@ export function EasingLibrary({ p }: { p: number }) {
       motionLab: {
         ratioX: r.ratioX, ratioY: r.ratioY, phase: r.phase, read: r.read,
         reverse: !!r.reverse, strength: r.strength ?? 0, decay: r.decay ?? 0,
-        lobe: -1, presetId: undefined,
+        lobe: -1, half: r.half ?? 'full', presetId: undefined,
       },
     })
 

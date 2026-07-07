@@ -116,6 +116,7 @@ export type MotionLabState = {
   strength: number // 0..1 influence: powers the speed profile
   decay: number // 0..1 damping: oscillations settle instead of returning
   lobe: number // which lobe of the figure to harvest; -1 = auto-pick
+  half: 'full' | 'rise' | 'fall' // whole arch, or one side split at its peak
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

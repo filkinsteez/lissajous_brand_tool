@@ -27,11 +27,13 @@ export type MotionRecipe = {
   decay?: number // 0..1 — damping envelope: oscillations settle into the
   // target instead of swinging all the way back (fixes bounce/spring)
   lobe?: number // index into enumerateLobes(); -1/undefined = auto-pick
+  half?: 'full' | 'rise' | 'fall' // take one side of the arc, split at its peak
 }
 
-// Every harvestable lobe of a figure: x-monotone quarters cut at y's
-// zero-crossings, ordered left→right by their position on the figure so
-// clicking feels spatial.
+// Every harvestable lobe of a figure: FULL ARCHES — x-monotone
+// half-periods cut only at y's zero-crossings, so an arch is one lobe
+// (both sides), never split at x's midpoint. Ordered left→right by their
+// position on the figure so clicking feels spatial.
 export type Lobe = { t0: number; t1: number }
 
 export function enumerateLobes(params: {
@@ -47,10 +49,8 @@ export function enumerateLobes(params: {
 
   for (let k = 0; k < a; k++) {
     for (const [u0, u1] of [
-      [Math.PI / 2 + TAU * k, Math.PI + TAU * k],
-      [Math.PI + TAU * k, (3 * Math.PI) / 2 + TAU * k],
-      [-Math.PI / 2 + TAU * k, TAU * k],
-      [TAU * k, Math.PI / 2 + TAU * k],
+      [Math.PI / 2 + TAU * k, (3 * Math.PI) / 2 + TAU * k], // falling (top) first
+      [-Math.PI / 2 + TAU * k, Math.PI / 2 + TAU * k], // rising
     ]) {
       const q0 = (u0 - phase) / a
       const q1 = (u1 - phase) / a
@@ -85,18 +85,18 @@ export function enumerateLobes(params: {
 export type MotionPreset = MotionRecipe & { id: string; label: string }
 
 // Family members read as easings — the traditional AE set, all from the
-// figure family. The in-out arch is the rotated 2:1; the ramps are 1:1
-// quarters (mirrored for ease-in); bounce/spring are lobed figures with
-// a damping envelope so they settle instead of swinging fully back.
-// The ease ramps come from the CIRCLE's quarter (1:1 at 90°) — a real
-// curve on the figure panel. The only straight-line figure is LINEAR,
-// where a straight line honestly means no easing.
+// figure family. The in-out arch is a full lobe; the ramps take one side
+// of the CIRCLE's top arch (1:1 at 90°), split at its speed peak —
+// rise accelerates (ease-in), fall decelerates (ease-out). Bounce/spring
+// are lobed figures with a damping envelope so they settle instead of
+// swinging fully back. The only straight-line figure is LINEAR, where a
+// straight line honestly means no easing.
 export const MOTION_PRESETS: MotionPreset[] = [
   { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0, read: 'position' },
   // presets carry NO treatment: what you see marked on the figure is
   // exactly what plays — strength/decay are explicit dials on top
-  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true },
-  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' },
+  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise' },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall' },
   { id: 'ease-in-out', label: 'EASE IN-OUT', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' },
   { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
   { id: 'spring', label: 'SPRING', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
@@ -115,17 +115,17 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
   {
     family: 'OUT',
     variants: [
-      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' },
-      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
+      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall' },
+      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall', strength: 0.35 },
+      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall', strength: 0.7 },
     ],
   },
   {
     family: 'IN',
     variants: [
-      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true },
-      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.35 },
-      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.7 },
+      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise' },
+      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise', strength: 0.35 },
+      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise', strength: 0.7 },
     ],
   },
   {
@@ -157,8 +157,8 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
 
 export const MOTION_TOKENS: MotionPreset[] = [
   { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
-  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall', strength: 0.3 },
+  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise', strength: 0.3 },
   { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
 ]
 
@@ -373,14 +373,16 @@ export function curveArcEasing(
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).
-// Candidate windows are the rising QUARTERS of the x-oscillation; |y| over
-// the window is speed. Scoring prefers arch-shaped speed (zero at both
+// Candidate windows are full arches (see enumerateLobes); |y| over the
+// window is speed. Scoring prefers arch-shaped speed (zero at both
 // ends) — the traditional eased-keyframe speed bump. Position is the
-// normalized integral, monotone by construction.
+// normalized integral, monotone by construction. `half` keeps one side
+// of the arch, split at its speed peak — the classic ease ramps.
 function arcVelocityEasing(
   params: { frequencyX: number; frequencyY: number; phase: number },
   size = LUT_SIZE,
   lobeIndex?: number,
+  half?: 'full' | 'rise' | 'fall',
 ): CurveArcEasing & { speed: Float32Array } {
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
@@ -391,9 +393,9 @@ function arcVelocityEasing(
   // index (figure-panel clicks); otherwise scoring prefers wide,
   // zero-ended, positive-y (top-half) lobes.
   const lobes = enumerateLobes(params)
-  const quarterW = Math.PI / (2 * a)
+  const halfW = Math.PI / a
   let bestT0 = 0
-  let bestT1 = quarterW
+  let bestT1 = halfW
 
   if (lobeIndex !== undefined && lobeIndex >= 0 && lobeIndex < lobes.length) {
     bestT0 = lobes[lobeIndex].t0
@@ -412,7 +414,7 @@ function arcVelocityEasing(
       const mean = sumAbs / (probes + 1)
       const meanY = sumSigned / (probes + 1)
       const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
-      const widthFrac = (t1 - t0) / quarterW
+      const widthFrac = (t1 - t0) / halfW
       // small rightmost bias settles mirror-symmetric ties deterministically
       const midX = Math.sin(a * ((t0 + t1) / 2) + phase)
       const score =
@@ -448,17 +450,31 @@ function arcVelocityEasing(
       const tt = ts[i]; ts[i] = ts[k]; ts[k] = tt
     }
   }
-  const xStart = xs[0]
-  const xEnd = xs[fine]
+
+  // optionally keep one side of the arch, split at its speed peak:
+  // 'fall' decelerates into place (ease-out), 'rise' accelerates (ease-in)
+  let lo = 0
+  let hi = fine
+  if (half === 'rise' || half === 'fall') {
+    let peakI = 0
+    for (let i = 0; i <= fine; i++) if (sp[i] > sp[peakI]) peakI = i
+    if (peakI > 3 && peakI < fine - 3) {
+      if (half === 'fall') lo = peakI
+      else hi = peakI
+    }
+  }
+
+  const xStart = xs[lo]
+  const xEnd = xs[hi]
   const xSpan = xEnd - xStart || 1e-9
-  for (let i = 0; i <= fine; i++) xs[i] = (xs[i] - xStart) / xSpan // 0..1, monotone
+  for (let i = lo; i <= hi; i++) xs[i] = (xs[i] - xStart) / xSpan // 0..1, monotone
 
   const speed = new Float32Array(size)
   const tAtP = new Float32Array(size)
-  let j = 0
+  let j = lo
   for (let i = 0; i < size; i++) {
     const p = i / (size - 1)
-    while (j < fine - 1 && xs[j + 1] < p) j++
+    while (j < hi - 1 && xs[j + 1] < p) j++
     const span = xs[j + 1] - xs[j] || 1e-9
     const f = Math.max(0, Math.min(1, (p - xs[j]) / span))
     speed[i] = sp[j] * (1 - f) + sp[j + 1] * f
@@ -487,9 +503,11 @@ function arcVelocityEasing(
   for (const v of speed) if (v > peak) peak = v
   for (let i = 0; i < size; i++) speed[i] /= peak
 
+  // marked arc = exactly the harvested window (the sliced side when a
+  // half is taken) — the figure highlight and the graph stay ONE drawing
   const arcUnit: { x: number; y: number }[] = []
   for (let i = 0; i <= 160; i++) {
-    const t = bestT0 + (i / 160) * (bestT1 - bestT0)
+    const t = ts[lo] + (i / 160) * (ts[hi] - ts[lo])
     arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
   }
 
@@ -546,7 +564,7 @@ export function lissajousEasing(
   const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
   const raw: CurveArcEasing & { speed?: Float32Array } =
     recipe.read === 'velocity'
-      ? arcVelocityEasing(params, size, recipe.lobe)
+      ? arcVelocityEasing(params, size, recipe.lobe, recipe.half)
       : curveArcEasing(params, size)
 
   let lut = raw.lut

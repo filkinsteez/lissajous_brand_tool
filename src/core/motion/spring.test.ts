@@ -303,11 +303,22 @@ describe('curveArcEasing', () => {
       expect(evalEase(quadOut.lut, p)).toBeCloseTo(2 * p - p * p, 2)
     }
 
-    // the circle's top-right quarter as drawn: speed(p) = √(1−p²) — high
-    // at the left, cliff at the right, exactly the marked arc
-    const circleOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' })
+    // the circle's top arch, FALL side: speed(p) = √(1−p²) — high at the
+    // left, cliff at the right, exactly the marked arc
+    const circleOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'fall' })
     for (const p of [0.2, 0.5, 0.8]) {
       expect(evalEase(circleOut.speed!, p)).toBeCloseTo(Math.sqrt(1 - p * p), 2)
+    }
+    // RISE side: the mirror ramp √(2p−p²)
+    const circleIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', half: 'rise' })
+    for (const p of [0.2, 0.5, 0.8]) {
+      expect(evalEase(circleIn.speed!, p)).toBeCloseTo(Math.sqrt(2 * p - p * p), 2)
+    }
+    // no half: the WHOLE arch — both sides of the semicircle as drawn:
+    // speed(p) = √(1−(2p−1)²)
+    const semi = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' })
+    for (const p of [0.2, 0.5, 0.8]) {
+      expect(evalEase(semi.speed!, p)).toBeCloseTo(Math.sqrt(1 - (2 * p - 1) ** 2), 2)
     }
 
     // the 1:2 top arch as drawn: speed(p) = 2p√(1−p²), peak right of

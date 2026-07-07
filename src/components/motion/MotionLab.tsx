@@ -40,8 +40,9 @@ export function MotionLab() {
       lissajousEasing({
         ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
         reverse: ml.reverse, strength: ml.strength, decay: ml.decay, lobe: ml.lobe,
+        half: ml.half,
       }),
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half],
   )
   const lut = arc.lut
 
@@ -236,7 +237,8 @@ export function MotionLab() {
               className={ml.lobe === index ? 'lane-lobe selected' : 'lane-lobe'}
               onClick={() =>
                 useStore.getState().apply({
-                  motionLab: { lobe: ml.lobe === index ? -1 : index, presetId: undefined },
+                  // clicking picks the WHOLE arch — both sides of the parabola
+                  motionLab: { lobe: ml.lobe === index ? -1 : index, half: 'full', presetId: undefined },
                 })
               }
             />
