@@ -144,12 +144,16 @@ export function MotionLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
 
-  // ONE playhead assembly, IN TANDEM: cursor line, dot on the curve, and
-  // the circle below all share the eased x — a standing rule, demanded
-  // three times. The time-distribution story is carried by the static
-  // footprint ticks (ruler + MOVE track), not by a second moving marker.
-  const cursorX = trackX(clamp01(eased))
-  const speedAtCursor = evalEase(speed, clamp01(eased))
+  // AE SEMANTICS, settled by the 60fps audit: the speed graph's x-axis is
+  // TIME, so the playhead (cursor + dot) sweeps it linearly, exactly like
+  // After Effects — the dot's height IS the current speed. The circle on
+  // the ruler is the OBJECT the curve drives: it moves eased, like a layer
+  // in the comp. They meet at both ends of every run. Reading the chart at
+  // eased x (the old tandem assembly) made the graph unreadable as a time
+  // chart and was why measured motion "looked wrong" against AE while
+  // being numerically exact (see docs/motion-audit.md).
+  const cursorX = trackX(clamp01(p))
+  const speedAtCursor = evalEase(speed, clamp01(p))
 
   // ---- the underlying figure: the actual Lissajous these arcs come from,
   // with every harvestable lobe clickable
@@ -274,10 +278,10 @@ export function MotionLab() {
         </svg>
         <div className="panel-note">
           {shapingActive
-            ? 'Solid: what plays. Dashed: the arc before strength/decay.'
+            ? 'Solid: what plays. Dashed: the arc before strength/decay. The playhead sweeps time like AE — the dot’s height is the current speed; the circle below is the object it drives.'
             : ml.read === 'velocity'
-              ? 'Same frame as the figure: the marked arc and this curve are one drawing.'
-              : 'Speed derived from the figure’s arc — cusps are direction changes.'}
+              ? 'The marked arc and this curve are one drawing. The playhead sweeps time like AE — the dot’s height is the current speed; the circle below is the object it drives.'
+              : 'Speed derived from the figure’s arc — cusps are direction changes. The playhead sweeps time like AE; the circle below is the object it drives.'}
         </div>
       </div>
       </div>

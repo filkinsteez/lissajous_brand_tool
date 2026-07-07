@@ -1,5 +1,42 @@
 # Motion curve audit — vs. standard After Effects easing
 
+## 60fps velocity audit (2026-07-08)
+
+Question raised: does the animation actually play the velocity the speed
+graph draws? Frame-stepped against a similar curve in AE at 60fps, the
+lab's marker seemed off. Full audit, live in the app, `1:2@90°` velocity
+read with strength 0.5, duration 1400ms:
+
+**Clock.** `renderController` accumulates real rAF deltas
+(`dt = (now − last)/1000`, clamped only at 100ms stall recovery). At a
+measured steady 60fps (16.7ms frames) animation time is wall time.
+
+**Proof A — the drawn curve is what plays.** The solid speed path
+(240 SVG points, un-mapped to `(p, v)`) against the numerical derivative
+of the played LUT (`linear()` export): max deviation 1.8% of peak, mean
+0.5%, speed peaks at p=0.707 (drawn) vs 0.717 (played, one bin of the
+24-stop export). The solid curve IS the derivative of the motion.
+
+**Proof B — the motion is the curve's integral, frame by frame.** The
+ruler circle sampled at rAF cadence for two cycles (110 frames @ 60fps):
+max position error vs the LUT 0.0029 of total travel (mean 0.0007);
+measured velocity peak at p=0.691 vs 0.707 drawn — within one frame.
+
+**Verdict: the rendered velocity is correct.** What looked wrong was the
+instrument: the playhead used to sit at the EASED x (position), while
+AE's playhead sweeps TIME. Reading a time chart at a position index made
+the marker linger near zero for half the duration and teleport across
+the spike — and the dot's height wasn't the current speed. Two further
+methodology notes for AE comparisons: the lab holds 600ms at the end of
+each loop (AE doesn't), and an eyeballed "similar" AE bezier can't hug
+zero speed for 40% of the duration the way a strength-shaped curve does
+— position diverges enormously wherever speed is near zero.
+
+**Change:** the playhead (cursor + dot on the curve) now sweeps linear
+time, exactly like AE — the dot's height is the current speed. The
+circle on the ruler is the object the curve drives (eased), like a layer
+in the comp. They meet at both ends of every run.
+
 Audit of the easing generator against the curves motion designers expect
 from AE's graph editor, and the changes made to close the gaps while
 keeping the Lissajous figure as the generator.
