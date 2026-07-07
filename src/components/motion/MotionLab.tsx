@@ -92,9 +92,13 @@ export function MotionLab() {
   const plotBottom = 230
   const lineY = 294
   const viewH = 322
-  const trackX = (v: number) => PAD + v * (W - 2 * PAD)
+  const graphRight = W - 74 // room for the vertical move demo on the right
+  const demoX = W - 34
+  const trackX = (v: number) => PAD + v * (graphRight - PAD)
   const spY = (v: number) =>
     plotBottom - (v / 1.06) * (plotBottom - plotTop - 8) - 4
+  // the element demo: value 0 sits on the ruler line, 1 at the top rule
+  const demoY = (v: number) => lineY - v * (lineY - plotTop - 12)
 
   const speed = useMemo(() => arc.speed ?? velocityOf(arc.lut), [arc])
   const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
@@ -185,8 +189,8 @@ export function MotionLab() {
         </div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
           {/* speed graph */}
-          <line x1={PAD} y1={spY(1)} x2={W - PAD} y2={spY(1)} className="lane-rule" />
-          <line x1={PAD} y1={spY(0)} x2={W - PAD} y2={spY(0)} className="lane-rule" />
+          <line x1={PAD} y1={spY(1)} x2={graphRight} y2={spY(1)} className="lane-rule" />
+          <line x1={PAD} y1={spY(0)} x2={graphRight} y2={spY(0)} className="lane-rule" />
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="figure-arc" className="lane-arc" />
@@ -195,16 +199,20 @@ export function MotionLab() {
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
           {/* time ruler: ticks are the eased move's footprints at equal time steps */}
-          <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
+          <line x1={PAD} y1={lineY} x2={graphRight} y2={lineY} className="lane-rule" />
           {Array.from({ length: 11 }, (_, i) => {
             const tx = trackX(clamp01(evalEase(lut, i / 10)))
             return <line key={i} x1={tx} y1={lineY - 8} x2={tx} y2={lineY + 8} className="lane-tick" />
           })}
-          <circle data-testid="line-dot" cx={cursorX} cy={lineY} r={9} className="lane-dot" />
+          <circle cx={cursorX} cy={lineY} r={4.5} className="plot-dot" />
+
+          {/* the move itself: up and down, riding the eased value */}
+          <line x1={demoX} y1={plotTop + 4} x2={demoX} y2={lineY} className="lane-rule" />
+          <circle data-testid="line-dot" cx={demoX} cy={demoY(eased)} r={9} className="lane-dot" />
         </svg>
         <div className="panel-note">
           {ml.read === 'velocity'
-            ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle is the playhead; ticks mark where the eased move sits at each time step.'
+            ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle on the right rides the eased value; ticks mark its footprints at equal time steps.'
             : 'Speed over time, derived from the figure’s arc — cusps are direction changes.'}
         </div>
       </div>
