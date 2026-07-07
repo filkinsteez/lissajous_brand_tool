@@ -7,11 +7,11 @@ import { MotionPanel } from './panels/MotionPanel'
 import { ExportPanel } from './panels/ExportPanel'
 
 const PANELS: { id: PanelId; label: string }[] = [
-  { id: 'compose', label: 'COMPOSE' },
+  { id: 'compose', label: 'LAYOUT' },
   { id: 'motion', label: 'MOTION' },
 ]
 
-// COMPOSE holds the whole poster: the system (curve + grid), the type it
+// LAYOUT holds the whole poster: the system (curve + grid), the type it
 // carries, and its export. MOTION holds the lab and its export.
 function ComposeBody() {
   return (
@@ -40,7 +40,7 @@ export function Inspector() {
   const activePanel = useStore((s) => s.ui.activePanel)
   const setUi = useStore((s) => s.setUi)
 
-  // Tabs drive the stage too: MOTION opens the lab, COMPOSE the poster.
+  // Tabs drive the stage too: MOTION opens the lab, LAYOUT the poster.
   const selectTab = (id: PanelId) => {
     if (id === 'motion') setUi({ activePanel: id, mode: 'motion' })
     else setUi({ activePanel: id, mode: 'compose' })

@@ -17,7 +17,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
     layoutSeed: 0,
     artboard: { preset: 'portrait', ...ARTBOARD_PRESETS.portrait, background: PAPER },
     lissajous: {
-      frequencyX: 3,
+      frequencyX: 1,
       frequencyY: 2,
       phase: Math.PI / 2,
       amplitudeX: 0.92,
@@ -26,7 +26,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       offsetX: 0,
       offsetY: 0,
       sampleDensity: 2048,
-      presetId: '3:2',
+      presetId: '1:2',
     },
     grid: {
       mode: 'strict',
@@ -42,7 +42,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'headline',
         role: 'headline',
-        text: 'LISSAJOUS 3:2',
+        text: 'LISSAJOUS 1:2',
         fontFamily: 'flex',
         size: 120,
         weight: 640,
@@ -58,7 +58,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'caption',
         role: 'caption',
-        text: 'The grid on this poster is built from the self-intersections of a 3:2 curve. Adjust it in the System panel.',
+        text: 'The grid on this poster is built from the crossings of a 1:2 curve. Adjust it in the System section.',
         fontFamily: 'flex',
         size: 24,
         weight: 460,
@@ -74,7 +74,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'metadata',
         role: 'metadata',
-        text: 'LBS 001 — RATIO 3:2 — PHASE 90°',
+        text: 'LBS 001 — RATIO 1:2 — PHASE 90°',
         fontFamily: 'mono',
         size: 16,
         weight: 400,

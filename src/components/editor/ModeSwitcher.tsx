@@ -3,7 +3,7 @@
 import { useStore, type EditorMode } from '@/core/state/store'
 
 const MODES: { id: EditorMode; label: string }[] = [
-  { id: 'compose', label: 'COMPOSE' },
+  { id: 'compose', label: 'LAYOUT' },
   { id: 'motion', label: 'MOTION' },
 ]
 
