@@ -132,8 +132,9 @@ export type MotionLabState = {
 // The PATH lab: advert-style brand animation — objects riding the curve.
 // FLOW is a text marquee along the figure, ORBIT a ring of image tiles,
 // ASSEMBLE a Cavalry-style headline whose characters fly in from the
-// path using the MOTION tab's easing. One figure family drives it all.
-export type PathScene = 'flow' | 'orbit' | 'assemble'
+// path using the MOTION tab's easing, REVEAL types the line along the
+// figure with a camera tracking the pen. One figure family drives it all.
+export type PathScene = 'flow' | 'orbit' | 'assemble' | 'reveal'
 
 export type PathLabState = {
   scene: PathScene

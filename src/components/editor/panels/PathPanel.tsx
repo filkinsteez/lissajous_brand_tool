@@ -33,6 +33,7 @@ export function PathPanel() {
             { value: 'flow', label: 'FLOW' },
             { value: 'orbit', label: 'ORBIT' },
             { value: 'assemble', label: 'ASSEMBLE' },
+            { value: 'reveal', label: 'REVEAL' },
           ]}
           onChange={(scene) => apply({ pathLab: { scene } })}
         />
@@ -99,10 +100,16 @@ export function PathPanel() {
               onChange={(lapMs) => setT({ pathLab: { lapMs } })} onCommit={commit} />
           </>
         ) : null}
-        {pl.scene === 'assemble' ? (
-          <Slider label="DURATION" value={pl.durationMs} min={800} max={6000} step={100}
+        {pl.scene === 'assemble' || pl.scene === 'reveal' ? (
+          <Slider label="DURATION" value={pl.durationMs} min={800} max={12000} step={100}
             format={(v) => `${Math.round(v)}ms`}
             onChange={(durationMs) => setT({ pathLab: { durationMs } })} onCommit={commit} />
+        ) : null}
+        {pl.scene === 'reveal' ? (
+          <div className="panel-note">
+            DURATION is the writing time; the pull-back at the end plays with
+            the MOTION tab&apos;s easing.
+          </div>
         ) : null}
         {pl.scene === 'orbit' ? (
           <div className="panel-note">

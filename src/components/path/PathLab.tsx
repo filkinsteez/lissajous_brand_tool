@@ -101,6 +101,8 @@ export function PathLab() {
   const asmMeasureRef = useRef<SVGTextElement>(null)
   const [flowCopyW, setFlowCopyW] = useState(0)
   const [asmMetrics, setAsmMetrics] = useState<{ label: string; centers: number[]; width: number } | null>(null)
+  // per-char cumulative advances of the full text — REVEAL's writing head
+  const [textCums, setTextCums] = useState<{ text: string; cums: number[] } | null>(null)
   const [fontTick, setFontTick] = useState(0)
 
   useEffect(() => {
@@ -120,7 +122,13 @@ export function PathLab() {
 
   useLayoutEffect(() => {
     const flow = flowMeasureRef.current
-    if (flow) setFlowCopyW(flow.getComputedTextLength())
+    if (flow) {
+      setFlowCopyW(flow.getComputedTextLength())
+      const n = pl.text.length
+      const cums = [0]
+      for (let i = 1; i <= n; i++) cums.push(flow.getSubStringLength(0, i))
+      setTextCums({ text: pl.text, cums })
+    }
     const asm = asmMeasureRef.current
     if (asm) {
       const n = asmLabel.length
@@ -224,13 +232,59 @@ export function PathLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pl.scene, asmLabel, asmLayout, pl.durationMs, brandLut, path, t])
 
+  // ---- REVEAL: the line types itself along the figure while the camera
+  // (the viewBox) tracks the writing head, then pulls back with the brand
+  // easing to show the whole figure and cuts to loop (059's path-text
+  // camera, loop-driven instead of scroll-driven)
+  const reveal = useMemo(() => {
+    if (pl.scene !== 'reveal') return null
+    const N = pl.text.length
+    const dur = Math.max(1500, pl.durationMs)
+    const pull = Math.max(600, dur * 0.4)
+    const ct = t % (dur + pull)
+    const cums = textCums && textCums.text === pl.text && textCums.cums.length === N + 1
+      ? textCums.cums
+      : null
+    const totalW = cums ? cums[N] : N * pl.textSize * 0.62
+    const zoomW = W * 0.42
+    if (ct < dur) {
+      const fchars = (ct / dur) * N
+      const k = Math.min(N, Math.floor(fchars) + 1)
+      const lo = Math.min(N, Math.floor(fchars))
+      const hi = Math.min(N, lo + 1)
+      const sHead = cums ? lerp(cums[lo], cums[hi], fchars - lo) : (ct / dur) * totalW
+      const head = path.lut.posAt(sHead)
+      return { content: pl.text.slice(0, k), cx: head.x, cy: head.y, vw: zoomW, head }
+    }
+    const q = evalEase(brandLut, clamp01((ct - dur) / pull))
+    const head = path.lut.posAt(totalW)
+    return {
+      content: pl.text,
+      cx: lerp(head.x, W / 2, q),
+      cy: lerp(head.y, H / 2, q),
+      vw: lerp(zoomW, W, q),
+      head,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pl.scene, pl.text, pl.textSize, pl.durationMs, textCums, brandLut, path, t])
+
+  const viewBox = reveal
+    ? `${(reveal.cx - reveal.vw / 2).toFixed(1)} ${(reveal.cy - (reveal.vw * (H / W)) / 2).toFixed(1)} ${reveal.vw.toFixed(1)} ${(reveal.vw * (H / W)).toFixed(1)}`
+    : `0 0 ${W} ${H}`
+
   return (
     <div className="path-lab" data-testid="path-lab">
       <div className="lab-header">
         <span className="lab-title">PATH</span>
         <span className="lab-sub">
           {pl.ratioX}:{pl.ratioY} · phase {Math.round((pl.phase * 180) / Math.PI)}° ·{' '}
-          {pl.scene === 'flow' ? 'text on path' : pl.scene === 'orbit' ? 'tiles on path' : 'assemble with the brand easing'}
+          {pl.scene === 'flow'
+            ? 'text on path'
+            : pl.scene === 'orbit'
+              ? 'tiles on path'
+              : pl.scene === 'reveal'
+                ? 'the line writes itself, camera following'
+                : 'assemble with the brand easing'}
         </span>
         <button
           className="ctl-action"
@@ -242,7 +296,7 @@ export function PathLab() {
       </div>
 
       <div className="lane path-stage">
-        <svg viewBox={`0 0 ${W} ${H}`} className="path-svg" data-testid="path-stage">
+        <svg viewBox={viewBox} className="path-svg" data-testid="path-stage">
           {/* hidden measurers: exact advances with the real SVG styling */}
           <text ref={flowMeasureRef} className="flow-text measure-text" style={{ fontSize: pl.textSize }}>
             {pl.text}
@@ -286,6 +340,17 @@ export function PathLab() {
               ))
             : null}
 
+          {pl.scene === 'reveal' && reveal ? (
+            <>
+              <path id="reveal-path" d={path.doubledD} fill="none" stroke="none" />
+              <text className="flow-text" style={{ fontSize: pl.textSize }}>
+                <textPath href="#reveal-path">{reveal.content}</textPath>
+              </text>
+              {/* the pen: the writing head the camera is chasing */}
+              <circle cx={reveal.head.x} cy={reveal.head.y} r={4.5} className="lane-dot" />
+            </>
+          ) : null}
+
           {pl.scene === 'assemble'
             ? asmChars.map(({ c, i, x, y, rot, o }) => (
                 <text
@@ -305,7 +370,9 @@ export function PathLab() {
             ? 'The brand line runs the figure end to end — a marquee with the curve as its track.'
             : pl.scene === 'orbit'
               ? 'Flocks of tiles lap the figure with the MOTION tab’s easing — stretching as they whip, bunching as they settle, scaling down at the back.'
-              : 'Characters scatter along the figure and assemble into the headline with the MOTION tab’s easing.'}
+              : pl.scene === 'reveal'
+                ? 'The line types itself along the figure; the camera chases the pen, then pulls back to show where it wrote.'
+                : 'Characters scatter along the figure and assemble into the headline with the MOTION tab’s easing.'}
         </div>
       </div>
     </div>
