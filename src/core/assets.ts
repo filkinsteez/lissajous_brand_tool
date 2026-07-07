@@ -21,7 +21,9 @@ export const BACKGROUND_IMAGES = [
   'original_25eb24d7db72f6d6d96eb50d8cb41de9.png',
   'original_2a4d0fa4ddebab34858123a11ce46cbc.webp',
   'original_36b1351c71af5172cc38585d7ace70c3.jpg',
+  'original_6486d18a23c2d583ba47ba5d3c89ee55.png',
   'original_97616ca65066bdd7632d74489942ea17.png',
+  'original_ce7c032ff2a6bc86a1c23c761cd7980f.jpg',
 ].map((f) => `/images/backgrounds/${f}`)
 
 // stable image-item id for a built-in background path
