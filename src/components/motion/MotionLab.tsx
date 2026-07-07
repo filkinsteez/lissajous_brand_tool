@@ -157,7 +157,6 @@ export function MotionLab() {
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
 
   const cursorX = trackX(p)
-  const dotX = trackX(clamp01(eased))
   const speedAtCursor = evalEase(speed, p)
 
   const overshoot = overshootOf(lut)
@@ -191,20 +190,21 @@ export function MotionLab() {
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="figure-arc" className="lane-arc" />
-          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={plotBottom} className="plot-cursor" />
+          {/* one playhead through the graph and the ruler — same clock */}
+          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={lineY} className="plot-cursor" />
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
-          {/* the move itself: straight path, left to right */}
+          {/* time ruler: ticks are the eased move's footprints at equal time steps */}
           <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
           {Array.from({ length: 11 }, (_, i) => {
             const tx = trackX(clamp01(evalEase(lut, i / 10)))
             return <line key={i} x1={tx} y1={lineY - 8} x2={tx} y2={lineY + 8} className="lane-tick" />
           })}
-          <circle data-testid="line-dot" cx={dotX} cy={lineY} r={9} className="lane-dot" />
+          <circle data-testid="line-dot" cx={cursorX} cy={lineY} r={9} className="lane-dot" />
         </svg>
         <div className="panel-note">
           {ml.read === 'velocity'
-            ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle below moves accordingly.'
+            ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle is the playhead; ticks mark where the eased move sits at each time step.'
             : 'Speed over time, derived from the figure’s arc — cusps are direction changes.'}
         </div>
       </div>
@@ -214,6 +214,19 @@ export function MotionLab() {
       <div className="lane">
         <div className="lane-label">PRODUCT — THE SAME EASING ON REAL ELEMENTS</div>
         <div className="product-row" data-testid="product-row">
+          <div className="vignette">
+            <div className="v-stage">
+              <div className="v-track">
+                <div
+                  className="v-move-dot"
+                  data-testid="v-move"
+                  style={{ transform: `translateX(${easeAt(0) * 64}px)` }}
+                />
+              </div>
+            </div>
+            <span className="v-label">MOVE</span>
+          </div>
+
           <div className="vignette">
             <div className="v-stage">
               <div className="v-toggle">

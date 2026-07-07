@@ -598,6 +598,21 @@
   text-align: center;
 }
 
+.v-track {
+  width: 80px;
+  height: 16px;
+  border-bottom: 1px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+}
+
+.v-move-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--text);
+}
+
 .v-toggle {
   width: 52px;
   height: 28px;
