@@ -76,8 +76,9 @@ export function MotionLab() {
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
   // continuous clock for ambient motion — the figure traced endlessly
-  // (idle states, loaders, breathing): one revolution per ~2.5 durations
-  const ambT = (elapsedRef.current / 1000) * ((Math.PI * 2) / Math.max(1.2, (ml.durationMs / 1000) * 2.5))
+  // (idle states, loaders, breathing): one revolution per 1.5 durations,
+  // close to the main sweep so the whole lab plays at one tempo
+  const ambT = (elapsedRef.current / 1000) * ((Math.PI * 2) / Math.max(1.2, (ml.durationMs / 1000) * 1.5))
   const ambX = Math.sin(ml.ratioX * ambT + ml.phase)
   const ambY = Math.sin(ml.ratioY * ambT)
 

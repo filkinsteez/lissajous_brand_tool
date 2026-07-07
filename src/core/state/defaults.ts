@@ -128,7 +128,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       reverse: false,
       strength: 0.35,
       decay: 0,
-      durationMs: 1100,
+      durationMs: 1400,
       presetId: 'ease-in-out',
       pathShape: 'circle',
       pathText: 'LISSAJOUS — ',
