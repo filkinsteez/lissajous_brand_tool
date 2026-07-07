@@ -26,6 +26,60 @@ export type MotionRecipe = {
   strength?: number // 0..1 — AE-style influence: powers the speed profile
   decay?: number // 0..1 — damping envelope: oscillations settle into the
   // target instead of swinging all the way back (fixes bounce/spring)
+  lobe?: number // index into enumerateLobes(); -1/undefined = auto-pick
+}
+
+// Every harvestable lobe of a figure: x-monotone quarters cut at y's
+// zero-crossings, ordered left→right by their position on the figure so
+// clicking feels spatial.
+export type Lobe = { t0: number; t1: number }
+
+export function enumerateLobes(params: {
+  frequencyX: number
+  frequencyY: number
+  phase: number
+}): Lobe[] {
+  const a = Math.max(1, Math.round(params.frequencyX))
+  const b = Math.max(1, Math.round(params.frequencyY))
+  const phase = params.phase
+  const TAU = Math.PI * 2
+  const out: Lobe[] = []
+
+  for (let k = 0; k < a; k++) {
+    for (const [u0, u1] of [
+      [Math.PI / 2 + TAU * k, Math.PI + TAU * k],
+      [Math.PI + TAU * k, (3 * Math.PI) / 2 + TAU * k],
+      [-Math.PI / 2 + TAU * k, TAU * k],
+      [TAU * k, Math.PI / 2 + TAU * k],
+    ]) {
+      const q0 = (u0 - phase) / a
+      const q1 = (u1 - phase) / a
+      const cuts: number[] = [q0]
+      const mLo = Math.ceil((q0 * b) / Math.PI)
+      const mHi = Math.floor((q1 * b) / Math.PI)
+      for (let m = mLo; m <= mHi; m++) {
+        const tz = (m * Math.PI) / b
+        if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
+      }
+      cuts.push(q1)
+      cuts.sort((p1, p2) => p1 - p2)
+      for (let c = 0; c + 1 < cuts.length; c++) {
+        const t0 = cuts[c]
+        const t1 = cuts[c + 1]
+        if (t1 - t0 < 1e-3) continue
+        // skip near-silent slivers
+        let peak = 0
+        for (let i = 0; i <= 16; i++) {
+          peak = Math.max(peak, Math.abs(Math.sin(b * (t0 + (i / 16) * (t1 - t0)))))
+        }
+        if (peak < 0.05) continue
+        out.push({ t0, t1 })
+      }
+    }
+  }
+
+  const midX = (l: Lobe) => Math.sin(a * ((l.t0 + l.t1) / 2) + phase)
+  return out.sort((l1, l2) => midX(l1) - midX(l2))
 }
 
 export type MotionPreset = MotionRecipe & { id: string; label: string }
@@ -326,65 +380,47 @@ export function curveArcEasing(
 function arcVelocityEasing(
   params: { frequencyX: number; frequencyY: number; phase: number },
   size = LUT_SIZE,
+  lobeIndex?: number,
 ): CurveArcEasing & { speed: Float32Array } {
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
-  const TAU = Math.PI * 2
 
-  // Harvest unit: a LOBE — inside an x-monotone quarter, split at the
-  // zero-crossings of y so the chosen arc keeps ONE sign. An arc that
-  // crossed zero would get |·|-flipped into a shape that isn't the
-  // drawing (an S becoming a W). Falling (top-half) quarters first;
-  // scoring prefers wide, zero-ended, positive-y lobes.
+  // Harvest unit: a LOBE (see enumerateLobes) — single-signed, so the arc
+  // as drawn IS the speed graph. A specific lobe can be requested by
+  // index (figure-panel clicks); otherwise scoring prefers wide,
+  // zero-ended, positive-y (top-half) lobes.
+  const lobes = enumerateLobes(params)
   const quarterW = Math.PI / (2 * a)
-  let bestScore = -Infinity
   let bestT0 = 0
   let bestT1 = quarterW
-  for (let k = 0; k < a; k++) {
-    for (const [u0, u1] of [
-      [Math.PI / 2 + TAU * k, Math.PI + TAU * k], // falling (top) first
-      [Math.PI + TAU * k, (3 * Math.PI) / 2 + TAU * k],
-      [-Math.PI / 2 + TAU * k, TAU * k], // rising (bottom)
-      [TAU * k, Math.PI / 2 + TAU * k],
-    ]) {
-      const q0 = (u0 - phase) / a
-      const q1 = (u1 - phase) / a
-      // cut the quarter at y's zero-crossings (t = mπ/b)
-      const cuts: number[] = [q0]
-      const mLo = Math.ceil((q0 * b) / Math.PI)
-      const mHi = Math.floor((q1 * b) / Math.PI)
-      for (let m = mLo; m <= mHi; m++) {
-        const tz = (m * Math.PI) / b
-        if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
-      }
-      cuts.push(q1)
-      cuts.sort((p1, p2) => p1 - p2)
 
-      for (let c = 0; c + 1 < cuts.length; c++) {
-        const t0 = cuts[c]
-        const t1 = cuts[c + 1]
-        if (t1 - t0 < 1e-4) continue
-        let sumAbs = 0
-        let sumSigned = 0
-        const probes = 48
-        for (let i = 0; i <= probes; i++) {
-          const y = Math.sin(b * (t0 + (i / probes) * (t1 - t0)))
-          sumAbs += Math.abs(y)
-          sumSigned += y
-        }
-        const mean = sumAbs / (probes + 1)
-        const meanY = sumSigned / (probes + 1)
-        const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
-        const widthFrac = (t1 - t0) / quarterW
-        const score = mean * Math.sqrt(widthFrac) - 0.75 * endPenalty + 0.35 * meanY
-        // epsilon: symmetric windows tie mathematically — keep the first
-        // rather than letting float noise pick
-        if (score > bestScore + 1e-9) {
-          bestScore = score
-          bestT0 = t0
-          bestT1 = t1
-        }
+  if (lobeIndex !== undefined && lobeIndex >= 0 && lobeIndex < lobes.length) {
+    bestT0 = lobes[lobeIndex].t0
+    bestT1 = lobes[lobeIndex].t1
+  } else {
+    let bestScore = -Infinity
+    for (const { t0, t1 } of lobes) {
+      let sumAbs = 0
+      let sumSigned = 0
+      const probes = 48
+      for (let i = 0; i <= probes; i++) {
+        const y = Math.sin(b * (t0 + (i / probes) * (t1 - t0)))
+        sumAbs += Math.abs(y)
+        sumSigned += y
+      }
+      const mean = sumAbs / (probes + 1)
+      const meanY = sumSigned / (probes + 1)
+      const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
+      const widthFrac = (t1 - t0) / quarterW
+      // small rightmost bias settles mirror-symmetric ties deterministically
+      const midX = Math.sin(a * ((t0 + t1) / 2) + phase)
+      const score =
+        mean * Math.sqrt(widthFrac) - 0.75 * endPenalty + 0.35 * meanY + 0.02 * midX
+      if (score > bestScore + 1e-9) {
+        bestScore = score
+        bestT0 = t0
+        bestT1 = t1
       }
     }
   }
@@ -509,7 +545,9 @@ export function lissajousEasing(
 ): CurveArcEasing & { speed?: Float32Array; rawLut: Float32Array; rawSpeed?: Float32Array } {
   const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
   const raw: CurveArcEasing & { speed?: Float32Array } =
-    recipe.read === 'velocity' ? arcVelocityEasing(params, size) : curveArcEasing(params, size)
+    recipe.read === 'velocity'
+      ? arcVelocityEasing(params, size, recipe.lobe)
+      : curveArcEasing(params, size)
 
   let lut = raw.lut
   let tAtP = raw.tAtP

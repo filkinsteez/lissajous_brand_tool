@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
 import {
+  enumerateLobes,
   evalEase,
   lissajousEasing,
   overshootOf,
@@ -38,9 +39,9 @@ export function MotionLab() {
     () =>
       lissajousEasing({
         ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
-        reverse: ml.reverse, strength: ml.strength, decay: ml.decay,
+        reverse: ml.reverse, strength: ml.strength, decay: ml.decay, lobe: ml.lobe,
       }),
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe],
   )
   const lut = arc.lut
 
@@ -155,7 +156,8 @@ export function MotionLab() {
   const cursorX = trackX(clamp01(eased))
   const speedAtCursor = evalEase(speed, clamp01(eased))
 
-  // ---- the underlying figure: the actual Lissajous these arcs come from
+  // ---- the underlying figure: the actual Lissajous these arcs come from,
+  // with every harvestable lobe clickable
   const FIG = 300
   const figure = useMemo(() => {
     const a = ml.ratioX
@@ -176,13 +178,26 @@ export function MotionLab() {
       const m = map(u)
       arcD += `${arcD ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
     }
+    // clickable lobe hit-paths (only meaningful for the speed read)
+    const lobePaths =
+      ml.read === 'velocity'
+        ? enumerateLobes({ frequencyX: a, frequencyY: b, phase }).map((lobe, index) => {
+            let ld = ''
+            for (let i = 0; i <= 48; i++) {
+              const t = lobe.t0 + (i / 48) * (lobe.t1 - lobe.t0)
+              const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+              ld += `${ld ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+            }
+            return { d: ld, index }
+          })
+        : []
     const tracerAt = (t: number) => {
       const tt = arc.tAtP[Math.round(clamp01(t) * (arc.tAtP.length - 1))]
       return map({ x: Math.sin(a * tt + phase), y: Math.sin(b * tt) })
     }
-    return { d: d + ' Z', arcD, tracerAt }
+    return { d: d + ' Z', arcD, lobePaths, tracerAt }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ml.ratioX, ml.ratioY, ml.phase, arc])
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, arc])
   const figTracer = figure.tracerAt(p)
 
   const overshoot = overshootOf(lut)
@@ -213,10 +228,25 @@ export function MotionLab() {
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
           <path d={figure.d} className="lane-curve-path" />
           <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" />
+          {figure.lobePaths.map(({ d, index }) => (
+            <path
+              key={index}
+              d={d}
+              data-testid={`lobe-${index}`}
+              className={ml.lobe === index ? 'lane-lobe selected' : 'lane-lobe'}
+              onClick={() =>
+                useStore.getState().apply({
+                  motionLab: { lobe: ml.lobe === index ? -1 : index, presetId: undefined },
+                })
+              }
+            />
+          ))}
           <circle cx={figTracer.x} cy={figTracer.y} r={6} className="lane-dot" />
         </svg>
         <div className="panel-note">
-          The actual Lissajous curve. The marked arc is what the speed graph reads.
+          {ml.read === 'velocity'
+            ? 'The actual Lissajous curve. Click any lobe to make it the easing; click again for auto.'
+            : 'The actual Lissajous curve. The marked arc is what the speed graph reads.'}
         </div>
       </div>
       <div className="lane lane-figure">

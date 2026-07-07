@@ -3,6 +3,7 @@ import { buildArcLUT } from './arcLength'
 import {
   cssMotionSystem,
   curveArcEasing,
+  enumerateLobes,
   evalEase,
   lissajousEasing,
   MOTION_LIBRARY,
@@ -156,6 +157,28 @@ describe('curveArcEasing', () => {
     const a = curveArcEasing(liss(7, 6))
     const b = curveArcEasing(liss(7, 6))
     expect([...a.lut]).toEqual([...b.lut])
+  })
+
+  it('lobes are enumerable and individually selectable', () => {
+    const params = { frequencyX: 1, frequencyY: 3, phase: (89 * Math.PI) / 180 }
+    const lobes = enumerateLobes(params)
+    expect(lobes.length).toBeGreaterThanOrEqual(4)
+    // every lobe yields a valid 0→1 easing
+    const shapes = new Set<string>()
+    for (let i = 0; i < lobes.length; i++) {
+      const e = lissajousEasing({ ratioX: 1, ratioY: 3, phase: params.phase, read: 'velocity', lobe: i })
+      expect(e.lut[0], `lobe ${i}`).toBe(0)
+      expect(e.lut[e.lut.length - 1], `lobe ${i}`).toBe(1)
+      shapes.add([0.25, 0.5, 0.75].map((t) => evalEase(e.lut, t).toFixed(2)).join(','))
+    }
+    expect(shapes.size).toBeGreaterThan(1) // different lobes, different eases
+    // -1 / undefined = the auto pick
+    const auto = lissajousEasing({ ratioX: 1, ratioY: 3, phase: params.phase, read: 'velocity' })
+    const minusOne = lissajousEasing({ ratioX: 1, ratioY: 3, phase: params.phase, read: 'velocity', lobe: -1 })
+    expect([...minusOne.lut]).toEqual([...auto.lut])
+    // out-of-range index falls back to auto rather than crashing
+    const oob = lissajousEasing({ ratioX: 1, ratioY: 3, phase: params.phase, read: 'velocity', lobe: 99 })
+    expect([...oob.lut]).toEqual([...auto.lut])
   })
 
   it('harvested lobes never cross zero — no |·|-flipped cusps in the speed graph', () => {

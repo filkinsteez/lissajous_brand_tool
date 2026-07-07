@@ -29,7 +29,7 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, read: p.read,
                     reverse: !!p.reverse, strength: p.strength ?? 0, decay: p.decay ?? 0,
-                    presetId: p.id,
+                    lobe: -1, presetId: p.id,
                   },
                 })
               }
@@ -39,9 +39,9 @@ export function MotionPanel() {
           ))}
         </div>
         <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int}
-          onChange={(ratioX) => setT({ motionLab: { ratioX, presetId: undefined } })} onCommit={commit} />
+          onChange={(ratioX) => setT({ motionLab: { ratioX, lobe: -1, presetId: undefined } })} onCommit={commit} />
         <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int}
-          onChange={(ratioY) => setT({ motionLab: { ratioY, presetId: undefined } })} onCommit={commit} />
+          onChange={(ratioY) => setT({ motionLab: { ratioY, lobe: -1, presetId: undefined } })} onCommit={commit} />
         <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
           onChange={(phase) => setT({ motionLab: { phase, presetId: undefined } })} onCommit={commit} />
         <SegmentedControl
@@ -67,6 +67,7 @@ export function MotionPanel() {
                 ratioX: project.lissajous.frequencyX,
                 ratioY: project.lissajous.frequencyY,
                 phase: project.lissajous.phase,
+                lobe: -1,
                 presetId: undefined,
               },
             })
@@ -96,7 +97,7 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: t.ratioX, ratioY: t.ratioY, phase: t.phase, read: t.read,
                     reverse: !!t.reverse, strength: t.strength ?? 0, decay: t.decay ?? 0,
-                    presetId: undefined,
+                    lobe: -1, presetId: undefined,
                   },
                 })
               }

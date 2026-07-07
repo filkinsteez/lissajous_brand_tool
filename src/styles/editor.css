@@ -523,6 +523,20 @@
   stroke-width: 2.5;
 }
 
+/* invisible wide hit-strokes over each harvestable lobe */
+.lane-lobe {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.lane-lobe:hover {
+  stroke: rgba(232, 230, 225, 0.28);
+  stroke-width: 6;
+}
+
 .plot-position {
   fill: none;
   stroke: var(--text);

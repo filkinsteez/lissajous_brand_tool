@@ -53,7 +53,7 @@ export function EasingLibrary({ p }: { p: number }) {
       motionLab: {
         ratioX: r.ratioX, ratioY: r.ratioY, phase: r.phase, read: r.read,
         reverse: !!r.reverse, strength: r.strength ?? 0, decay: r.decay ?? 0,
-        presetId: undefined,
+        lobe: -1, presetId: undefined,
       },
     })
 
