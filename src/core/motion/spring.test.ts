@@ -158,6 +158,30 @@ describe('curveArcEasing', () => {
     expect([...a.lut]).toEqual([...b.lut])
   })
 
+  it('harvested lobes never cross zero — no |·|-flipped cusps in the speed graph', () => {
+    // 1:3 near 90° used to pick an S-arc spanning bottom-to-top; |y| turned
+    // it into a W. Lobes must keep one sign so the graph IS the drawing.
+    for (const [rx, ry, ph] of [[1, 3, (89 * Math.PI) / 180], [1, 5, 0.9], [2, 3, 1.2], [1, 7, 0.4]]) {
+      const e = lissajousEasing({ ratioX: rx, ratioY: ry, phase: ph, read: 'velocity' })
+      const s = e.speed!
+      // no interior cusp: speed must not return to ~0 between its ends
+      let interiorMin = Infinity
+      for (let i = Math.floor(s.length * 0.12); i < s.length * 0.88; i++) {
+        interiorMin = Math.min(interiorMin, s[i])
+      }
+      expect(interiorMin, `${rx}:${ry}@${ph}`).toBeGreaterThan(0.05)
+      // and the signed y over the chosen window keeps one sign
+      let sawPos = false
+      let sawNeg = false
+      for (let i = 0; i < e.tAtP.length; i++) {
+        const y = Math.sin(ry * e.tAtP[i])
+        if (y > 1e-3) sawPos = true
+        if (y < -1e-3) sawNeg = true
+      }
+      expect(sawPos && sawNeg, `${rx}:${ry}@${ph} crosses zero`).toBe(false)
+    }
+  })
+
   it('ease presets carry no treatment: the arc IS what plays', () => {
     for (const preset of MOTION_PRESETS) {
       if (preset.id === 'bounce' || preset.id === 'spring') {
