@@ -82,19 +82,19 @@ export function TypePanel() {
       <div className="panel-section">
         <div className="panel-heading">STYLE</div>
         <ColorField label="COLOR" value={block.color ?? INK}
-          onChange={(color) => { patchBlock({ color }); commit() }} />
+          onChange={(color) => patchBlock({ color })} onCommit={commit} />
         <Slider label="STROKE" value={block.strokeWidth ?? 0} min={0} max={4} step={0.5}
           format={(v) => `${v.toFixed(1)}px`}
           onChange={(strokeWidth) => patchBlock({ strokeWidth })} onCommit={commit} />
         {(block.strokeWidth ?? 0) > 0 ? (
           <ColorField label="STROKE CLR" value={block.strokeColor ?? INK}
-            onChange={(strokeColor) => { patchBlock({ strokeColor }); commit() }} />
+            onChange={(strokeColor) => patchBlock({ strokeColor })} onCommit={commit} />
         ) : null}
         <Toggle label="BACKGROUND" value={block.background != null}
           onChange={(on) => { patchBlock({ background: on ? PAPER : undefined }); commit() }} />
         {block.background != null ? (
           <ColorField label="BG COLOR" value={block.background}
-            onChange={(background) => { patchBlock({ background }); commit() }} />
+            onChange={(background) => patchBlock({ background })} onCommit={commit} />
         ) : null}
       </div>
       <div className="panel-section">
