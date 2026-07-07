@@ -466,10 +466,13 @@
   display: flex;
   gap: 16px;
   align-items: stretch;
+  justify-content: center;
 }
 
+/* the figure and the speed graph ARE the lab — they take the stage */
 .lane-figure {
-  flex: 0 0 300px;
+  flex: 1 1 0;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
 }
@@ -773,69 +776,3 @@
   background: var(--text);
 }
 
-/* ---- easing library ------------------------------------------------------ */
-
-.lib-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.lib-row {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.lib-family {
-  flex: 0 0 52px;
-  display: flex;
-  align-items: center;
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--text-faint);
-}
-
-.lib-card {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--chrome-2);
-  padding: 6px 6px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.lib-card:hover {
-  border-color: var(--line-strong);
-}
-
-.lib-card.active {
-  border-color: var(--text-dim);
-  background: var(--chrome-1);
-}
-
-.lib-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.lib-path {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.4;
-}
-
-.lib-label {
-  font-size: 8px;
-  letter-spacing: 0.12em;
-  color: var(--text-faint);
-  text-align: left;
-}
-
-.lib-card.active .lib-label {
-  color: var(--text);
-}
