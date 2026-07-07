@@ -166,8 +166,14 @@ export function PathLab() {
     const clump = 74 // arc px between clumped tiles — card-stack tight
     const dur = Math.max(500, pl.lapMs)
     const lag = Math.min(220, dur * 0.05) // follower time lag
-    const tiles = []
+    // paint order must be STABLE: clumped members sit at near-equal depths,
+    // and re-sorting per tile flips their stacking every few frames — a
+    // visible z snap. So: flocks sort by MEAN depth (they only trade places
+    // when far apart on the loop), and inside a flock the order is fixed —
+    // followers behind, leader always on top, a fanned deck.
+    const flocks = []
     for (let g = 0; g < nGroups; g++) {
+      const members = []
       for (let j = 0; j < perGroup; j++) {
         const tj = t - j * lag
         const cyc = tj / dur
@@ -185,10 +191,13 @@ export function PathLab() {
         // 2.5D: cards lean into the tangent's climb (091's wheel feel,
         // without per-card rotation whiplash — sin keeps it continuous)
         const lean = 12 * Math.sin(p.angle)
-        tiles.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, lean, o: 0.35 + 0.65 * near })
+        members.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, lean, o: 0.35 + 0.65 * near })
       }
+      flocks.push({ depth: members.reduce((a, m) => a + m.depth, 0) / members.length, members })
     }
-    return tiles.sort((a, b) => a.depth - b.depth)
+    return flocks
+      .sort((a, b) => a.depth - b.depth)
+      .flatMap((f) => f.members.slice().reverse())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pl.scene, pl.count, pl.groups, pl.lapMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
 
