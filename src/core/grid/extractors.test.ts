@@ -57,12 +57,16 @@ describe('strict editorial extraction', () => {
   })
 })
 
-describe('projection extraction', () => {
-  it('emits one guide pair per usable node cluster with source tracking', () => {
+describe('legacy projection mode', () => {
+  it('is ignored — old recipes get the disciplined grid', () => {
     const { project, ranked, W, H } = buildNodes()
-    const grid = extractGrid({ ...project.grid, mode: 'projection' }, ranked, W, H)
-    const interior = grid.columnBoundaries.slice(1, -1)
-    expect(interior.length).toBeGreaterThan(0)
-    for (const g of interior) expect(g.sources.length).toBeGreaterThan(0)
+    const strict = extractGrid(project.grid, ranked, W, H)
+    const projection = extractGrid({ ...project.grid, mode: 'projection' }, ranked, W, H)
+    expect(projection.columnBoundaries.map((g) => g.pos)).toEqual(
+      strict.columnBoundaries.map((g) => g.pos),
+    )
+    expect(projection.rowBoundaries.map((g) => g.pos)).toEqual(
+      strict.rowBoundaries.map((g) => g.pos),
+    )
   })
 })

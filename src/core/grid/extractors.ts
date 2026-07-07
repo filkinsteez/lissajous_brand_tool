@@ -132,30 +132,23 @@ export function extractGrid(
   const targetCols = Math.max(2, Math.min(8, Math.round(gridState.columnBias)))
   const targetRows = Math.max(2, Math.min(12, Math.round(gridState.rowBias)))
 
-  let colInterior: Cluster[]
-  let rowInterior: Cluster[]
-
-  if (gridState.mode === 'projection') {
-    // straight projection of node positions, eps-deduped, no regularization
-    const eps = box.w * 0.02
-    colInterior = clusterAxis(xs, eps).filter((c) => c.pos > box.x + eps && c.pos < box.x + box.w - eps)
-    rowInterior = clusterAxis(ys, box.h * 0.02).filter((c) => c.pos > box.y + eps && c.pos < box.y + box.h - eps)
-  } else {
-    // Strict Editorial: cluster, fit to target counts, then discipline
-    const mergeGap = (box.w * 0.04) / Math.max(0.5, gridState.columnBias / 4)
-    colInterior = fitBoundaries(
-      clusterAxis(xs, mergeGap), box.x, box.x + box.w,
-      targetCols - 1, box.w / (2 * targetCols),
-    )
-    rowInterior = fitBoundaries(
-      clusterAxis(ys, box.h * 0.03), box.y, box.y + box.h,
-      targetRows - 1, box.h / (2 * targetRows),
-    )
-    // discipline: snap columns to a micro-unit, rows to the baseline grid
-    const unit = box.w / 48
-    for (const c of colInterior) c.pos = box.x + Math.round((c.pos - box.x) / unit) * unit
-    for (const r of rowInterior) r.pos = box.y + Math.round((r.pos - box.y) / baseline) * baseline
-  }
+  // Cluster the crossings, fit to the target counts, then discipline —
+  // the grid IS the crossings, evened out so any curve (even the
+  // single-crossing 1:2) yields a workable editorial structure. The old
+  // raw-projection mode was cut: it collapsed on sparse figures.
+  const mergeGap = (box.w * 0.04) / Math.max(0.5, gridState.columnBias / 4)
+  const colInterior = fitBoundaries(
+    clusterAxis(xs, mergeGap), box.x, box.x + box.w,
+    targetCols - 1, box.w / (2 * targetCols),
+  )
+  const rowInterior = fitBoundaries(
+    clusterAxis(ys, box.h * 0.03), box.y, box.y + box.h,
+    targetRows - 1, box.h / (2 * targetRows),
+  )
+  // discipline: snap columns to a micro-unit, rows to the baseline grid
+  const unit = box.w / 48
+  for (const c of colInterior) c.pos = box.x + Math.round((c.pos - box.x) / unit) * unit
+  for (const r of rowInterior) r.pos = box.y + Math.round((r.pos - box.y) / baseline) * baseline
 
   const columnBoundaries = toGuides('x', box.x, box.x + box.w, colInterior)
   const rowBoundaries = toGuides('y', box.y, box.y + box.h, rowInterior)

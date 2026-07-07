@@ -9,7 +9,7 @@ import { PresetStrip } from '../PresetStrip'
 import { ARTBOARD_PRESETS } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
-import type { ArtboardPresetId, GridMode } from '@/core/state/types'
+import type { ArtboardPresetId } from '@/core/state/types'
 
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
 const pct = (v: number) => `${Math.round(v * 100)}`
@@ -102,26 +102,9 @@ export function SystemPanel() {
       </div>
       <div className="panel-section">
         <div className="panel-heading">STRUCTURE</div>
-        <SegmentedControl<GridMode>
-          label="GRID LINES"
-          value={grid.mode}
-          options={[
-            { value: 'strict', label: 'SNAPPED' },
-            { value: 'projection', label: 'AT CROSSINGS' },
-          ]}
-          onChange={(mode) => {
-            // reveal the grid + curve while switching so the difference is
-            // actually visible — the lines this changes are otherwise hidden
-            touch()
-            apply({ grid: { mode } })
-            settle()
-          }}
-        />
         <div className="panel-note">
-          Both grids are built from the curve&apos;s crossings — watch the lines
-          when you flip this. SNAPPED evens them out into the column/row counts
-          below; AT CROSSINGS puts a line through every crossing, exactly where
-          it falls. Busier curves give AT CROSSINGS more to work with.
+          Columns and rows are clustered from the curve&apos;s crossings, then
+          evened out to the counts below.
         </div>
         <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />

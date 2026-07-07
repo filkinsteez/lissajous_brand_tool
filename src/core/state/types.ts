@@ -22,6 +22,8 @@ export type LissajousState = {
   presetId?: string
 }
 
+// legacy field: extraction is always the disciplined (strict) grid now;
+// kept so old recipes and share links keep loading
 export type GridMode = 'strict' | 'projection'
 
 export type GridState = {
