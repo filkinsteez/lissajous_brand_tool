@@ -96,6 +96,18 @@ export function MotionLab() {
   const speed = useMemo(() => arc.speed ?? velocityOf(arc.lut), [arc])
   const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
 
+  // honest scale: the y-axis is normalized to peak=1, so every curve fills
+  // full height and LOOKS maximally snappy. AE's axis is absolute px/sec —
+  // the drama is visible there as peak towering over average. The AVG line
+  // and the ratio readout put that truth back: ~1.6× is a gentle arch,
+  // AE-snappy runs 3.5-6×.
+  const meanSpeed = useMemo(() => {
+    let sum = 0
+    for (const v of speed) sum += Math.abs(v)
+    return Math.max(1e-6, sum / speed.length)
+  }, [speed])
+  const dynamicRatio = 1 / meanSpeed
+
   const speedPath = useMemo(() => {
     let d = `M ${trackX(0).toFixed(1)} ${spY(speed[0]).toFixed(1)}`
     for (let i = 1; i < speed.length; i++) {
@@ -260,6 +272,12 @@ export function MotionLab() {
           {/* speed graph — same square frame as the figure panel */}
           <line x1={PAD} y1={spY(1)} x2={W - PAD} y2={spY(1)} className="lane-rule" />
           <line x1={PAD} y1={spY(0)} x2={W - PAD} y2={spY(0)} className="lane-rule" />
+          {/* average speed: the honest yardstick for how snappy this really is */}
+          <line x1={PAD} y1={spY(meanSpeed)} x2={W - PAD} y2={spY(meanSpeed)} className="plot-avg" />
+          <text x={W - PAD} y={spY(meanSpeed) - 5} className="plot-avg-label">AVG</text>
+          <text x={W - PAD} y={plotTop - 9} className="plot-ratio" data-testid="dynamic-ratio">
+            PEAK {dynamicRatio.toFixed(1)}× AVG
+          </text>
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="speed-arc" className="lane-arc" />

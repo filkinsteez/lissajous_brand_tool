@@ -96,7 +96,7 @@ export function MotionPanel() {
         </div>
       </div>
       <div className="panel-section">
-        <Slider label="DURATION" value={ml.durationMs} min={400} max={3000} step={50}
+        <Slider label="DURATION" value={ml.durationMs} min={200} max={3000} step={50}
           format={(v) => `${Math.round(v)}ms`}
           onChange={(durationMs) => setT({ motionLab: { durationMs } })} onCommit={commit} />
       </div>

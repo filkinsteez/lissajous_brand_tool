@@ -192,7 +192,7 @@ export function PathLab() {
         // 2.5D: cards lean into the tangent's climb (091's wheel feel,
         // without per-card rotation whiplash — sin keeps it continuous)
         const lean = 12 * Math.sin(p.angle)
-        members.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, lean, o: 0.35 + 0.65 * near })
+        members.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, lean })
       }
       flocks.push({ depth: members.reduce((a, m) => a + m.depth, 0) / members.length, members })
     }
@@ -345,7 +345,6 @@ export function PathLab() {
                 <g
                   key={tile.key}
                   data-testid={`orbit-tile-${tile.key}`}
-                  opacity={tile.o}
                   transform={`translate(${tile.x.toFixed(1)} ${tile.y.toFixed(1)}) scale(${tile.depth.toFixed(3)}) rotate(${tile.lean.toFixed(1)})`}
                 >
                   <image

@@ -550,7 +550,10 @@ function arcVelocityEasing(
 // ease. Endpoints re-normalized to land exactly 0→1.
 export function applyStrength(lut: Float32Array, strength: number): Float32Array {
   if (strength <= 0.001) return lut
-  const power = 1 + strength * 5 // full crank = dramatic, spiky speed lobes
+  // full crank = a genuinely narrow spike. The sine-family arches are wide
+  // by nature (peak ≈ 1.6× the average); AE-snappy easing runs 3.5-6×
+  // peak-over-average, and that ratio is what the eye reads as "snap".
+  const power = 1 + strength * 8
   const n = lut.length
   const out = new Float32Array(n)
   for (let i = 1; i < n; i++) {
