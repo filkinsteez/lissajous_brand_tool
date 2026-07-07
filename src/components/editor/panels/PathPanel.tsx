@@ -39,8 +39,8 @@ export function PathPanel() {
         <div className="panel-note">
           FLOW runs the text along the figure. ORBIT rides tiles around it.
           ASSEMBLE scatters the headline onto the curve and flies it in with
-          the MOTION tab&apos;s easing. Lab principle: nothing ever comes to
-          a complete stop — like the curve, everything keeps moving.
+          the MOTION tab&apos;s easing. Lab principle: nothing on the path
+          ever stops — only a set headline is allowed to rest.
         </div>
       </div>
       <div className="panel-section">
