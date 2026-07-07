@@ -76,13 +76,6 @@ export function MotionLab() {
   }
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
-  // continuous clock for ambient motion — the figure traced endlessly
-  // (idle states, loaders, breathing): one revolution per 1.5 durations,
-  // close to the main sweep so the whole lab plays at one tempo
-  const ambT = (elapsedRef.current / 1000) * ((Math.PI * 2) / Math.max(1.2, (ml.durationMs / 1000) * 1.5))
-  const ambX = Math.sin(ml.ratioX * ambT + ml.phase)
-  const ambY = Math.sin(ml.ratioY * ambT)
-
   // ---- the SPEED GRAPH (AE's px/sec view) with the straight path under it.
   // The source of every easing is its velocity. In speed-read recipes the
   // displayed curve IS the figure's arc (ghosted context behind it); in
@@ -314,33 +307,6 @@ export function MotionLab() {
           </div>
 
           <div className="vignette">
-            <div className="v-stage">
-              <div className="v-button">
-                <div className="v-button-fill" style={{ width: `${clamp01(easeAt(0)) * 100}%` }} />
-                <span className="v-button-label">CONTINUE</span>
-              </div>
-            </div>
-            <span className="v-label">BUTTON</span>
-          </div>
-
-          <div className="vignette">
-            <div className="v-stage">
-              <div
-                className="v-card"
-                style={{
-                  transform: `translateY(${(1 - easeAt(0)) * 26}px)`,
-                  opacity: 0.05 + clamp01(easeAt(0)) * 0.95,
-                }}
-              >
-                <div className="v-card-bar" />
-                <div className="v-card-line" />
-                <div className="v-card-line short" />
-              </div>
-            </div>
-            <span className="v-label">CARD ENTER</span>
-          </div>
-
-          <div className="vignette">
             <div className="v-stage v-frame">
               <div className="v-backdrop" style={{ opacity: clamp01(easeAt(0)) * 0.45 }} />
               <div
@@ -351,46 +317,6 @@ export function MotionLab() {
               </div>
             </div>
             <span className="v-label">SHEET</span>
-          </div>
-
-          <div className="vignette">
-            <div className="v-stage">
-              <svg viewBox="-30 -30 60 60" width="60" height="60" data-testid="v-loader">
-                <path
-                  d={(() => {
-                    let d = ''
-                    for (let i = 0; i <= 240; i++) {
-                      const t = (i / 240) * Math.PI * 2
-                      d += `${d ? ' L' : 'M'} ${(Math.sin(ml.ratioX * t + ml.phase) * 22).toFixed(1)} ${(-Math.sin(ml.ratioY * t) * 22).toFixed(1)}`
-                    }
-                    return d + ' Z'
-                  })()}
-                  className="v-loader-track"
-                />
-                <circle cx={ambX * 22} cy={-ambY * 22} r={3.5} className="lane-dot" />
-              </svg>
-            </div>
-            <span className="v-label">LOADER — THE FIGURE ITSELF</span>
-          </div>
-
-          <div className="vignette">
-            <div className="v-stage">
-              <div
-                className="v-orbit-chip"
-                style={{ transform: `translate(${ambX * 14}px, ${-ambY * 10}px)` }}
-              />
-            </div>
-            <span className="v-label">AMBIENT FLOAT</span>
-          </div>
-
-          <div className="vignette">
-            <div className="v-stage">
-              <div
-                className="v-breathe"
-                style={{ transform: `scale(${1 + 0.09 * ambY})` }}
-              />
-            </div>
-            <span className="v-label">BREATHE</span>
           </div>
 
           <div className="vignette">

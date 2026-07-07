@@ -19,8 +19,11 @@ const int = (v: number) => String(Math.round(v))
 export function SystemPanel() {
   const liss = useStore((s) => s.project.lissajous)
   const grid = useStore((s) => s.project.grid)
+  const glyphsOn = useStore((s) => s.project.glyphField.enabled)
+  const materialOn = useStore((s) => s.project.material.enabled)
   const artboardPreset = useStore((s) => s.project.artboard.preset)
   const showGuides = useStore((s) => s.ui.showGuides)
+  const mode = useStore((s) => s.ui.mode)
   const setUi = useStore((s) => s.setUi)
   const apply = useStore((s) => s.apply)
   const setT = useStore((s) => s.setTransient)
@@ -72,13 +75,19 @@ export function SystemPanel() {
       <div className="panel-section">
         <div className="panel-heading">STRUCTURE</div>
         <SegmentedControl<GridMode>
+          label="GRID LINES"
           value={grid.mode}
           options={[
-            { value: 'strict', label: 'STRICT EDITORIAL' },
-            { value: 'projection', label: 'PROJECTION' },
+            { value: 'strict', label: 'SNAPPED' },
+            { value: 'projection', label: 'AT CROSSINGS' },
           ]}
           onChange={(mode) => apply({ grid: { mode } })}
         />
+        <div className="panel-note">
+          Lines come from where the curve crosses itself. SNAPPED disciplines
+          them into even columns and baselines; AT CROSSINGS keeps them exactly
+          where the crossings fall.
+        </div>
         <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />
         <Slider label="COLUMNS" value={grid.columnBias} min={2} max={8} step={1} format={int}
@@ -91,14 +100,29 @@ export function SystemPanel() {
           onChange={(v) => curve({ grid: { baselineRhythm: v } })} onCommit={settle} />
         <Slider label="SNAP" value={grid.snapStrength} min={0} max={1} format={pct}
           onChange={(v) => curve({ grid: { snapStrength: v } })} onCommit={settle} />
-        <Toggle label="GUIDES IN COMPOSE" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
+        <Toggle label="SHOW GUIDES" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
+        <Toggle
+          label="CONSTRUCTION VIEW"
+          value={mode === 'setup'}
+          onChange={(v) => setUi({ mode: v ? 'setup' : 'compose' })}
+        />
         {grid.selectedNodeIds.length > 0 ? (
           <button className="ctl-action" onClick={() => apply({ grid: { selectedNodeIds: [] } })}>
             CLEAR NODE SELECTION ({grid.selectedNodeIds.length})
           </button>
         ) : (
-          <div className="panel-note">Click nodes in Lissajous Setup to pin the grid to them.</div>
+          <div className="panel-note">
+            CONSTRUCTION VIEW shows the curve and its crossings on the artboard;
+            click crossings to pin the grid to them.
+          </div>
         )}
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">LAYERS</div>
+        <Toggle label="GLYPH FIELD" value={glyphsOn}
+          onChange={(enabled) => apply({ glyphField: { enabled } })} />
+        <Toggle label="MATERIAL" value={materialOn}
+          onChange={(enabled) => apply({ material: { enabled } })} />
       </div>
       <div className="panel-section">
         <SegmentedControl<ArtboardPresetId>

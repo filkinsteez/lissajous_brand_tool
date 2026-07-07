@@ -109,7 +109,7 @@ export function TypeLayer() {
     if (!drag.moved) {
       if (Math.hypot(dxPx, dyPx) < 4) return
       drag.moved = true
-      useStore.getState().setUi({ dragging: true, selectedBlockId: block.id, activePanel: 'type' })
+      useStore.getState().setUi({ dragging: true, selectedBlockId: block.id, activePanel: 'compose' })
     }
     const state = useStore.getState()
     const grid = getDerived(state.project).grid
@@ -140,7 +140,7 @@ export function TypeLayer() {
             key={block.id}
             data-block-id={block.id}
             className={selectedBlockId === block.id ? 'type-block selected' : 'type-block'}
-            onClick={() => setUi({ selectedBlockId: block.id, activePanel: 'type' })}
+            onClick={() => setUi({ selectedBlockId: block.id, activePanel: 'compose' })}
             onPointerDown={(e) => onPointerDown(e, block, box)}
             onPointerMove={(e) => onPointerMove(e, block)}
             onPointerUp={(e) => onPointerUp(e, block)}

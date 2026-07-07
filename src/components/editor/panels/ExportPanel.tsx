@@ -13,7 +13,9 @@ const GALLERY = [
   { id: 'orbital', label: 'ORBITAL' },
 ]
 
-export function ExportPanel() {
+// variant 'motion' drops the poster-only pieces (PNG render, gallery):
+// recipes and share links carry the motion system, so they live in both tabs
+export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'motion' }) {
   const project = useStore((s) => s.project)
   const apply = useStore((s) => s.apply)
   const replaceProject = useStore((s) => s.replaceProject)
@@ -28,6 +30,7 @@ export function ExportPanel() {
 
   return (
     <div className="panel">
+      {variant === 'compose' ? (
       <div className="panel-section">
         <SegmentedControl
           label="EXPORT SCALE"
@@ -57,6 +60,7 @@ export function ExportPanel() {
           {busy ? 'RENDERING…' : 'EXPORT PNG'}
         </button>
       </div>
+      ) : null}
       <div className="panel-section">
         <button className="ctl-action" onClick={() => { downloadRecipe(project); flash('RECIPE SAVED') }}>
           DOWNLOAD BRAND RECIPE
@@ -98,6 +102,7 @@ export function ExportPanel() {
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
       </div>
+      {variant === 'compose' ? (
       <div className="panel-section">
         <div className="panel-heading">GALLERY</div>
         <div className="preset-strip">
@@ -121,6 +126,7 @@ export function ExportPanel() {
           ))}
         </div>
       </div>
+      ) : null}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { createDefaultProject } from './defaults'
 import { History } from './history'
 
 export type EditorMode = 'compose' | 'setup' | 'motion'
-export type PanelId = 'system' | 'type' | 'glyphField' | 'material' | 'motion' | 'export'
+export type PanelId = 'compose' | 'motion'
 export type Quality = 'live' | 'hq'
 
 export type UiState = {
@@ -75,7 +75,7 @@ export const useStore = create<StoreState>()((set, get) => ({
   project: createDefaultProject(),
   ui: {
     mode: 'compose',
-    activePanel: 'system',
+    activePanel: 'compose',
     quality: 'live',
     mounted: false,
     showGuides: false,
