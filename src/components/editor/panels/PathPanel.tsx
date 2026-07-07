@@ -82,19 +82,31 @@ export function PathPanel() {
           onChange={(text) => setT({ pathLab: { text } })} onCommit={commit} />
         <Slider label="SIZE" value={pl.textSize} min={16} max={110} step={1} format={int}
           onChange={(textSize) => setT({ pathLab: { textSize } })} onCommit={commit} />
-        {pl.scene !== 'assemble' ? (
+        {pl.scene === 'flow' ? (
           <Slider label="SPEED" value={pl.speed} min={0.01} max={0.2} step={0.005}
             format={(v) => `${Math.round(v * 500)}`}
             onChange={(speed) => setT({ pathLab: { speed } })} onCommit={commit} />
         ) : null}
         {pl.scene === 'orbit' ? (
-          <Slider label="TILES" value={pl.count} min={3} max={12} step={1} format={int}
-            onChange={(count) => setT({ pathLab: { count } })} onCommit={commit} />
+          <>
+            <Slider label="TILES" value={pl.count} min={2} max={16} step={1} format={int}
+              onChange={(count) => setT({ pathLab: { count } })} onCommit={commit} />
+            <Slider label="FLOCKS" value={pl.groups} min={1} max={4} step={1} format={int}
+              onChange={(groups) => setT({ pathLab: { groups } })} onCommit={commit} />
+          </>
         ) : null}
-        {pl.scene === 'assemble' ? (
+        {pl.scene !== 'flow' ? (
           <Slider label="DURATION" value={pl.durationMs} min={800} max={6000} step={100}
             format={(v) => `${Math.round(v)}ms`}
             onChange={(durationMs) => setT({ pathLab: { durationMs } })} onCommit={commit} />
+        ) : null}
+        {pl.scene === 'orbit' ? (
+          <div className="panel-note">
+            Each flock laps the figure once per DURATION with the MOTION
+            tab&apos;s easing — crank its STRENGTH for a dramatic whip. Try a
+            1:1 path at 150°+ phase: the flat ellipse plus back-scaling reads
+            as a carousel in perspective.
+          </div>
         ) : null}
         {pl.scene === 'assemble' ? (
           <div className="panel-note">

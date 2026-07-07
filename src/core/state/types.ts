@@ -142,9 +142,10 @@ export type PathLabState = {
   phase: number // radians
   text: string
   textSize: number // px in stage units
-  speed: number // revolutions per second along the path (flow/orbit)
+  speed: number // revolutions per second along the path (flow)
   count: number // orbit tile count
-  durationMs: number // assemble in/out duration
+  groups: number // orbit flocks: tiles clump into this many groups
+  durationMs: number // orbit lap / assemble in-out duration
 }
 
 export type ExportState = { scale: 1 | 2 | 4 }

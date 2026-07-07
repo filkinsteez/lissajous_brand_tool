@@ -137,19 +137,39 @@ export function PathLab() {
   }, [pl.text, pl.textSize, flowLen, flowCopyW])
   const flowOffset = ((t / 1000) * pl.speed * flowLen) % flowLen
 
-  // ---- ORBIT: tiles at equal arc spacing, painted back-to-front by depth
+  // ---- ORBIT: flocks — tiles clump into groups that lap the path with
+  // the brand easing. Followers ease on a slight time lag, so a flock
+  // stretches out while it accelerates and bunches up when it settles.
+  // Depth: for 1:1 figures the ellipse IS a tilted circle, so the curve
+  // parameter gives a true front/back (cos(t + φ/2)) — the y-heuristic
+  // dies on thin ellipses (150°+ phase) where both limbs share heights.
   const orbitTiles = useMemo(() => {
     if (pl.scene !== 'orbit') return []
-    const head = (t / 1000) * pl.speed * total
+    const nGroups = Math.max(1, Math.min(pl.groups, pl.count))
+    const perGroup = Math.max(1, Math.round(pl.count / nGroups))
+    const g0 = Math.max(1, gcd(Math.round(pl.ratioX), Math.round(pl.ratioY)))
+    const isCircle = Math.round(pl.ratioX) / g0 === 1 && Math.round(pl.ratioY) / g0 === 1
+    const clump = 74 // arc px between clumped tiles — card-stack tight
+    const lag = Math.min(150, pl.durationMs * 0.07) // follower time lag
+    const dur = Math.max(200, pl.durationMs)
     const tiles = []
-    for (let i = 0; i < pl.count; i++) {
-      const p = path.lut.posAt(head + (i / pl.count) * total)
-      const depth = 0.78 + 0.42 * (p.y / H) // lower on stage = nearer
-      tiles.push({ i, x: p.x, y: p.y, depth })
+    for (let g = 0; g < nGroups; g++) {
+      for (let j = 0; j < perGroup; j++) {
+        const tj = t - j * lag
+        const lap = Math.floor(tj / dur)
+        const e = evalEase(brandLut, clamp01((tj - lap * dur) / dur))
+        const s = (lap + e) * total + (g / nGroups) * total + j * clump
+        const p = path.lut.posAt(s)
+        const near = isCircle
+          ? 0.5 - 0.5 * Math.cos(p.t + pl.phase / 2) // tilted-circle depth, 0=back 1=front
+          : p.y / H // fallback: lower on stage = nearer
+        const depth = lerp(0.55, 1.22, near)
+        tiles.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, o: 0.35 + 0.65 * near })
+      }
     }
     return tiles.sort((a, b) => a.depth - b.depth)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pl.scene, pl.count, pl.speed, path, t])
+  }, [pl.scene, pl.count, pl.groups, pl.durationMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
 
   // ---- ASSEMBLE: headline chars fly from the path into the set line,
   // resting positions from the measured per-char advances
@@ -236,13 +256,14 @@ export function PathLab() {
           {pl.scene === 'orbit'
             ? orbitTiles.map((tile) => (
                 <g
-                  key={tile.i}
-                  data-testid={`orbit-tile-${tile.i}`}
+                  key={tile.key}
+                  data-testid={`orbit-tile-${tile.key}`}
+                  opacity={tile.o}
                   transform={`translate(${tile.x.toFixed(1)} ${tile.y.toFixed(1)}) scale(${tile.depth.toFixed(3)})`}
                 >
                   <rect x={-62} y={-44} width={124} height={88} rx={10} className="orbit-tile" />
                   <text y={8} className="orbit-tile-label">
-                    {String(tile.i + 1).padStart(2, '0')}
+                    {String(tile.n).padStart(2, '0')}
                   </text>
                 </g>
               ))
@@ -266,7 +287,7 @@ export function PathLab() {
           {pl.scene === 'flow'
             ? 'The brand line runs the figure end to end — a marquee with the curve as its track.'
             : pl.scene === 'orbit'
-              ? 'Tiles ride the figure at equal spacing; nearer tiles grow, like a carousel.'
+              ? 'Flocks of tiles lap the figure with the MOTION tab’s easing — stretching as they whip, bunching as they settle, scaling down at the back.'
               : 'Characters scatter along the figure and assemble into the headline with the MOTION tab’s easing.'}
         </div>
       </div>

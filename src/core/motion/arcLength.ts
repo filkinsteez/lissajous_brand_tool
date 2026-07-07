@@ -2,7 +2,7 @@ import type { CurveSample } from '@/core/lissajous/sampler'
 
 export type ArcLUT = {
   total: number
-  posAt: (s: number) => { x: number; y: number; angle: number }
+  posAt: (s: number) => { x: number; y: number; angle: number; t: number }
 }
 
 // Cumulative arc-length parameterization of a sampled curve, so traversal
@@ -29,13 +29,14 @@ export function buildArcLUT(samples: CurveSample[]): ArcLUT {
       else hi = mid
     }
     const span = cum[hi] - cum[lo] || 1
-    const t = (target - cum[lo]) / span
+    const f = (target - cum[lo]) / span
     const a = samples[lo]
     const b = samples[hi]
     return {
-      x: a.x + (b.x - a.x) * t,
-      y: a.y + (b.y - a.y) * t,
+      x: a.x + (b.x - a.x) * f,
+      y: a.y + (b.y - a.y) * f,
       angle: a.angle,
+      t: a.t + (b.t - a.t) * f, // curve parameter — depth cues need it
     }
   }
 
