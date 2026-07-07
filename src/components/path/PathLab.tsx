@@ -13,9 +13,15 @@ import type { LissajousState } from '@/core/state/types'
 // text marquee on the path, ORBIT a ring of tiles, ASSEMBLE a headline
 // whose characters fly in FROM the path with the MOTION tab's easing —
 // the same figure family drives the layout grid, the easing, and this.
+//
+// LAB PRINCIPLE — FLUIDITY: nothing here ever comes to a complete stop.
+// The curve is infinite, so everything riding it stays in motion: eases
+// ride ON TOP of a base drift (never instead of it), and "held" states
+// breathe. If a new scene can park, it's wrong.
 const W = 1000
 const H = 760
 const HOLD_MS = 700
+const DRIFT_FLOOR = 0.22 // fraction of orbit travel that is pure drift
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -156,9 +162,13 @@ export function PathLab() {
     for (let g = 0; g < nGroups; g++) {
       for (let j = 0; j < perGroup; j++) {
         const tj = t - j * lag
-        const lap = Math.floor(tj / dur)
-        const e = evalEase(brandLut, clamp01((tj - lap * dur) / dur))
-        const s = (lap + e) * total + (g / nGroups) * total + j * clump
+        const cyc = tj / dur
+        const lap = Math.floor(cyc)
+        const e = evalEase(brandLut, clamp01(cyc - lap))
+        // fluidity principle: the ease rides on a base drift, so velocity
+        // never reaches zero — the flock whips, settles, and keeps rolling
+        const prog = DRIFT_FLOOR * cyc + (1 - DRIFT_FLOOR) * (lap + e)
+        const s = prog * total + (g / nGroups) * total + j * clump
         const p = path.lut.posAt(s)
         const near = isCircle
           ? 0.5 - 0.5 * Math.cos(p.t + pl.phase / 2) // tilted-circle depth, 0=back 1=front
@@ -192,15 +202,20 @@ export function PathLab() {
       const start = n > 1 ? (i / (n - 1)) * (dur - D) : 0
       return evalEase(brandLut, clamp01((phaseT - start) / D))
     }
+    // fluidity principle: scattered chars DRIFT along the path instead of
+    // parking on it, and the assembled line breathes with a per-char float
+    const drift = total * (t / (dur * 6))
     return chars.map((c, i) => {
       let e: number
       if (ct < dur) e = easeFor(ct, i) // fly in
-      else if (ct < dur + HOLD_MS) e = 1 // hold the line
+      else if (ct < dur + HOLD_MS) e = 1 // the line breathes, chars afloat
       else if (ct < 2 * dur + HOLD_MS) e = 1 - easeFor(ct - dur - HOLD_MS, i) // scatter back
       else e = 0
-      const p = path.lut.posAt((i / n) * total)
-      const x = lerp(p.x, asmLayout.rest[i], e)
-      const y = lerp(p.y, asmLayout.y, e)
+      const p = path.lut.posAt(drift + (i / n) * total)
+      const fx = 2.6 * Math.sin(t / 530 + i * 1.7)
+      const fy = 3.6 * Math.sin(t / 470 + i * 0.9)
+      const x = lerp(p.x, asmLayout.rest[i], e) + fx * e
+      const y = lerp(p.y, asmLayout.y, e) + fy * e
       const rot = (1 - e) * ((p.angle * 180) / Math.PI)
       return { c, i, x, y, rot, o: 0.35 + 0.65 * e }
     })
