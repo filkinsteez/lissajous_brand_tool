@@ -113,9 +113,6 @@ export function SystemPanel() {
             })
           }
         />
-        <button className="ctl-action primary" onClick={shuffle}>
-          SHUFFLE LAYOUT
-        </button>
       </div>
       <div className="panel-section">
         <div className="panel-heading">IMAGES</div>
@@ -177,6 +174,9 @@ export function SystemPanel() {
       <div className="panel-section">
         <div className="panel-heading">RATIO</div>
         <PresetStrip />
+        <button className="ctl-action primary" onClick={shuffle}>
+          SHUFFLE LAYOUT
+        </button>
       </div>
       <div className="panel-section">
         <div className="panel-heading">CURVE</div>
