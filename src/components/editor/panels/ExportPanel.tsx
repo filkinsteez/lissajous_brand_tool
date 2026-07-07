@@ -7,12 +7,6 @@ import { downloadPNG } from '@/core/export/png'
 import { downloadRecipe, readRecipeFile } from '@/core/export/recipe'
 import { encodeShareHash } from '@/core/state/compress'
 
-const GALLERY = [
-  { id: 'structure', label: 'STRUCTURE' },
-  { id: 'signal', label: 'SIGNAL' },
-  { id: 'orbital', label: 'ORBITAL' },
-]
-
 // variant 'motion' drops the poster-only pieces (PNG render, gallery):
 // recipes and share links carry the motion system, so they live in both tabs
 export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'motion' }) {
@@ -102,31 +96,6 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
       </div>
-      {variant === 'compose' ? (
-      <div className="panel-section">
-        <div className="panel-heading">GALLERY</div>
-        <div className="preset-strip">
-          {GALLERY.map((g) => (
-            <button
-              key={g.id}
-              className="preset-chip"
-              onClick={async () => {
-                try {
-                  const res = await fetch(`/presets/${g.id}.json`)
-                  const { deserializeProject } = await import('@/core/state/serialize')
-                  const loaded = deserializeProject(await res.text())
-                  if (loaded) replaceProject(loaded)
-                } catch {
-                  flash('PRESET FAILED')
-                }
-              }}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      ) : null}
     </div>
   )
 }
