@@ -177,6 +177,12 @@
   filter: grayscale(1) contrast(1.04);
 }
 
+.ctl-sub-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+
 .thumb-strip {
   display: flex;
   flex-wrap: wrap;

@@ -10,6 +10,7 @@ import { ARTBOARD_PRESETS } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
 import { importImageFile } from '@/core/images'
+import { BACKGROUND_IMAGES, builtinBgId } from '@/core/assets'
 import { mulberry32, type Rng } from '@/core/math/random'
 import type { ArtboardPresetId, ImageItem } from '@/core/state/types'
 
@@ -87,10 +88,30 @@ export function SystemPanel() {
     if (added.length) apply({ images: [...project.images, ...added] })
   }
 
+  // built-in backgrounds live in project.images only while active as the
+  // bg (id prefix bgi-); uploads stay put. applyBg keeps that invariant.
+  const uploads = project.images.filter((im) => !im.id.startsWith('bgi-'))
+  const applyBg = (next: string | null) => {
+    if (next && next.startsWith('bgi-')) {
+      const path = BACKGROUND_IMAGES.find((p) => builtinBgId(p) === next)
+      if (!path) return
+      apply({
+        images: [...uploads, { id: next, src: path, anchor: { col: 0, row: 0, colSpan: 2, rowSpan: 3 } }],
+        bgImageId: next,
+      })
+    } else {
+      apply({ images: uploads, bgImageId: next })
+    }
+  }
+
   const shuffleBg = () => {
-    const ids: (string | null)[] = [null, ...project.images.map((im) => im.id)]
-    const idx = ids.indexOf(project.bgImageId)
-    apply({ bgImageId: ids[(idx + 1) % ids.length] })
+    const candidates: (string | null)[] = [
+      null,
+      ...BACKGROUND_IMAGES.map(builtinBgId),
+      ...uploads.map((im) => im.id),
+    ]
+    const idx = candidates.indexOf(project.bgImageId)
+    applyBg(candidates[(idx + 1) % candidates.length])
   }
 
   return (
@@ -127,49 +148,61 @@ export function SystemPanel() {
             e.target.value = ''
           }}
         />
+        <div className="ctl-sub-label">BACKGROUNDS</div>
+        <div className="thumb-strip">
+          {BACKGROUND_IMAGES.map((path) => {
+            const id = builtinBgId(path)
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={id}
+                src={path}
+                alt=""
+                className={project.bgImageId === id ? 'img-thumb bg-active' : 'img-thumb'}
+                onClick={() => applyBg(project.bgImageId === id ? null : id)}
+              />
+            )
+          })}
+        </div>
         <button className="ctl-action" onClick={() => fileRef.current?.click()}>
           ADD IMAGES
         </button>
-        {project.images.length ? (
-          <>
-            <div className="thumb-strip">
-              {project.images.map((im) => (
-                <div key={im.id} className="thumb-wrap">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={im.src}
-                    alt=""
-                    className={project.bgImageId === im.id ? 'img-thumb bg-active' : 'img-thumb'}
-                    onClick={() =>
-                      apply({ bgImageId: project.bgImageId === im.id ? null : im.id })
-                    }
-                  />
-                  <button
-                    className="thumb-remove"
-                    aria-label="Remove image"
-                    onClick={() =>
-                      apply({
-                        images: project.images.filter((x) => x.id !== im.id),
-                        bgImageId: project.bgImageId === im.id ? null : project.bgImageId,
-                      })
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button className="ctl-action" onClick={shuffleBg}>
-              SHUFFLE BG IMAGE
-            </button>
-            <div className="panel-note">
-              Images sit on the grid; SHUFFLE LAYOUT re-deals them with the
-              type. Click a thumbnail to make it the full-bleed background.
-              Everything renders in mono — photographs join the ink. Images
-              stay local: share links don&apos;t carry them.
-            </div>
-          </>
+        {uploads.length ? (
+          <div className="thumb-strip">
+            {uploads.map((im) => (
+              <div key={im.id} className="thumb-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={im.src}
+                  alt=""
+                  className={project.bgImageId === im.id ? 'img-thumb bg-active' : 'img-thumb'}
+                  onClick={() => applyBg(project.bgImageId === im.id ? null : im.id)}
+                />
+                <button
+                  className="thumb-remove"
+                  aria-label="Remove image"
+                  onClick={() =>
+                    apply({
+                      images: project.images.filter((x) => x.id !== im.id),
+                      bgImageId: project.bgImageId === im.id ? null : project.bgImageId,
+                    })
+                  }
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         ) : null}
+        <button className="ctl-action" onClick={shuffleBg}>
+          SHUFFLE BG IMAGE
+        </button>
+        <div className="panel-note">
+          Click a background or an upload to make it the full bleed; uploads
+          also sit on the grid and re-deal with SHUFFLE LAYOUT. Everything
+          renders in mono. Uploads stay local — share links carry only the
+          built-in backgrounds.
+        </div>
       </div>
       <div className="panel-section">
         <div className="panel-heading">RATIO</div>

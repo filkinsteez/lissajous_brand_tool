@@ -6,10 +6,12 @@ import { deserializeProject, serializeProject } from './serialize'
 // the server, has no practical length limit, and works identically in
 // dev, on Vercel, and in static export.
 export function encodeShareHash(project: ProjectState): string {
-  // imported image data URLs would blow the URL into the megabytes —
-  // share links carry everything EXCEPT the images themselves
+  // uploaded image data URLs would blow the URL into the megabytes — share
+  // links keep only path-based srcs (the built-in backgrounds)
+  const images = project.images.filter((im) => im.src.startsWith('/'))
+  const bgImageId = images.some((im) => im.id === project.bgImageId) ? project.bgImageId : null
   return 's=' + compressToEncodedURIComponent(
-    serializeProject({ ...project, images: [], bgImageId: null }),
+    serializeProject({ ...project, images, bgImageId }),
   )
 }
 
