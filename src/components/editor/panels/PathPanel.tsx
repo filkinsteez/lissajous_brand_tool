@@ -95,6 +95,8 @@ export function PathPanel() {
               onChange={(count) => setT({ pathLab: { count } })} onCommit={commit} />
             <Slider label="FLOCKS" value={pl.groups} min={1} max={4} step={1} format={int}
               onChange={(groups) => setT({ pathLab: { groups } })} onCommit={commit} />
+            <Slider label="DISTANCE" value={pl.spacing} min={30} max={320} step={5} format={int}
+              onChange={(spacing) => setT({ pathLab: { spacing } })} onCommit={commit} />
             <Slider label="LAP" value={pl.lapMs} min={2000} max={24000} step={500}
               format={(v) => `${(v / 1000).toFixed(1)}s`}
               onChange={(lapMs) => setT({ pathLab: { lapMs } })} onCommit={commit} />

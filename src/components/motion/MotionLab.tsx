@@ -263,11 +263,13 @@ export function MotionLab() {
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
           {/* the move: the circle travels with the ease of the speed curve;
-              ticks are its footprints at equal time steps */}
+              ticks are its footprints at equal time steps — dense where it
+              crawls, a wide gap across the whip, closing back in as it
+              settles. More marks so the crawl reads as a picket fence. */}
           <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
-          {Array.from({ length: 11 }, (_, i) => {
-            const tx = trackX(clamp01(evalEase(lut, i / 10)))
-            return <line key={i} x1={tx} y1={lineY - 7} x2={tx} y2={lineY + 7} className="lane-tick" />
+          {Array.from({ length: 29 }, (_, i) => {
+            const tx = trackX(clamp01(evalEase(lut, i / 28)))
+            return <line key={i} x1={tx} y1={lineY - 6} x2={tx} y2={lineY + 6} className="lane-tick" />
           })}
           <circle data-testid="line-dot" cx={trackX(clamp01(eased))} cy={lineY} r={8} className="lane-dot" />
         </svg>

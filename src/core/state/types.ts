@@ -161,6 +161,7 @@ export type PathLabState = {
   speed: number // revolutions per second along the path (flow)
   count: number // orbit tile count
   groups: number // orbit flocks: tiles clump into this many groups
+  spacing: number // orbit: arc px between tiles within a flock
   lapMs: number // orbit: one eased lap takes this long
   durationMs: number // assemble in-out duration
 }

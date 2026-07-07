@@ -164,9 +164,11 @@ export function PathLab() {
     const perGroup = Math.max(1, Math.round(pl.count / nGroups))
     const g0 = Math.max(1, gcd(Math.round(pl.ratioX), Math.round(pl.ratioY)))
     const isCircle = Math.round(pl.ratioX) / g0 === 1 && Math.round(pl.ratioY) / g0 === 1
-    const clump = 74 // arc px between clumped tiles — card-stack tight
+    const clump = pl.spacing // arc px between tiles within a flock (DISTANCE)
     const dur = Math.max(500, pl.lapMs)
-    const lag = Math.min(220, dur * 0.05) // follower time lag
+    // follower time lag = the flock's breathing. Kept small so the stretch
+    // is a gentle modulation on the fixed spacing, not a dramatic accordion.
+    const lag = Math.min(70, dur * 0.018)
     // paint order must be STABLE: clumped members sit at near-equal depths,
     // and re-sorting per tile flips their stacking every few frames — a
     // visible z snap. So: flocks sort by MEAN depth (they only trade places
@@ -200,7 +202,7 @@ export function PathLab() {
       .sort((a, b) => a.depth - b.depth)
       .flatMap((f) => f.members.slice().reverse())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pl.scene, pl.count, pl.groups, pl.lapMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
+  }, [pl.scene, pl.count, pl.groups, pl.spacing, pl.lapMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
 
   // ---- ASSEMBLE: headline chars fly from the path into the set line,
   // resting positions from the measured per-char advances
