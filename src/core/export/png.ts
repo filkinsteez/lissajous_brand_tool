@@ -5,13 +5,9 @@ import { getPressureMask } from '@/core/typography/pressureMask'
 import { getGlyphLayout } from '@/core/glyph-field/layout'
 import { renderGlyphField } from '@/core/glyph-field/renderCanvas'
 import { FieldSampler } from '@/core/lissajous/fields'
-import { MaterialRenderer } from '@/render/materialRenderer'
 import { renderTypeToCanvas } from './svgText'
 
-export const EXPORT_BAKE_RES = 512
-
-// Full compositor: background → material (fresh GL context, 512² bake,
-// FBO readback at export res) → glyph field re-render → SVG type. Every
+// Full compositor: background → glyph field re-render → SVG type. Every
 // layer re-renders at target resolution; nothing is upscaled.
 export async function exportPNG(project: ProjectState, scale: 1 | 2 | 4): Promise<Blob> {
   const { width: W, height: H } = project.artboard
@@ -29,21 +25,6 @@ export async function exportPNG(project: ProjectState, scale: 1 | 2 | 4): Promis
 
   const derived = getDerived(project)
   const mask = getPressureMask(project, derived.grid)
-
-  if (project.material.enabled) {
-    const bake = bakeFields(derived.samples, derived.primary, W, H, EXPORT_BAKE_RES)
-    const glCanvas = document.createElement('canvas')
-    glCanvas.width = 4
-    glCanvas.height = 4
-    const renderer = new MaterialRenderer(glCanvas)
-    if (renderer.available) {
-      renderer.setField(bake)
-      renderer.setPressure(mask)
-      const px = renderer.renderToPixels(project.material, outW, outH, project.seed)
-      if (px) ctx.putImageData(new ImageData(px, outW, outH), 0, 0)
-    }
-    renderer.dispose()
-  }
 
   if (project.glyphField.enabled) {
     const bake = bakeFields(derived.samples, derived.primary, W, H, 256)

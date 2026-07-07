@@ -20,7 +20,6 @@ export function SystemPanel() {
   const liss = useStore((s) => s.project.lissajous)
   const grid = useStore((s) => s.project.grid)
   const glyphsOn = useStore((s) => s.project.glyphField.enabled)
-  const materialOn = useStore((s) => s.project.material.enabled)
   const artboardPreset = useStore((s) => s.project.artboard.preset)
   const showGuides = useStore((s) => s.ui.showGuides)
   const mode = useStore((s) => s.ui.mode)
@@ -121,8 +120,6 @@ export function SystemPanel() {
         <div className="panel-heading">LAYERS</div>
         <Toggle label="GLYPH FIELD" value={glyphsOn}
           onChange={(enabled) => apply({ glyphField: { enabled } })} />
-        <Toggle label="MATERIAL" value={materialOn}
-          onChange={(enabled) => apply({ material: { enabled } })} />
       </div>
       <div className="panel-section">
         <SegmentedControl<ArtboardPresetId>
