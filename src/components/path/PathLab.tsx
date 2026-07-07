@@ -23,6 +23,23 @@ const H = 760
 const HOLD_MS = 700
 const DRIFT_FLOOR = 0.22 // fraction of orbit travel that is pure drift
 
+// orbit tile artwork — mirrors public/images/ (add files there, list here)
+const TILE_IMAGES = [
+  'original_0253aae64e02d8dca52290883c17af13.jpg',
+  'original_245799fae0e95c55ffd148eda712ab22.jpg',
+  'original_530deb512207dec4580e959b8b49c75f.jpg',
+  'original_61b003cbcdeec60d83fe426f37cb94d9.jpg',
+  'original_68d1644ec0f7e8d81cf738b9f396d2ee.jpg',
+  'original_6a5133b7a6258e1a6575102a6ff56908.jpg',
+  'original_78515501f37aca5cfaff7ba4abf260a3.jpg',
+  'original_a5c5ac7b1142a891a5c968d254a16a9f.jpg',
+  'original_aab4a7dad51fca7fdb51a19e79b2cfca.jpg',
+  'original_b699c67cc929cdc72450593881cbda7f.jpg',
+  'original_ea53730cdd633b32ed2025db27ac45e0.jpg',
+  'original_f68bd0a2432dbe73da0e05d5cf6b334a.jpg',
+  'original_ff4289e6f1aa4702c17da1d3b6cde78e.jpg',
+].map((f) => `/images/${f}`)
+
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
@@ -333,21 +350,35 @@ export function PathLab() {
             </>
           ) : null}
 
-          {pl.scene === 'orbit'
-            ? orbitTiles.map((tile) => (
+          {pl.scene === 'orbit' ? (
+            <>
+              <defs>
+                <clipPath id="orbit-tile-clip">
+                  <rect x={-62} y={-44} width={124} height={88} rx={10} />
+                </clipPath>
+              </defs>
+              {orbitTiles.map((tile) => (
                 <g
                   key={tile.key}
                   data-testid={`orbit-tile-${tile.key}`}
                   opacity={tile.o}
                   transform={`translate(${tile.x.toFixed(1)} ${tile.y.toFixed(1)}) scale(${tile.depth.toFixed(3)}) rotate(${tile.lean.toFixed(1)})`}
                 >
-                  <rect x={-62} y={-44} width={124} height={88} rx={10} className="orbit-tile" />
-                  <text y={8} className="orbit-tile-label">
-                    {String(tile.n).padStart(2, '0')}
-                  </text>
+                  <image
+                    href={TILE_IMAGES[(tile.n - 1) % TILE_IMAGES.length]}
+                    x={-62}
+                    y={-44}
+                    width={124}
+                    height={88}
+                    preserveAspectRatio="xMidYMid slice"
+                    clipPath="url(#orbit-tile-clip)"
+                    className="orbit-img"
+                  />
+                  <rect x={-62} y={-44} width={124} height={88} rx={10} className="orbit-tile-frame" />
                 </g>
-              ))
-            : null}
+              ))}
+            </>
+          ) : null}
 
           {pl.scene === 'reveal' && reveal ? (
             <>

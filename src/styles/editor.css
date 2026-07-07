@@ -547,18 +547,15 @@
   letter-spacing: 0.05em;
 }
 
-.orbit-tile {
-  fill: var(--chrome-2);
-  stroke: var(--line-strong);
-  stroke-width: 1.5;
+/* mono treatment, same as the layout images: photos join the ink */
+.orbit-img {
+  filter: grayscale(1) contrast(1.05);
 }
 
-.orbit-tile-label {
-  fill: var(--text-dim);
-  font-family: var(--font-mono), monospace;
-  font-size: 22px;
-  letter-spacing: 0.12em;
-  text-anchor: middle;
+.orbit-tile-frame {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
 }
 
 .asm-char {
