@@ -210,7 +210,7 @@ describe('curveArcEasing', () => {
       expect(arch.lut[i]).toBeGreaterThanOrEqual(arch.lut[i - 1] - 1e-6)
     }
     expect(evalEase(arch.lut, 0.1)).toBeLessThan(0.12)
-    expect(evalEase(arch.lut, 0.9)).toBeGreaterThan(0.94)
+    expect(evalEase(arch.lut, 0.9)).toBeGreaterThan(0.9)
     const mid = evalEase(arch.lut, 0.5)
     expect(mid).toBeGreaterThan(0.2)
     expect(mid).toBeLessThan(0.7)
@@ -227,22 +227,27 @@ describe('curveArcEasing', () => {
     expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
   })
 
-  it('the speed curve IS the lobe as drawn — quad ramps, early-peaked arch', () => {
-    // 1:1 ramp read across its x-sweep: speed = 1−p exactly, so the
-    // ease-out is the quadratic 2p − p²
-    const easeOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' })
+  it('the speed curve IS the lobe as drawn — top-half arcs, no flips', () => {
+    // 1:1 at phase 0 harvests the line's top half read left→right:
+    // speed = p, so forward is the quadratic ease-in p²
+    const quadIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' })
     for (const p of [0.25, 0.5, 0.75]) {
-      expect(evalEase(easeOut.lut, p)).toBeCloseTo(2 * p - p * p, 2)
+      expect(evalEase(quadIn.lut, p)).toBeCloseTo(p * p, 2)
+    }
+    const quadOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true })
+    for (const p of [0.25, 0.5, 0.75]) {
+      expect(evalEase(quadOut.lut, p)).toBeCloseTo(2 * p - p * p, 2)
     }
 
-    // ease-in = mirrored: p²
-    const easeIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true })
-    for (const p of [0.25, 0.5, 0.75]) {
-      expect(evalEase(easeIn.lut, p)).toBeCloseTo(p * p, 2)
+    // the circle's top-right quarter as drawn: speed(p) = √(1−p²) — high
+    // at the left, cliff at the right, exactly the marked arc
+    const circleOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' })
+    for (const p of [0.2, 0.5, 0.8]) {
+      expect(evalEase(circleOut.speed!, p)).toBeCloseTo(Math.sqrt(1 - p * p), 2)
     }
 
-    // the 1:2 arch as drawn: speed(p) = |sin 2t| at x-position p — skewed,
-    // peaking left of center exactly like the lobe on the figure
+    // the 1:2 top arch as drawn: speed(p) = 2p√(1−p²), peak right of
+    // center at 1/√2 — the lobe's own skew
     const arch = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
     let peakAt = 0
     let peakV = 0
@@ -252,11 +257,10 @@ describe('curveArcEasing', () => {
         peakAt = i / (arch.speed!.length - 1)
       }
     }
-    expect(peakAt).toBeGreaterThan(0.2)
-    expect(peakAt).toBeLessThan(0.4) // ≈ 1 − 1/√2 ≈ 0.29
-    // and it matches the analytic lobe silhouette 2(1−p)√(2p−p²)
+    expect(peakAt).toBeGreaterThan(0.6)
+    expect(peakAt).toBeLessThan(0.8) // ≈ 1/√2 ≈ 0.71
     for (const p of [0.2, 0.4, 0.6, 0.8]) {
-      const analytic = 2 * (1 - p) * Math.sqrt(2 * p - p * p)
+      const analytic = 2 * p * Math.sqrt(1 - p * p)
       expect(evalEase(arch.speed!, p)).toBeCloseTo(analytic, 2)
     }
   })

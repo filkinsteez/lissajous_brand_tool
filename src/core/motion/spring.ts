@@ -39,8 +39,8 @@ export type MotionPreset = MotionRecipe & { id: string; label: string }
 // where a straight line honestly means no easing.
 export const MOTION_PRESETS: MotionPreset[] = [
   { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0, read: 'position' },
-  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
-  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
   { id: 'ease-in-out', label: 'EASE IN-OUT', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
   { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
   { id: 'spring', label: 'SPRING', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
@@ -59,17 +59,17 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
   {
     family: 'OUT',
     variants: [
-      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true },
-      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.35 },
-      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.7 },
+      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' },
+      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
+      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
     ],
   },
   {
     family: 'IN',
     variants: [
-      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' },
-      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
+      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true },
+      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.35 },
+      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.7 },
     ],
   },
   {
@@ -101,8 +101,8 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
 
 export const MOTION_TOKENS: MotionPreset[] = [
   { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
-  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
+  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
+  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
   { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
 ]
 
@@ -330,26 +330,34 @@ function arcVelocityEasing(
   const phase = params.phase
   const TAU = Math.PI * 2
 
-  // quarters of the x-oscillation where x rises: [-90°..0°] and [0..90°]
-  // in (a·t + phase) space, per period
+  // x-monotone quarters of the figure, rising AND falling — the falling
+  // ones cover the TOP half, where arcs sit in positive y and the drawn
+  // lobe needs no |·| flip to become the speed graph. Scoring prefers
+  // arch-shaped (zero-ended) arcs and positive-y (top-half) arcs.
   let bestScore = -Infinity
   let bestT0 = 0
   let bestT1 = Math.PI / (2 * a)
   for (let k = 0; k < a; k++) {
     for (const [u0, u1] of [
-      [-Math.PI / 2 + TAU * k, TAU * k],
+      [Math.PI / 2 + TAU * k, Math.PI + TAU * k], // falling (top) first
+      [Math.PI + TAU * k, (3 * Math.PI) / 2 + TAU * k],
+      [-Math.PI / 2 + TAU * k, TAU * k], // rising (bottom)
       [TAU * k, Math.PI / 2 + TAU * k],
     ]) {
       const t0 = (u0 - phase) / a
       const t1 = (u1 - phase) / a
-      let sum = 0
+      let sumAbs = 0
+      let sumSigned = 0
       const probes = 64
       for (let i = 0; i <= probes; i++) {
-        sum += Math.abs(Math.sin(b * (t0 + (i / probes) * (t1 - t0))))
+        const y = Math.sin(b * (t0 + (i / probes) * (t1 - t0)))
+        sumAbs += Math.abs(y)
+        sumSigned += y
       }
-      const mean = sum / (probes + 1)
+      const mean = sumAbs / (probes + 1)
+      const meanY = sumSigned / (probes + 1)
       const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
-      const score = mean - 0.75 * endPenalty
+      const score = mean - 0.75 * endPenalty + 0.35 * meanY
       // epsilon: symmetric windows tie mathematically — keep the first
       // rather than letting float noise pick
       if (score > bestScore + 1e-9) {
@@ -373,6 +381,15 @@ function arcVelocityEasing(
     ts[i] = t
     xs[i] = Math.sin(a * t + phase)
     sp[i] = Math.abs(Math.sin(b * t))
+  }
+  // orient by ascending screen-x: "read left to right" is literal, so a
+  // falling window's samples get reversed rather than time-flipped
+  if (xs[fine] < xs[0]) {
+    for (let i = 0, k = fine; i < k; i++, k--) {
+      const tx = xs[i]; xs[i] = xs[k]; xs[k] = tx
+      const tsp = sp[i]; sp[i] = sp[k]; sp[k] = tsp
+      const tt = ts[i]; ts[i] = ts[k]; ts[k] = tt
+    }
   }
   const xStart = xs[0]
   const xEnd = xs[fine]
