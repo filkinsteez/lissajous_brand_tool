@@ -131,22 +131,13 @@ export function MotionLab() {
     let pen = false
     const n = 1440
     for (let i = 0; i <= n; i++) {
-      let h: number
-      let v: number
-      if (frame.kind === 'x') {
-        const t = (i / n) * Math.PI * 2
-        const x = Math.sin(a * t + phase)
-        h = (x - frame.x0) / (frame.x1 - frame.x0 || 1e-9)
-        v = (Math.sin(b * t) - frame.y0) / frame.yScale
-      } else {
-        const span = frame.t1 - frame.t0
-        const t = frame.t0 - span + (i / n) * span * 3
-        h = (t - frame.t0) / span
-        v = Math.abs(Math.sin(b * t)) / frame.yScale
-      }
+      const t = (i / n) * Math.PI * 2
+      const x = Math.sin(a * t + phase)
+      let h = (x - frame.x0) / (frame.x1 - frame.x0 || 1e-9)
+      let v = (Math.sin(b * t) - frame.y0) / frame.yScale
+      if (ml.read === 'velocity') v = Math.abs(v)
       if (ml.reverse) h = 1 - h
-      const hLimit = frame.kind === 't' ? 0.09 : 0.02
-      if (h < -hLimit || h > 1 + hLimit || v < -0.04 || v > 1.05) {
+      if (h < -0.02 || h > 1.02 || v < -0.04 || v > 1.05) {
         pen = false
         continue
       }

@@ -192,16 +192,11 @@ export function overshootOf(lut: Float32Array): number {
 // axis), and read the y-oscillation over that window as position. The
 // easing curve IS a lobe of the figure — same arc, drawn as a graph.
 // Different ratios and phases give the arc a different character.
-// Maps figure space into the arc's graph frame so the source panel can
-// ghost the rest of the figure behind the arc.
-//   'x' — position read: time is the projected x-coordinate (the figure
-//         literally read as a graph; keeps 1:1 exactly linear)
-//   't' — velocity read: time is the curve's own parameter (constant
-//         trace rate — the oscilloscope reading; keeps speed bumps
-//         symmetric, matching AE's standard curves)
-export type ArcFrame =
-  | { kind: 'x'; x0: number; x1: number; y0: number; yScale: number }
-  | { kind: 't'; t0: number; t1: number; yScale: number }
+// Maps figure space into the arc's graph frame so the UI can ghost the
+// rest of the figure behind the arc. Time is ALWAYS the projected
+// x-coordinate: the arc as drawn IS the curve — what you see marked on
+// the figure is exactly what the speed graph shows.
+export type ArcFrame = { x0: number; x1: number; y0: number; yScale: number }
 
 export type CurveArcEasing = {
   lut: Float32Array
@@ -315,7 +310,7 @@ export function curveArcEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP, frame: { kind: 'x', x0: xStart, x1: xEnd, y0, yScale } }
+  return { lut, arcUnit, tAtP, frame: { x0: xStart, x1: xEnd, y0, yScale } }
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).
@@ -362,16 +357,35 @@ function arcVelocityEasing(
     }
   }
 
-  // time axis = the curve's own parameter at constant rate (the
-  // oscilloscope reading). This keeps speed lobes symmetric: the 1:2 arch
-  // becomes exactly sin(πp) — the classic eased-move speed bump — instead
-  // of the skewed shape the projected-x axis produced.
+  // time axis = the projected x across the window: the lobe AS DRAWN on
+  // the figure IS the speed curve — the marked arc and the graph are the
+  // same shape, skew and all. (1:1 ramps become the exact quadratic
+  // family; the 1:2 arch peaks early, like the lobe does.)
+  const fine = 1024
+  const ts = new Float64Array(fine + 1)
+  const xs = new Float64Array(fine + 1)
+  const sp = new Float64Array(fine + 1)
+  for (let i = 0; i <= fine; i++) {
+    const t = bestT0 + (i / fine) * (bestT1 - bestT0)
+    ts[i] = t
+    xs[i] = Math.sin(a * t + phase)
+    sp[i] = Math.abs(Math.sin(b * t))
+  }
+  const xStart = xs[0]
+  const xEnd = xs[fine]
+  const xSpan = xEnd - xStart || 1e-9
+  for (let i = 0; i <= fine; i++) xs[i] = (xs[i] - xStart) / xSpan // 0..1, monotone
+
   const speed = new Float32Array(size)
   const tAtP = new Float32Array(size)
+  let j = 0
   for (let i = 0; i < size; i++) {
-    const t = bestT0 + (i / (size - 1)) * (bestT1 - bestT0)
-    speed[i] = Math.abs(Math.sin(b * t))
-    tAtP[i] = t
+    const p = i / (size - 1)
+    while (j < fine - 1 && xs[j + 1] < p) j++
+    const span = xs[j + 1] - xs[j] || 1e-9
+    const f = Math.max(0, Math.min(1, (p - xs[j]) / span))
+    speed[i] = sp[j] * (1 - f) + sp[j + 1] * f
+    tAtP[i] = ts[j] * (1 - f) + ts[j + 1] * f
   }
 
   // integrate speed → position, normalize to land at 1
@@ -404,7 +418,7 @@ function arcVelocityEasing(
 
   return {
     lut, arcUnit, tAtP, speed,
-    frame: { kind: 't', t0: bestT0, t1: bestT1, yScale: peak },
+    frame: { x0: xStart, x1: xEnd, y0: 0, yScale: peak },
   }
 }
 

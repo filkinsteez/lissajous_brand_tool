@@ -33,12 +33,14 @@ Two treatments shape the source arc:
 | Motion parked early vs. the time cursor | Eased moves span the full keyframe interval | Spring LUT settled at ~40% of its window | Dead-tail trim on the LUT |
 | No ease-in | Trio in / out / in-out | Only out-flavored arcs | `reverse` time-mirror |
 
-**Reference match (verified in tests):** at strength 0,
-EASE IN-OUT ≡ `(1 − cos πp)/2`, EASE OUT ≡ `sin(πp/2)`,
-EASE IN ≡ `1 − cos(πp/2)` — the classic sinusoidal easing family, which
-*is* the Lissajous family read at constant rate. STRENGTH scales these
-toward cubic/quintic feel; ratios with more lobes leave the standard set
-toward wave/elastic territory that stock AE curves can't express.
+**Reference match (verified in tests):** the speed curve is the lobe AS
+DRAWN on the figure — y across the lobe's x-sweep — so the marked arc and
+the graph are the same shape, skew included. At strength 0 the 1:1 ramps
+are the exact quadratic family (EASE OUT ≡ `2p − p²`, EASE IN ≡ `p²`) and
+the 1:2 arch peaks early (`2(1−p)√(2p−p²)`, peak ≈ 29%) — the figure's
+own character rather than a symmetric textbook bell. STRENGTH (power up
+to 6) pushes toward dramatic spiked lobes; ratios up to 12 reach wave and
+elastic territory stock AE curves can't express.
 
 ## Preset map
 

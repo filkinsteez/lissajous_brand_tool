@@ -121,15 +121,12 @@ describe('curveArcEasing', () => {
     // position read: x-projected frame spanning the full sweep
     const pos = curveArcEasing(liss(3, 2))
     expect(pos.frame).not.toBeNull()
-    expect(pos.frame!.kind).toBe('x')
-    if (pos.frame!.kind === 'x') {
-      expect(pos.frame!.x0).toBe(-1)
-      expect(pos.frame!.x1).toBe(1)
-    }
-    // velocity read: constant-rate t frame
+    expect(pos.frame!.x0).toBe(-1)
+    expect(pos.frame!.x1).toBe(1)
+    // velocity read: x-projected quarter-window frame
     const vel = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
     expect(vel.frame).not.toBeNull()
-    expect(vel.frame!.kind).toBe('t')
+    expect(Math.abs(vel.frame!.x1 - vel.frame!.x0)).toBeCloseTo(1, 3) // quarter sweep
     // rawLut equals lut when no shaping is applied
     expect([...vel.rawLut]).toEqual([...vel.lut])
     // with shaping they differ but raw stays 0→1
@@ -230,24 +227,37 @@ describe('curveArcEasing', () => {
     expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
   })
 
-  it('at strength 0 the trio lands on the classic sine easing family', () => {
-    // ease-in-out arch ≡ (1 − cos πp)/2 — the standard symmetric ease
-    const inOut = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
-    for (const p of [0.1, 0.25, 0.5, 0.75, 0.9]) {
-      expect(evalEase(inOut.lut, p)).toBeCloseTo((1 - Math.cos(Math.PI * p)) / 2, 2)
-    }
-    expect(evalEase(inOut.lut, 0.5)).toBeCloseTo(0.5, 3) // symmetric, like AE easy-ease
-
-    // ease-out ramp ≡ sin(πp/2)
+  it('the speed curve IS the lobe as drawn — quad ramps, early-peaked arch', () => {
+    // 1:1 ramp read across its x-sweep: speed = 1−p exactly, so the
+    // ease-out is the quadratic 2p − p²
     const easeOut = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' })
     for (const p of [0.25, 0.5, 0.75]) {
-      expect(evalEase(easeOut.lut, p)).toBeCloseTo(Math.sin((Math.PI * p) / 2), 2)
+      expect(evalEase(easeOut.lut, p)).toBeCloseTo(2 * p - p * p, 2)
     }
 
-    // ease-in ≡ 1 − cos(πp/2) (the mirrored ramp)
+    // ease-in = mirrored: p²
     const easeIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true })
     for (const p of [0.25, 0.5, 0.75]) {
-      expect(evalEase(easeIn.lut, p)).toBeCloseTo(1 - Math.cos((Math.PI * p) / 2), 2)
+      expect(evalEase(easeIn.lut, p)).toBeCloseTo(p * p, 2)
+    }
+
+    // the 1:2 arch as drawn: speed(p) = |sin 2t| at x-position p — skewed,
+    // peaking left of center exactly like the lobe on the figure
+    const arch = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    let peakAt = 0
+    let peakV = 0
+    for (let i = 0; i < arch.speed!.length; i++) {
+      if (arch.speed![i] > peakV) {
+        peakV = arch.speed![i]
+        peakAt = i / (arch.speed!.length - 1)
+      }
+    }
+    expect(peakAt).toBeGreaterThan(0.2)
+    expect(peakAt).toBeLessThan(0.4) // ≈ 1 − 1/√2 ≈ 0.29
+    // and it matches the analytic lobe silhouette 2(1−p)√(2p−p²)
+    for (const p of [0.2, 0.4, 0.6, 0.8]) {
+      const analytic = 2 * (1 - p) * Math.sqrt(2 * p - p * p)
+      expect(evalEase(arch.speed!, p)).toBeCloseTo(analytic, 2)
     }
   })
 
