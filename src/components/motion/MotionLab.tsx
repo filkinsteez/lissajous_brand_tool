@@ -96,18 +96,6 @@ export function MotionLab() {
   const speed = useMemo(() => arc.speed ?? velocityOf(arc.lut), [arc])
   const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
 
-  // honest scale: the y-axis is normalized to peak=1, so every curve fills
-  // full height and LOOKS maximally snappy. AE's axis is absolute px/sec —
-  // the drama is visible there as peak towering over average. The AVG line
-  // and the ratio readout put that truth back: ~1.6× is a gentle arch,
-  // AE-snappy runs 3.5-6×.
-  const meanSpeed = useMemo(() => {
-    let sum = 0
-    for (const v of speed) sum += Math.abs(v)
-    return Math.max(1e-6, sum / speed.length)
-  }, [speed])
-  const dynamicRatio = 1 / meanSpeed
-
   const speedPath = useMemo(() => {
     let d = `M ${trackX(0).toFixed(1)} ${spY(speed[0]).toFixed(1)}`
     for (let i = 1; i < speed.length; i++) {
@@ -156,16 +144,11 @@ export function MotionLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
 
-  // AE SEMANTICS, settled by the 60fps audit: the speed graph's x-axis is
-  // TIME, so the playhead (cursor + dot) sweeps it linearly, exactly like
-  // After Effects — the dot's height IS the current speed. The circle on
-  // the ruler is the OBJECT the curve drives: it moves eased, like a layer
-  // in the comp. They meet at both ends of every run. Reading the chart at
-  // eased x (the old tandem assembly) made the graph unreadable as a time
-  // chart and was why measured motion "looked wrong" against AE while
-  // being numerically exact (see docs/motion-audit.md).
-  const cursorX = trackX(clamp01(p))
-  const speedAtCursor = evalEase(speed, clamp01(p))
+  // one assembly, in tandem: the playhead (cursor line + dot on the curve)
+  // rides the same eased x as the big circle on the ruler, so they move
+  // together as one marker.
+  const cursorX = trackX(clamp01(eased))
+  const speedAtCursor = evalEase(speed, clamp01(eased))
 
   // ---- the underlying figure: the actual Lissajous these arcs come from,
   // with every harvestable lobe clickable
@@ -272,12 +255,6 @@ export function MotionLab() {
           {/* speed graph — same square frame as the figure panel */}
           <line x1={PAD} y1={spY(1)} x2={W - PAD} y2={spY(1)} className="lane-rule" />
           <line x1={PAD} y1={spY(0)} x2={W - PAD} y2={spY(0)} className="lane-rule" />
-          {/* average speed: the honest yardstick for how snappy this really is */}
-          <line x1={PAD} y1={spY(meanSpeed)} x2={W - PAD} y2={spY(meanSpeed)} className="plot-avg" />
-          <text x={W - PAD} y={spY(meanSpeed) - 5} className="plot-avg-label">AVG</text>
-          <text x={W - PAD} y={plotTop - 9} className="plot-ratio" data-testid="dynamic-ratio">
-            PEAK {dynamicRatio.toFixed(1)}× AVG
-          </text>
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="speed-arc" className="lane-arc" />
@@ -296,10 +273,10 @@ export function MotionLab() {
         </svg>
         <div className="panel-note">
           {shapingActive
-            ? 'Solid: what plays. Dashed: the arc before strength/decay. The playhead sweeps time like AE — the dot’s height is the current speed; the circle below is the object it drives.'
+            ? 'Solid: what plays. Dashed: the arc before strength/decay. The playhead and the circle move together — ticks are the circle’s footprints at equal time steps.'
             : ml.read === 'velocity'
-              ? 'The marked arc and this curve are one drawing. The playhead sweeps time like AE — the dot’s height is the current speed; the circle below is the object it drives.'
-              : 'Speed derived from the figure’s arc — cusps are direction changes. The playhead sweeps time like AE; the circle below is the object it drives.'}
+              ? 'The marked arc and this curve are one drawing. The playhead and the circle move together — ticks are the circle’s footprints at equal time steps.'
+              : 'Speed derived from the figure’s arc — cusps are direction changes. The playhead and the circle move together — ticks are the circle’s footprints.'}
         </div>
       </div>
       </div>

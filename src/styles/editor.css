@@ -678,26 +678,6 @@
   stroke-width: 1;
 }
 
-.plot-avg {
-  stroke: var(--text-faint);
-  stroke-width: 1;
-  stroke-dasharray: 3 5;
-  opacity: 0.7;
-}
-
-.plot-avg-label,
-.plot-ratio {
-  fill: var(--text-faint);
-  font-family: var(--font-mono), monospace;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-anchor: end;
-}
-
-.plot-ratio {
-  fill: var(--text-dim);
-}
-
 .lane-tick {
   stroke: var(--text-faint);
   stroke-width: 1;
