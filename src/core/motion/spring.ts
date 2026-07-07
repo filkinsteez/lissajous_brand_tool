@@ -34,10 +34,13 @@ export type MotionPreset = MotionRecipe & { id: string; label: string }
 // figure family. The in-out arch is the rotated 2:1; the ramps are 1:1
 // quarters (mirrored for ease-in); bounce/spring are lobed figures with
 // a damping envelope so they settle instead of swinging fully back.
+// The ease ramps come from the CIRCLE's quarter (1:1 at 90°) — a real
+// curve on the figure panel. The only straight-line figure is LINEAR,
+// where a straight line honestly means no easing.
 export const MOTION_PRESETS: MotionPreset[] = [
   { id: 'linear', label: 'LINEAR', ratioX: 1, ratioY: 1, phase: 0, read: 'position' },
-  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.3 },
-  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.3 },
+  { id: 'ease-in', label: 'EASE IN', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
+  { id: 'ease-out', label: 'EASE OUT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
   { id: 'ease-in-out', label: 'EASE IN-OUT', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
   { id: 'bounce', label: 'BOUNCE', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
   { id: 'spring', label: 'SPRING', ratioX: 1, ratioY: 5, phase: 0, read: 'position', decay: 0.5 },
@@ -56,17 +59,17 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
   {
     family: 'OUT',
     variants: [
-      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' },
-      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.35 },
-      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.7 },
+      { id: 'out-1', label: 'OUT I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true },
+      { id: 'out-2', label: 'OUT II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.35 },
+      { id: 'out-3', label: 'OUT III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.7 },
     ],
   },
   {
     family: 'IN',
     variants: [
-      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true },
-      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.35 },
-      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.7 },
+      { id: 'in-1', label: 'IN I', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity' },
+      { id: 'in-2', label: 'IN II', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
+      { id: 'in-3', label: 'IN III', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.7 },
     ],
   },
   {
@@ -98,8 +101,8 @@ export const MOTION_LIBRARY: { family: string; variants: MotionPreset[] }[] = [
 
 export const MOTION_TOKENS: MotionPreset[] = [
   { id: 'standard', label: 'STANDARD', ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.35 },
-  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', strength: 0.3 },
-  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: 0, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'enter', label: 'ENTER', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', reverse: true, strength: 0.3 },
+  { id: 'exit', label: 'EXIT', ratioX: 1, ratioY: 1, phase: Math.PI / 2, read: 'velocity', strength: 0.3 },
   { id: 'emphasis', label: 'EMPHASIS', ratioX: 1, ratioY: 3, phase: 0, read: 'position', decay: 0.55 },
 ]
 
