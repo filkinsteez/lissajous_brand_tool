@@ -413,7 +413,7 @@ function arcVelocityEasing(
 // ease. Endpoints re-normalized to land exactly 0→1.
 export function applyStrength(lut: Float32Array, strength: number): Float32Array {
   if (strength <= 0.001) return lut
-  const power = 1 + strength * 2.5
+  const power = 1 + strength * 5 // full crank = dramatic, spiky speed lobes
   const n = lut.length
   const out = new Float32Array(n)
   for (let i = 1; i < n; i++) {

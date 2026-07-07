@@ -38,9 +38,9 @@ export function MotionPanel() {
             </button>
           ))}
         </div>
-        <Slider label="RATIO X" value={ml.ratioX} min={1} max={8} step={1} format={int}
+        <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int}
           onChange={(ratioX) => setT({ motionLab: { ratioX, presetId: undefined } })} onCommit={commit} />
-        <Slider label="RATIO Y" value={ml.ratioY} min={1} max={8} step={1} format={int}
+        <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int}
           onChange={(ratioY) => setT({ motionLab: { ratioY, presetId: undefined } })} onCommit={commit} />
         <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
           onChange={(phase) => setT({ motionLab: { phase, presetId: undefined } })} onCommit={commit} />

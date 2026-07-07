@@ -162,6 +162,36 @@ export function MotionLab() {
   const cursorX = trackX(clamp01(eased))
   const speedAtCursor = evalEase(speed, clamp01(eased))
 
+  // ---- the underlying figure: the actual Lissajous these arcs come from
+  const FIG = 300
+  const figure = useMemo(() => {
+    const a = ml.ratioX
+    const b = ml.ratioY
+    const phase = ml.phase
+    const map = (u: { x: number; y: number }) => ({
+      x: FIG / 2 + u.x * (FIG / 2 - 26),
+      y: FIG / 2 - u.y * (FIG / 2 - 26),
+    })
+    let d = ''
+    for (let i = 0; i <= 720; i++) {
+      const t = (i / 720) * Math.PI * 2
+      const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+      d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+    }
+    let arcD = ''
+    for (const u of arc.arcUnit) {
+      const m = map(u)
+      arcD += `${arcD ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
+    }
+    const tracerAt = (t: number) => {
+      const tt = arc.tAtP[Math.round(clamp01(t) * (arc.tAtP.length - 1))]
+      return map({ x: Math.sin(a * tt + phase), y: Math.sin(b * tt) })
+    }
+    return { d: d + ' Z', arcD, tracerAt }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ml.ratioX, ml.ratioY, ml.phase, arc])
+  const figTracer = figure.tracerAt(p)
+
   const overshoot = overshootOf(lut)
 
   return (
@@ -182,6 +212,20 @@ export function MotionLab() {
         </button>
       </div>
 
+      <div className="lane-row">
+      <div className="lane lane-figure">
+        <div className="lane-label">
+          THE FIGURE — {ml.ratioX}:{ml.ratioY} · PHASE {Math.round((ml.phase * 180) / Math.PI)}°
+        </div>
+        <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
+          <path d={figure.d} className="lane-curve-path" />
+          <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" />
+          <circle cx={figTracer.x} cy={figTracer.y} r={6} className="lane-dot" />
+        </svg>
+        <div className="panel-note">
+          The actual Lissajous curve. The marked arc is what the speed graph reads.
+        </div>
+      </div>
       <div className="lane">
         <div className="lane-label">
           SPEED GRAPH — THE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE
@@ -211,6 +255,7 @@ export function MotionLab() {
             ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle below moves with that speed; ticks are its footprints at equal time steps.'
             : 'Speed over time, derived from the figure’s arc — cusps are direction changes.'}
         </div>
+      </div>
       </div>
 
       <EasingLibrary p={p} />
