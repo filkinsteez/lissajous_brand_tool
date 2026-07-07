@@ -7,6 +7,8 @@ import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
 import { PresetStrip } from '../PresetStrip'
 import { ARTBOARD_PRESETS } from '@/core/state/defaults'
+import { getDerived } from '@/core/pipeline'
+import { shuffleLayout } from '@/core/typography/layoutShuffle'
 import type { ArtboardPresetId, GridMode } from '@/core/state/types'
 
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -17,9 +19,9 @@ const int = (v: number) => String(Math.round(v))
 // structure extracted from them live in a single SYSTEM panel; while any
 // of it is being adjusted, the construction overlay reveals itself.
 export function SystemPanel() {
+  const project = useStore((s) => s.project)
   const liss = useStore((s) => s.project.lissajous)
   const grid = useStore((s) => s.project.grid)
-  const glyphsOn = useStore((s) => s.project.glyphField.enabled)
   const artboardPreset = useStore((s) => s.project.artboard.preset)
   const showGuides = useStore((s) => s.ui.showGuides)
   const mode = useStore((s) => s.ui.mode)
@@ -45,8 +47,38 @@ export function SystemPanel() {
     setT(patch)
   }
 
+  const applyLayoutSeed = (layoutSeed: number, transient: boolean) => {
+    const patch = { layoutSeed, typeBlocks: shuffleLayout(project, getDerived(project).grid, layoutSeed) }
+    if (transient) setT(patch)
+    else apply(patch)
+  }
+
   return (
     <div className="panel">
+      <div className="panel-section">
+        <SegmentedControl<ArtboardPresetId>
+          label="ARTBOARD"
+          value={artboardPreset}
+          options={(Object.keys(ARTBOARD_PRESETS) as ArtboardPresetId[]).map((id) => ({
+            value: id,
+            label: ARTBOARD_PRESETS[id].label.toUpperCase(),
+          }))}
+          onChange={(preset) =>
+            apply({
+              artboard: {
+                preset,
+                width: ARTBOARD_PRESETS[preset].width,
+                height: ARTBOARD_PRESETS[preset].height,
+              },
+            })
+          }
+        />
+        <button className="ctl-action primary" onClick={() => applyLayoutSeed(project.layoutSeed + 1, false)}>
+          SHUFFLE LAYOUT
+        </button>
+        <Slider label="LAYOUT" value={project.layoutSeed} min={0} max={99} step={1} format={int}
+          onChange={(v) => applyLayoutSeed(v, true)} onCommit={commit} />
+      </div>
       <div className="panel-section">
         <div className="panel-heading">RATIO</div>
         <PresetStrip />
@@ -115,30 +147,6 @@ export function SystemPanel() {
             click crossings to pin the grid to them.
           </div>
         )}
-      </div>
-      <div className="panel-section">
-        <div className="panel-heading">LAYERS</div>
-        <Toggle label="GLYPH FIELD" value={glyphsOn}
-          onChange={(enabled) => apply({ glyphField: { enabled } })} />
-      </div>
-      <div className="panel-section">
-        <SegmentedControl<ArtboardPresetId>
-          label="ARTBOARD"
-          value={artboardPreset}
-          options={(Object.keys(ARTBOARD_PRESETS) as ArtboardPresetId[]).map((id) => ({
-            value: id,
-            label: ARTBOARD_PRESETS[id].label.toUpperCase(),
-          }))}
-          onChange={(preset) =>
-            apply({
-              artboard: {
-                preset,
-                width: ARTBOARD_PRESETS[preset].width,
-                height: ARTBOARD_PRESETS[preset].height,
-              },
-            })
-          }
-        />
       </div>
     </div>
   )

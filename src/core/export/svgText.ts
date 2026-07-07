@@ -1,7 +1,7 @@
 import type { ProjectState } from '@/core/state/types'
 import type { EditorialGrid } from '@/core/grid/types'
 import { layoutTypeBlock } from '@/core/typography/textBlocks'
-import { applyCase, variationSettings } from '@/core/typography/fonts'
+import { variationSettings } from '@/core/typography/fonts'
 import { INK } from '@/core/state/defaults'
 
 // Rasterizes the type layer through an SVG <foreignObject>: the browser's
@@ -97,7 +97,7 @@ export async function renderTypeToCanvas(
         `white-space:pre-wrap`,
         `margin:0`,
       ].join(';')
-      return `<div style="${style}">${escapeHtml(applyCase(b.text, b.textCase))}</div>`
+      return `<div style="${style}">${escapeHtml(b.text)}</div>`
     })
     .join('')
 

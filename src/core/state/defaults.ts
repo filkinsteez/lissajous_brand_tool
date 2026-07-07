@@ -1,4 +1,4 @@
-import { PROJECT_VERSION, type ArtboardPresetId, type ProjectState } from './types'
+﻿import { PROJECT_VERSION, type ArtboardPresetId, type ProjectState } from './types'
 
 export const ARTBOARD_PRESETS: Record<ArtboardPresetId, { width: number; height: number; label: string }> = {
   portrait: { width: 1200, height: 1600, label: 'Portrait 3:4' },
@@ -50,7 +50,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
         opticalSize: 144,
         lineHeight: 0.98,
         tracking: -0.015,
-        textCase: 'upper',
+        textCase: 'none',
         align: 'left',
         anchor: { col: 0, row: 5, colSpan: 6 },
         materialInfluence: 1,
@@ -82,7 +82,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
         opticalSize: 14,
         lineHeight: 1.2,
         tracking: 0.08,
-        textCase: 'upper',
+        textCase: 'none',
         align: 'left',
         anchor: { col: 0, row: 0, colSpan: 3 },
         materialInfluence: 0.4,

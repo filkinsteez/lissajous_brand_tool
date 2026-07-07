@@ -1,19 +1,16 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { downloadPNG } from '@/core/export/png'
-import { downloadRecipe, readRecipeFile } from '@/core/export/recipe'
 import { encodeShareHash } from '@/core/state/compress'
 
-// variant 'motion' drops the poster-only pieces (PNG render, gallery):
-// recipes and share links carry the motion system, so they live in both tabs
+// variant 'motion' drops the poster-only PNG render; the share link
+// carries the whole project (motion system included), so it lives in both
 export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'motion' }) {
   const project = useStore((s) => s.project)
   const apply = useStore((s) => s.apply)
-  const replaceProject = useStore((s) => s.replaceProject)
-  const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
 
@@ -56,30 +53,6 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
       </div>
       ) : null}
       <div className="panel-section">
-        <button className="ctl-action" onClick={() => { downloadRecipe(project); flash('RECIPE SAVED') }}>
-          DOWNLOAD BRAND RECIPE
-        </button>
-        <button className="ctl-action" onClick={() => fileRef.current?.click()}>
-          IMPORT RECIPE
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          style={{ display: 'none' }}
-          onChange={async (e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            const loaded = await readRecipeFile(file)
-            if (loaded) {
-              replaceProject(loaded)
-              flash('RECIPE LOADED')
-            } else {
-              flash('INVALID RECIPE')
-            }
-            e.target.value = ''
-          }}
-        />
         <button
           className="ctl-action"
           onClick={async () => {

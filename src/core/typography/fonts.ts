@@ -22,9 +22,3 @@ export function variationSettings(block: TypeBlockState): string {
 export function nearestStaticWeight(weight: number): number {
   return Math.max(100, Math.min(900, Math.round(weight / 100) * 100))
 }
-
-export function applyCase(text: string, textCase: TypeBlockState['textCase']): string {
-  if (textCase === 'upper') return text.toUpperCase()
-  if (textCase === 'lower') return text.toLowerCase()
-  return text
-}

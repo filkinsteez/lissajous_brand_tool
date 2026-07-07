@@ -5,9 +5,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { layoutTypeBlock, type BlockLayout } from '@/core/typography/textBlocks'
-import { applyCase, FONT_STACKS, nearestStaticWeight, variationSettings } from '@/core/typography/fonts'
-import { getPressureMask } from '@/core/typography/pressureMask'
-import { lbsDebug } from '@/core/state/debug'
+import { FONT_STACKS, nearestStaticWeight, variationSettings } from '@/core/typography/fonts'
 import { INK } from '@/core/state/defaults'
 import type { EditorialGrid } from '@/core/grid/types'
 import type { TypeBlockState } from '@/core/state/types'
@@ -69,10 +67,6 @@ export function TypeLayer() {
   const derived = getDerived(project)
   const layerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
-
-  // keep the pressure mask warm + inspectable as type changes
-  const mask = getPressureMask(project, derived.grid)
-  lbsDebug('pressureMaskSum', Math.round(mask.data.reduce((a, v) => a + v, 0)))
 
   const artboardScale = (): number => {
     const el = layerRef.current
@@ -159,7 +153,7 @@ export function TypeLayer() {
               color: INK,
             }}
           >
-            {applyCase(block.text, block.textCase)}
+            {block.text}
           </div>
         )
       })}

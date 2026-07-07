@@ -22,7 +22,7 @@ export function PresetStrip() {
   const presetId = useStore((s) => s.project.lissajous.presetId)
   const apply = useStore((s) => s.apply)
   return (
-    <div className="preset-strip">
+    <div className="preset-strip ratio-strip">
       {RATIO_PRESETS.map((p) => (
         <button
           key={p.id}
