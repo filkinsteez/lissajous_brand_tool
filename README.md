@@ -18,6 +18,7 @@ wrapper) · lz-string share URLs · vitest.
 npm install
 npm run dev     # http://localhost:3000
 npm test        # core math + determinism tests
+npm run lint    # eslint
 ```
 
 Everything is client-side: no server, no accounts, no uploads leaving the
