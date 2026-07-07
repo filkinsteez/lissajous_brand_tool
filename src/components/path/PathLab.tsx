@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
 import { sampleCurve } from '@/core/lissajous/sampler'
-import { samplesToPathD, samplesToDoubledPathD } from '@/core/lissajous/svgPath'
+import { samplesToPathD, samplesToSmoothDoubledPathD } from '@/core/lissajous/svgPath'
 import { buildArcLUT } from '@/core/motion/arcLength'
 import { evalEase, lissajousEasing } from '@/core/motion/spring'
 import type { LissajousState } from '@/core/state/types'
@@ -58,12 +58,23 @@ export function PathLab() {
     const samples = sampleCurve(pathLiss(pl.ratioX, pl.ratioY, pl.phase), W, H, 1024)
     return {
       d: samplesToPathD(samples),
-      doubledD: samplesToDoubledPathD(samples),
+      doubledD: samplesToSmoothDoubledPathD(samples),
       lut: buildArcLUT(samples),
       samples,
     }
   }, [pl.ratioX, pl.ratioY, pl.phase])
   const total = path.lut.total
+
+  // the marquee track is smooth Béziers, so its true length differs a hair
+  // from the polyline LUT — measure it so offset wraps and the textLength
+  // pin land exactly on the seam
+  const flowPathRef = useRef<SVGPathElement>(null)
+  const [flowRev, setFlowRev] = useState(0)
+  useLayoutEffect(() => {
+    const el = flowPathRef.current
+    if (el) setFlowRev(el.getTotalLength() / 2)
+  }, [path, pl.scene])
+  const flowLen = flowRev > 1 ? flowRev : total
 
   // the brand easing, straight from the MOTION tab — ASSEMBLE plays it
   const brandLut = useMemo(
@@ -121,10 +132,10 @@ export function PathLab() {
   // so the tail meets the head without overprinting
   const flowText = useMemo(() => {
     const copyW = flowCopyW > 1 ? flowCopyW : pl.text.length * pl.textSize * 0.62
-    const copies = Math.max(1, Math.round(total / Math.max(1, copyW)))
+    const copies = Math.max(1, Math.round(flowLen / Math.max(1, copyW)))
     return pl.text.repeat(copies)
-  }, [pl.text, pl.textSize, total, flowCopyW])
-  const flowOffset = ((t / 1000) * pl.speed * total) % total
+  }, [pl.text, pl.textSize, flowLen, flowCopyW])
+  const flowOffset = ((t / 1000) * pl.speed * flowLen) % flowLen
 
   // ---- ORBIT: tiles at equal arc spacing, painted back-to-front by depth
   const orbitTiles = useMemo(() => {
@@ -208,12 +219,12 @@ export function PathLab() {
 
           {pl.scene === 'flow' ? (
             <>
-              <path id="flow-path" d={path.doubledD} fill="none" stroke="none" />
+              <path id="flow-path" ref={flowPathRef} d={path.doubledD} fill="none" stroke="none" />
               <text className="flow-text" style={{ fontSize: pl.textSize }}>
                 <textPath
                   href="#flow-path"
                   startOffset={flowOffset}
-                  textLength={total}
+                  textLength={flowLen}
                   lengthAdjust="spacingAndGlyphs"
                 >
                   {flowText}
