@@ -158,6 +158,23 @@ describe('curveArcEasing', () => {
     expect([...a.lut]).toEqual([...b.lut])
   })
 
+  it('ease presets carry no treatment: the arc IS what plays', () => {
+    for (const preset of MOTION_PRESETS) {
+      if (preset.id === 'bounce' || preset.id === 'spring') {
+        // springs are DEFINED by decay (they settle instead of returning);
+        // the UI discloses it: dashed raw arc + legend
+        expect(preset.decay ?? 0, preset.id).toBeGreaterThan(0)
+        expect(preset.strength ?? 0, preset.id).toBe(0)
+        continue
+      }
+      const e = lissajousEasing(preset)
+      expect([...e.lut], preset.id).toEqual([...e.rawLut])
+      if (e.speed && e.rawSpeed) {
+        expect([...e.speed], preset.id).toEqual([...e.rawSpeed])
+      }
+    }
+  })
+
   it('every motion preset, token, and library card yields a valid 0→1 easing', () => {
     const all = [
       ...MOTION_PRESETS,

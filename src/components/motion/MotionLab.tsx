@@ -87,15 +87,17 @@ export function MotionLab() {
   // displayed curve IS the figure's arc (ghosted context behind it); in
   // value-read recipes (springs, circ) the speed is derived — cusps where
   // the motion reverses, exactly like AE's speed graph of a bounce.
-  const W = 640
-  const PAD = 14
-  const plotTop = 8
-  const plotBottom = 230
-  const lineY = 294
-  const viewH = 322
+  // the speed panel shares the figure panel's exact square frame — same
+  // box, same padding — so the marked arc and the curve are the same
+  // drawing at the same proportions
+  const W = 300
+  const PAD = 26
+  const plotTop = PAD
+  const plotBottom = W - PAD
+  const lineY = 316
+  const viewH = 344
   const trackX = (v: number) => PAD + v * (W - 2 * PAD)
-  const spY = (v: number) =>
-    plotBottom - (v / 1.06) * (plotBottom - plotTop - 8) - 4
+  const spY = (v: number) => plotBottom - (v / 1.06) * (plotBottom - plotTop)
 
   const speed = useMemo(() => arc.speed ?? velocityOf(arc.lut), [arc])
   const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
@@ -217,19 +219,19 @@ export function MotionLab() {
           The actual Lissajous curve. The marked arc is what the speed graph reads.
         </div>
       </div>
-      <div className="lane">
+      <div className="lane lane-figure">
         <div className="lane-label">
           SPEED GRAPH — THE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE
         </div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
-          {/* speed graph */}
+          {/* speed graph — same square frame as the figure panel */}
           <line x1={PAD} y1={spY(1)} x2={W - PAD} y2={spY(1)} className="lane-rule" />
           <line x1={PAD} y1={spY(0)} x2={W - PAD} y2={spY(0)} className="lane-rule" />
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
-          <path d={speedPath} data-testid="figure-arc" className="lane-arc" />
+          <path d={speedPath} data-testid="speed-arc" className="lane-arc" />
           {/* one playhead through the graph and the ruler — same clock */}
-          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop} x2={cursorX} y2={lineY} className="plot-cursor" />
+          <line data-testid="plot-cursor" x1={cursorX} y1={plotTop - 6} x2={cursorX} y2={lineY} className="plot-cursor" />
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
           {/* the move: the circle travels with the ease of the speed curve;
@@ -237,14 +239,16 @@ export function MotionLab() {
           <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
           {Array.from({ length: 11 }, (_, i) => {
             const tx = trackX(clamp01(evalEase(lut, i / 10)))
-            return <line key={i} x1={tx} y1={lineY - 8} x2={tx} y2={lineY + 8} className="lane-tick" />
+            return <line key={i} x1={tx} y1={lineY - 7} x2={tx} y2={lineY + 7} className="lane-tick" />
           })}
-          <circle data-testid="line-dot" cx={trackX(clamp01(eased))} cy={lineY} r={9} className="lane-dot" />
+          <circle data-testid="line-dot" cx={trackX(clamp01(eased))} cy={lineY} r={8} className="lane-dot" />
         </svg>
         <div className="panel-note">
-          {ml.read === 'velocity'
-            ? 'Speed over time — the figure’s arc, its context ghosted behind. The circle below moves with that speed; ticks are its footprints at equal time steps.'
-            : 'Speed over time, derived from the figure’s arc — cusps are direction changes.'}
+          {shapingActive
+            ? 'Solid: what plays. Dashed: the arc before strength/decay.'
+            : ml.read === 'velocity'
+              ? 'Same frame as the figure: the marked arc and this curve are one drawing.'
+              : 'Speed derived from the figure’s arc — cusps are direction changes.'}
         </div>
       </div>
       </div>

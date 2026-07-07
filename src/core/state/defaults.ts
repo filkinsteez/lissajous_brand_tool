@@ -126,7 +126,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       phase: Math.PI / 2,
       read: 'velocity',
       reverse: false,
-      strength: 0.35,
+      strength: 0,
       decay: 0,
       durationMs: 1400,
       presetId: 'ease-in-out',
