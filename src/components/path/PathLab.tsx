@@ -156,8 +156,8 @@ export function PathLab() {
     const g0 = Math.max(1, gcd(Math.round(pl.ratioX), Math.round(pl.ratioY)))
     const isCircle = Math.round(pl.ratioX) / g0 === 1 && Math.round(pl.ratioY) / g0 === 1
     const clump = 74 // arc px between clumped tiles — card-stack tight
-    const lag = Math.min(150, pl.durationMs * 0.07) // follower time lag
-    const dur = Math.max(200, pl.durationMs)
+    const dur = Math.max(500, pl.lapMs)
+    const lag = Math.min(220, dur * 0.05) // follower time lag
     const tiles = []
     for (let g = 0; g < nGroups; g++) {
       for (let j = 0; j < perGroup; j++) {
@@ -174,12 +174,15 @@ export function PathLab() {
           ? 0.5 - 0.5 * Math.cos(p.t + pl.phase / 2) // tilted-circle depth, 0=back 1=front
           : p.y / H // fallback: lower on stage = nearer
         const depth = lerp(0.55, 1.22, near)
-        tiles.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, o: 0.35 + 0.65 * near })
+        // 2.5D: cards lean into the tangent's climb (091's wheel feel,
+        // without per-card rotation whiplash — sin keeps it continuous)
+        const lean = 12 * Math.sin(p.angle)
+        tiles.push({ key: `${g}-${j}`, n: g * perGroup + j + 1, x: p.x, y: p.y, depth, lean, o: 0.35 + 0.65 * near })
       }
     }
     return tiles.sort((a, b) => a.depth - b.depth)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pl.scene, pl.count, pl.groups, pl.durationMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
+  }, [pl.scene, pl.count, pl.groups, pl.lapMs, pl.ratioX, pl.ratioY, pl.phase, brandLut, path, t])
 
   // ---- ASSEMBLE: headline chars fly from the path into the set line,
   // resting positions from the measured per-char advances
@@ -273,7 +276,7 @@ export function PathLab() {
                   key={tile.key}
                   data-testid={`orbit-tile-${tile.key}`}
                   opacity={tile.o}
-                  transform={`translate(${tile.x.toFixed(1)} ${tile.y.toFixed(1)}) scale(${tile.depth.toFixed(3)})`}
+                  transform={`translate(${tile.x.toFixed(1)} ${tile.y.toFixed(1)}) scale(${tile.depth.toFixed(3)}) rotate(${tile.lean.toFixed(1)})`}
                 >
                   <rect x={-62} y={-44} width={124} height={88} rx={10} className="orbit-tile" />
                   <text y={8} className="orbit-tile-label">

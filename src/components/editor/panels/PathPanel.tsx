@@ -94,19 +94,22 @@ export function PathPanel() {
               onChange={(count) => setT({ pathLab: { count } })} onCommit={commit} />
             <Slider label="FLOCKS" value={pl.groups} min={1} max={4} step={1} format={int}
               onChange={(groups) => setT({ pathLab: { groups } })} onCommit={commit} />
+            <Slider label="LAP" value={pl.lapMs} min={2000} max={24000} step={500}
+              format={(v) => `${(v / 1000).toFixed(1)}s`}
+              onChange={(lapMs) => setT({ pathLab: { lapMs } })} onCommit={commit} />
           </>
         ) : null}
-        {pl.scene !== 'flow' ? (
+        {pl.scene === 'assemble' ? (
           <Slider label="DURATION" value={pl.durationMs} min={800} max={6000} step={100}
             format={(v) => `${Math.round(v)}ms`}
             onChange={(durationMs) => setT({ pathLab: { durationMs } })} onCommit={commit} />
         ) : null}
         {pl.scene === 'orbit' ? (
           <div className="panel-note">
-            Each flock laps the figure once per DURATION with the MOTION
-            tab&apos;s easing — crank its STRENGTH for a dramatic whip. Try a
-            1:1 path at 150°+ phase: the flat ellipse plus back-scaling reads
-            as a carousel in perspective.
+            Each flock laps the figure once per LAP with the MOTION tab&apos;s
+            easing — crank its STRENGTH for a dramatic whip. Try a 1:1 path
+            at 150°+ phase: the flat ellipse plus back-scaling reads as a
+            carousel in perspective.
           </div>
         ) : null}
         {pl.scene === 'assemble' ? (

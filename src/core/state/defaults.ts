@@ -148,6 +148,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       speed: 0.05,
       count: 8,
       groups: 2,
+      lapMs: 9000,
       durationMs: 2600,
     },
     export: { scale: 2 },
