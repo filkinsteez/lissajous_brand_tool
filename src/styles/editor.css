@@ -470,6 +470,10 @@
   stroke-width: 1.5;
 }
 
+.measure-text {
+  visibility: hidden;
+}
+
 .flow-text {
   fill: var(--text);
   font-family: var(--font-flex), sans-serif;

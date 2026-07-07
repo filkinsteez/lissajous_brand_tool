@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
 import { sampleCurve } from '@/core/lissajous/sampler'
@@ -20,26 +20,17 @@ const HOLD_MS = 700
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
+
 function pathLiss(ratioX: number, ratioY: number, phase: number): LissajousState {
+  // reduce by the gcd: a 2:2 figure IS the 1:1 ellipse traced twice, and a
+  // retraced path makes everything riding it overprint itself
+  const g = Math.max(1, gcd(Math.round(ratioX), Math.round(ratioY)))
   return {
-    frequencyX: ratioX, frequencyY: ratioY, phase,
+    frequencyX: Math.round(ratioX) / g, frequencyY: Math.round(ratioY) / g, phase,
     amplitudeX: 0.8, amplitudeY: 0.76, rotation: 0, offsetX: 0, offsetY: 0,
     sampleDensity: 1024,
   }
-}
-
-// resolve the display font's real family so canvas measureText matches
-// what SVG renders (canvas can't read CSS variables)
-function useResolvedFont(): string {
-  return useMemo(() => {
-    if (typeof document === 'undefined') return 'sans-serif'
-    const el = document.createElement('span')
-    el.style.fontFamily = 'var(--font-flex)'
-    document.body.appendChild(el)
-    const family = getComputedStyle(el).fontFamily || 'sans-serif'
-    el.remove()
-    return family
-  }, [])
 }
 
 export function PathLab() {
@@ -85,23 +76,54 @@ export function PathLab() {
     [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half],
   )
 
-  const family = useResolvedFont()
+  // ---- text metrics, measured on hidden SVG nodes with the real styles —
+  // canvas measureText ran ~20% short of SVG's actual advances and the
+  // textLength correction stretched glyphs visibly. Re-measure once the
+  // display font finishes loading.
+  const flowMeasureRef = useRef<SVGTextElement>(null)
+  const asmMeasureRef = useRef<SVGTextElement>(null)
+  const [flowCopyW, setFlowCopyW] = useState(0)
+  const [asmMetrics, setAsmMetrics] = useState<{ label: string; centers: number[]; width: number } | null>(null)
+  const [fontTick, setFontTick] = useState(0)
 
-  // ---- FLOW: marquee — measure the text, repeat it to the nearest whole
-  // number of copies per revolution, and pin it to EXACTLY one loop with
-  // textLength so the tail meets the head without overprinting
-  const flowText = useMemo(() => {
-    let copyW = pl.text.length * pl.textSize * 0.62
-    if (typeof document !== 'undefined') {
-      const ctx = document.createElement('canvas').getContext('2d')
-      if (ctx) {
-        ctx.font = `640 ${pl.textSize}px ${family}`
-        copyW = ctx.measureText(pl.text).width + pl.text.length * pl.textSize * 0.05
-      }
+  useEffect(() => {
+    let alive = true
+    document.fonts?.ready.then(() => {
+      if (alive) setFontTick((v) => v + 1)
+    })
+    return () => {
+      alive = false
     }
+  }, [])
+
+  const asmLabel = useMemo(() => {
+    const head = pl.text.split('—')[0].trim()
+    return (head || 'LISSAJOUS').slice(0, 24)
+  }, [pl.text])
+
+  useLayoutEffect(() => {
+    const flow = flowMeasureRef.current
+    if (flow) setFlowCopyW(flow.getComputedTextLength())
+    const asm = asmMeasureRef.current
+    if (asm) {
+      const n = asmLabel.length
+      const centers: number[] = []
+      for (let i = 0; i < n; i++) {
+        const before = i === 0 ? 0 : asm.getSubStringLength(0, i)
+        centers.push(before + asm.getSubStringLength(i, 1) / 2)
+      }
+      setAsmMetrics({ label: asmLabel, centers, width: asm.getComputedTextLength() })
+    }
+  }, [pl.text, pl.textSize, asmLabel, fontTick])
+
+  // ---- FLOW: marquee — repeat the text to the nearest whole number of
+  // copies per revolution and pin it to EXACTLY one loop with textLength,
+  // so the tail meets the head without overprinting
+  const flowText = useMemo(() => {
+    const copyW = flowCopyW > 1 ? flowCopyW : pl.text.length * pl.textSize * 0.62
     const copies = Math.max(1, Math.round(total / Math.max(1, copyW)))
     return pl.text.repeat(copies)
-  }, [pl.text, pl.textSize, total, family])
+  }, [pl.text, pl.textSize, total, flowCopyW])
   const flowOffset = ((t / 1000) * pl.speed * total) % total
 
   // ---- ORBIT: tiles at equal arc spacing, painted back-to-front by depth
@@ -118,27 +140,13 @@ export function PathLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pl.scene, pl.count, pl.speed, path, t])
 
-  // ---- ASSEMBLE: headline chars fly from the path into the set line
-  const asmLabel = useMemo(() => {
-    const head = pl.text.split('—')[0].trim()
-    return (head || 'LISSAJOUS').slice(0, 24)
-  }, [pl.text])
-
+  // ---- ASSEMBLE: headline chars fly from the path into the set line,
+  // resting positions from the measured per-char advances
   const asmLayout = useMemo(() => {
-    if (typeof document === 'undefined') return null
-    const ctx = document.createElement('canvas').getContext('2d')
-    if (!ctx) return null
-    ctx.font = `640 ${pl.textSize * 1.6}px ${family}`
-    const widths = [...asmLabel].map((c) => ctx.measureText(c).width)
-    const totalW = widths.reduce((a, w) => a + w, 0)
-    let x = (W - totalW) / 2
-    const rest = widths.map((w) => {
-      const cx = x + w / 2
-      x += w
-      return cx
-    })
-    return { rest, y: H * 0.54 }
-  }, [asmLabel, pl.textSize, family])
+    if (!asmMetrics || asmMetrics.label !== asmLabel) return null
+    const left = (W - asmMetrics.width) / 2
+    return { rest: asmMetrics.centers.map((c) => left + c), y: H * 0.54 }
+  }, [asmMetrics, asmLabel])
 
   const asmChars = useMemo(() => {
     if (pl.scene !== 'assemble' || !asmLayout) return []
@@ -187,6 +195,14 @@ export function PathLab() {
 
       <div className="lane path-stage">
         <svg viewBox={`0 0 ${W} ${H}`} className="path-svg" data-testid="path-stage">
+          {/* hidden measurers: exact advances with the real SVG styling */}
+          <text ref={flowMeasureRef} className="flow-text measure-text" style={{ fontSize: pl.textSize }}>
+            {pl.text}
+          </text>
+          <text ref={asmMeasureRef} className="asm-char measure-text" style={{ fontSize: pl.textSize * 1.6, textAnchor: 'start' }}>
+            {asmLabel}
+          </text>
+
           {/* the figure itself, always present under the animation */}
           <path d={path.d} className="path-ghost" />
 
