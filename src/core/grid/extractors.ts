@@ -1,5 +1,6 @@
 import type { GridState } from '@/core/state/types'
 import type { RankedNode } from '@/core/lissajous/ranking'
+import type { CurveFeatures } from '@/core/lissajous/features'
 import type { EditorialGrid, GridGuide } from './types'
 
 type Cluster = { pos: number; weight: number; sources: number[] }
@@ -20,16 +21,16 @@ function clusterAxis(
       const w = last.weight + v.weight
       last.pos = (last.pos * last.weight + v.pos * v.weight) / w
       last.weight = w
-      last.sources.push(v.id)
+      if (v.id >= 0) last.sources.push(v.id)
     } else {
-      out.push({ pos: v.pos, weight: v.weight, sources: [v.id] })
+      out.push({ pos: v.pos, weight: v.weight, sources: v.id >= 0 ? [v.id] : [] })
     }
   }
   return out
 }
 
-// Force interior boundary count to exactly `target`: drop the lightest
-// clusters, then subdivide the widest spans until the count fits.
+// Force interior boundary count to at most `target`: keep the strongest
+// clusters and enforce a minimum span, but never synthesize geometry.
 function fitBoundaries(
   clusters: Cluster[],
   lo: number,
@@ -37,7 +38,7 @@ function fitBoundaries(
   targetInterior: number,
   minSpan: number,
 ): Cluster[] {
-  let interior = clusters
+  const interior = clusters
     .filter((c) => c.pos > lo + minSpan / 2 && c.pos < hi - minSpan / 2)
     .sort((a, b) => b.weight - a.weight)
     .slice(0, targetInterior)
@@ -56,19 +57,6 @@ function fitBoundaries(
     }
   }
 
-  while (interior.length < targetInterior) {
-    // find widest span (incl. edges) and split it
-    const all = [lo, ...interior.map((c) => c.pos), hi]
-    let widest = 0
-    let widestIdx = 0
-    for (let i = 0; i < all.length - 1; i++) {
-      const w = all[i + 1] - all[i]
-      if (w > widest) { widest = w; widestIdx = i }
-    }
-    if (widest < minSpan * 2) break
-    interior.push({ pos: all[widestIdx] + widest / 2, weight: 0.01, sources: [] })
-    interior = interior.sort((a, b) => a.pos - b.pos)
-  }
   return interior
 }
 
@@ -111,31 +99,63 @@ function suggestZones(
 export function extractGrid(
   gridState: GridState,
   nodes: RankedNode[],
+  features: CurveFeatures,
   artW: number,
   artH: number,
 ): EditorialGrid {
-  const margin = Math.round(Math.min(artW, artH) * lerp(0.06, 0.12, gridState.marginRestraint))
-  const box = { x: margin, y: margin, w: artW - margin * 2, h: artH - margin * 2 }
+  const margin = 0
+  const allFeatures = [...features.xExtrema, ...features.yExtrema]
+  const geom = [
+    ...nodes.map((n) => ({ x: n.x, y: n.y })),
+    ...allFeatures.map((p) => ({ x: p.x, y: p.y })),
+  ]
+  let box: { x: number; y: number; w: number; h: number }
+  if (geom.length >= 2) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const p of geom) {
+      if (p.x < minX) minX = p.x
+      if (p.x > maxX) maxX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.y > maxY) maxY = p.y
+    }
+    const x0 = Math.max(0, minX - margin)
+    const y0 = Math.max(0, minY - margin)
+    const x1 = Math.min(artW, maxX + margin)
+    const y1 = Math.min(artH, maxY + margin)
+    box = { x: x0, y: y0, w: Math.max(8, x1 - x0), h: Math.max(8, y1 - y0) }
+  } else {
+    const fallback = Math.round(Math.min(artW, artH) * 0.08)
+    box = { x: fallback, y: fallback, w: artW - fallback * 2, h: artH - fallback * 2 }
+  }
   const gutter = Math.max(2, gridState.gutterScale * box.w * 0.015)
 
   // baseline rhythm: quantize a target leading into the content height
   const targetLeading = (box.h / 64) * Math.max(0.25, gridState.baselineRhythm)
   const baseline = box.h / Math.max(8, Math.round(box.h / targetLeading))
 
-  const usable = nodes.filter(
+  const usableNodes = nodes.filter(
     (n) => n.x > box.x - margin / 2 && n.x < box.x + box.w + margin / 2 &&
            n.y > box.y - margin / 2 && n.y < box.y + box.h + margin / 2,
   )
-  const xs = usable.map((n) => ({ pos: n.x, weight: Math.max(0.05, n.score), id: n.id }))
-  const ys = usable.map((n) => ({ pos: n.y, weight: Math.max(0.05, n.score), id: n.id }))
+  const usableFeatures = allFeatures.filter(
+    (p) => p.x > box.x - margin / 2 && p.x < box.x + box.w + margin / 2 &&
+           p.y > box.y - margin / 2 && p.y < box.y + box.h + margin / 2,
+  )
+
+  const xs = [
+    ...usableNodes.map((n) => ({ pos: n.x, weight: Math.max(0.05, n.score), id: n.id })),
+    ...usableFeatures.map((p) => ({ pos: p.x, weight: 0.35, id: -1 })),
+  ]
+  const ys = [
+    ...usableNodes.map((n) => ({ pos: n.y, weight: Math.max(0.05, n.score), id: n.id })),
+    ...usableFeatures.map((p) => ({ pos: p.y, weight: 0.35, id: -1 })),
+  ]
 
   const targetCols = Math.max(2, Math.min(8, Math.round(gridState.columnBias)))
   const targetRows = Math.max(2, Math.min(12, Math.round(gridState.rowBias)))
 
-  // Cluster the crossings, fit to the target counts, then discipline —
-  // the grid IS the crossings, evened out so any curve (even the
-  // single-crossing 1:2) yields a workable editorial structure. The old
-  // raw-projection mode was cut: it collapsed on sparse figures.
+  // Cluster crossing/extrema candidates and cap to target counts. We never
+  // synthesize mid-span guides; every interior guide comes from real geometry.
   const mergeGap = (box.w * 0.04) / Math.max(0.5, gridState.columnBias / 4)
   const colInterior = fitBoundaries(
     clusterAxis(xs, mergeGap), box.x, box.x + box.w,
@@ -145,10 +165,6 @@ export function extractGrid(
     clusterAxis(ys, box.h * 0.03), box.y, box.y + box.h,
     targetRows - 1, box.h / (2 * targetRows),
   )
-  // discipline: snap columns to a micro-unit, rows to the baseline grid
-  const unit = box.w / 48
-  for (const c of colInterior) c.pos = box.x + Math.round((c.pos - box.x) / unit) * unit
-  for (const r of rowInterior) r.pos = box.y + Math.round((r.pos - box.y) / baseline) * baseline
 
   const columnBoundaries = toGuides('x', box.x, box.x + box.w, colInterior)
   const rowBoundaries = toGuides('y', box.y, box.y + box.h, rowInterior)
@@ -157,7 +173,7 @@ export function extractGrid(
   for (const cx of columnBoundaries) {
     for (const cy of rowBoundaries) anchors.push({ x: cx.pos, y: cy.pos, kind: 'lattice' })
   }
-  for (const n of usable) anchors.push({ x: n.x, y: n.y, kind: 'node' })
+  for (const n of usableNodes) anchors.push({ x: n.x, y: n.y, kind: 'node' })
 
   return {
     margins: { top: margin, right: margin, bottom: margin, left: margin },
@@ -167,6 +183,6 @@ export function extractGrid(
     gutter,
     baseline,
     anchors,
-    ...suggestZones(rowBoundaries, columnBoundaries, usable),
+    ...suggestZones(rowBoundaries, columnBoundaries, usableNodes),
   }
 }

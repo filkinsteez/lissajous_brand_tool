@@ -2,6 +2,7 @@ import type { ProjectState } from './state/types'
 import { sampleCurve, type CurveSample } from './lissajous/sampler'
 import { findIntersections, type CurveNode } from './lissajous/intersections'
 import { rankNodes, topNodes, type RankedNode } from './lissajous/ranking'
+import { curveFeatures, type CurveFeatures } from './lissajous/features'
 import { extractGrid } from './grid/extractors'
 import type { EditorialGrid } from './grid/types'
 import { lbsDebug } from './state/debug'
@@ -11,6 +12,7 @@ export type Derived = {
   intersections: CurveNode[]
   ranked: RankedNode[]
   primary: RankedNode[]
+  features: CurveFeatures
   grid: EditorialGrid
 }
 
@@ -32,6 +34,7 @@ export function getDerived(project: ProjectState): Derived {
   const H = artboard.height
 
   const samples = sampleCurve(liss, W, H)
+  const features = curveFeatures(samples)
   const dedupeEps = 0.015 * Math.min(W, H)
   const intersections = findIntersections(samples, dedupeEps)
 
@@ -49,10 +52,16 @@ export function getDerived(project: ProjectState): Derived {
   const selected = gridState.selectedNodeIds.length
     ? ranked.filter((n) => gridState.selectedNodeIds.includes(n.id))
     : null
-  const grid = extractGrid(gridState, selected && selected.length >= 2 ? selected : primary, W, H)
+  const grid = extractGrid(
+    gridState,
+    selected && selected.length >= 2 ? selected : primary,
+    features,
+    W,
+    H,
+  )
 
   cacheKey = key
-  cacheVal = { samples, intersections, ranked, primary, grid }
+  cacheVal = { samples, intersections, ranked, primary, features, grid }
 
   lbsDebug('intersections', intersections)
   lbsDebug('ranked', ranked)

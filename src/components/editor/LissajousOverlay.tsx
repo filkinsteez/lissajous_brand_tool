@@ -85,6 +85,29 @@ export function LissajousOverlay() {
 
       {isSetup ? (
         <>
+          {/* tangent-extrema features (curve-derived guide candidates) */}
+          {derived.features.xExtrema.map((p, i) => (
+            <circle
+              key={`fx-${i}`}
+              cx={p.x}
+              cy={p.y}
+              r={2}
+              fill="none"
+              stroke="var(--overlay-line)"
+              strokeWidth={1}
+              opacity={0.4}
+            />
+          ))}
+          {derived.features.yExtrema.map((p, i) => (
+            <circle
+              key={`fy-${i}`}
+              cx={p.x}
+              cy={p.y}
+              r={1.2}
+              fill="var(--overlay-line)"
+              opacity={0.35}
+            />
+          ))}
           {/* intersection nodes */}
           {derived.ranked.map((n) => {
             const isPrimary = derived.primary.some((p) => p.id === n.id)
