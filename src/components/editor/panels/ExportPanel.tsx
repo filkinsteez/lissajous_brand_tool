@@ -10,6 +10,7 @@ import { encodeShareHash } from '@/core/state/compress'
 // carries the whole project (motion system included), so it lives in both
 export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'motion' }) {
   const project = useStore((s) => s.project)
+  const mode = useStore((s) => s.ui.mode)
   const apply = useStore((s) => s.apply)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
@@ -39,7 +40,9 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
           onClick={async () => {
             setBusy(true)
             try {
-              await downloadPNG(project, project.export.scale)
+              await downloadPNG(project, project.export.scale, {
+                includeConstruction: mode === 'setup',
+              })
               flash('PNG EXPORTED')
             } catch {
               flash('EXPORT FAILED')
