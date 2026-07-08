@@ -307,15 +307,22 @@ describe('curveArcEasing', () => {
     expect(mid).toBeLessThan(0.7)
   })
 
-  it('enter decelerates, exit accelerates, and they mirror each other', () => {
+  it('enter decelerates, exit accelerates, and both land on time', () => {
     const enter = lissajousEasing(MOTION_TOKENS.find((t) => t.id === 'enter')!)
     const exit = lissajousEasing(MOTION_TOKENS.find((t) => t.id === 'exit')!)
     // enter: speed falls over time → position covers most ground early
     expect(evalEase(enter.lut, 0.4)).toBeGreaterThan(0.5)
     // exit: speed rises over time → position covers most ground late
     expect(evalEase(exit.lut, 0.6)).toBeLessThan(0.5)
-    // time-mirror relationship
-    expect(evalEase(enter.lut, 0.3)).toBeCloseTo(1 - evalEase(exit.lut, 0.7), 3)
+    // both span the full duration: leave at 0, arrive at 1
+    expect(enter.lut[0]).toBe(0)
+    expect(exit.lut[0]).toBe(0)
+    expect(enter.lut[enter.lut.length - 1]).toBe(1)
+    expect(exit.lut[exit.lut.length - 1]).toBe(1)
+    // roughly opposite in the interior — no longer an exact time-mirror
+    // because the decelerating (enter) end has its frozen tail trimmed so
+    // it lands at t=1 instead of arriving early and parking
+    expect(Math.abs(evalEase(enter.lut, 0.3) - (1 - evalEase(exit.lut, 0.7)))).toBeLessThan(0.06)
   })
 
   it('the speed curve IS the lobe as drawn — top-half arcs, no flips', () => {
@@ -375,6 +382,29 @@ describe('curveArcEasing', () => {
     expect(evalEase(strong.lut, 0.1)).toBeLessThan(evalEase(raw.lut, 0.1))
     expect(evalEase(strong.lut, 0.9)).toBeGreaterThan(evalEase(raw.lut, 0.9))
     expect(strong.lut[0]).toBe(0)
+    expect(strong.lut[strong.lut.length - 1]).toBe(1)
+  })
+
+  it('strong 1:2@90 velocity read yields crawl-whip-settle footprints', () => {
+    const raw = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity' })
+    const strong = lissajousEasing({
+      ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', strength: 0.8,
+    })
+
+    const mean = (arr: Float32Array) => arr.reduce((sum, v) => sum + v, 0) / arr.length
+    const peakOverMean = (arr: Float32Array) => Math.max(...arr) / Math.max(1e-6, mean(arr))
+    expect(peakOverMean(strong.speed!)).toBeGreaterThan(peakOverMean(raw.speed!) * 1.9)
+
+    const markCount = 109
+    const marks = Array.from({ length: markCount }, (_, i) => evalEase(strong.lut, i / (markCount - 1)))
+    const gaps = marks.slice(1).map((v, i) => v - marks[i])
+    const minGap = Math.min(...gaps)
+    const maxGap = Math.max(...gaps)
+    expect(maxGap / Math.max(minGap, 1e-6)).toBeGreaterThan(10)
+
+    for (let i = 1; i < strong.lut.length; i++) {
+      expect(strong.lut[i]).toBeGreaterThanOrEqual(strong.lut[i - 1] - 1e-6)
+    }
     expect(strong.lut[strong.lut.length - 1]).toBe(1)
   })
 

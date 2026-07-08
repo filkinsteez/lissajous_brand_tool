@@ -100,3 +100,9 @@ Everything renders in graph-editor orientation: the source panel plots
 the arc as time × value (never the raw figure), ghosts the surrounding
 oscillation behind it, and the main plot shows the shaped curve with the
 raw source dashed beneath it whenever strength/decay are active.
+
+The speed cursor sweeps **linear time** left-to-right (AE style). The
+small dot on the curve is the **current speed** at that time. The large
+ruler circle is the **current position** (integral of speed), and the
+hash marks are dense **equal-time footprints** of that position — packed
+where motion crawls, sparse through the whip.

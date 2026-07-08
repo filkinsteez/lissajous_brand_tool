@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { renderController } from '@/render/renderController'
 import {
@@ -14,6 +14,7 @@ import {
 import { lbsDebug } from '@/core/state/debug'
 
 const HOLD_MS = 600
+const FOOTPRINT_SAMPLES_PER_SEC = 180
 
 // Forward-only loop: run 0→1 over durationMs, hold at the end, restart.
 // The plot cursor and the line dot always travel the same direction, in
@@ -29,8 +30,7 @@ export function MotionLab() {
   const setUi = useStore((s) => s.setUi)
   const ml = project.motionLab
 
-  const elapsedRef = useRef(0)
-  const [, setFrame] = useState(0)
+  const [elapsedMs, setElapsedMs] = useState(0)
 
   // the easing IS a Lissajous figure: ratio + phase pick the member; the
   // read decides whether its arc is the value graph or the speed graph
@@ -60,18 +60,17 @@ export function MotionLab() {
   useEffect(() => {
     if (!playing) return
     return renderController.subscribe((dt) => {
-      elapsedRef.current += dt * 1000
-      setFrame((f) => f + 1)
+      setElapsedMs((ms) => ms + dt * 1000)
     })
   }, [playing])
 
-  const p = loopProgress(elapsedRef.current, ml.durationMs)
-  const eased = evalEase(lut, p)
+  const timeP = loopProgress(elapsedMs, ml.durationMs)
+  const positionP = evalEase(lut, timeP)
 
   // shared cycle clock for the product vignettes; delays give the stagger
   const easeAt = (delayMs: number) => {
     const cycle = ml.durationMs + HOLD_MS
-    const t = elapsedRef.current % cycle
+    const t = elapsedMs % cycle
     return evalEase(lut, Math.min(1, Math.max(0, (t - delayMs) / ml.durationMs)))
   }
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
@@ -93,8 +92,15 @@ export function MotionLab() {
   const trackX = (v: number) => PAD + v * (W - 2 * PAD)
   const spY = (v: number) => plotBottom - (v / 1.06) * (plotBottom - plotTop)
 
-  const speed = useMemo(() => arc.speed ?? velocityOf(arc.lut), [arc])
+  // Always derive plotted speed from the LUT that actually plays.
+  // This keeps graph shape, ruler footprints, and big-circle motion identical.
+  const speed = useMemo(() => velocityOf(lut), [lut])
+  const rawSpeed = useMemo(() => velocityOf(arc.rawLut), [arc.rawLut])
   const shapingActive = ml.strength > 0.01 || ml.decay > 0.01
+  const footprintCount = Math.max(
+    49,
+    Math.min(361, Math.round((ml.durationMs / 1000) * FOOTPRINT_SAMPLES_PER_SEC) + 1),
+  )
 
   const speedPath = useMemo(() => {
     let d = `M ${trackX(0).toFixed(1)} ${spY(speed[0]).toFixed(1)}`
@@ -106,14 +112,14 @@ export function MotionLab() {
   }, [speed])
   const rawSpeedPath = useMemo(() => {
     if (!shapingActive) return ''
-    const raw = arc.rawSpeed ?? velocityOf(arc.rawLut)
+    const raw = rawSpeed
     let d = `M ${trackX(0).toFixed(1)} ${spY(raw[0]).toFixed(1)}`
     for (let i = 1; i < raw.length; i++) {
       d += ` L ${trackX(i / (raw.length - 1)).toFixed(1)} ${spY(raw[i]).toFixed(1)}`
     }
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arc, shapingActive])
+  }, [rawSpeed, shapingActive])
 
   // the figure's surrounding context through the same frame — the
   // "rotate it and halve it" view, ghosted behind the speed curve
@@ -147,8 +153,8 @@ export function MotionLab() {
   // one assembly, in tandem: the playhead (cursor line + dot on the curve)
   // rides the same eased x as the big circle on the ruler, so they move
   // together as one marker.
-  const cursorX = trackX(clamp01(eased))
-  const speedAtCursor = evalEase(speed, clamp01(eased))
+  const cursorX = trackX(clamp01(timeP))
+  const speedAtCursor = evalEase(speed, clamp01(timeP))
 
   // ---- the underlying figure: the actual Lissajous these arcs come from,
   // with every harvestable lobe clickable
@@ -185,17 +191,21 @@ export function MotionLab() {
             return { d: ld, index }
           })
         : []
+    // the dot rides the DRAWN arc itself (arcUnit), so it always travels the
+    // full curve from start to finish — never stopping partway when the
+    // easing's sampled param table (tAtP) is trimmed shorter than the arc
     const tracerAt = (t: number) => {
-      const tt = arc.tAtP[Math.round(clamp01(t) * (arc.tAtP.length - 1))]
-      return map({ x: Math.sin(a * tt + phase), y: Math.sin(b * tt) })
+      const arcU = arc.arcUnit
+      if (!arcU.length) return map({ x: 0, y: 0 })
+      const idx = Math.round(clamp01(t) * (arcU.length - 1))
+      return map(arcU[idx])
     }
     return { d: d + ' Z', arcD, lobePaths, tracerAt }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, arc])
-  // the tracer follows the EASED clock like everything else: it sweeps the
-  // marked arc fast where the arc is high — the figure demonstrates its own
-  // speed curve, mirroring the graph dot position-for-position
-  const figTracer = figure.tracerAt(eased)
+  // the dot rides the same eased progress as the ruler ball, but along the
+  // full drawn arc — so it leaves the start and reaches the end of the curve
+  // together with the animation, whatever the easing
+  const figTracer = figure.tracerAt(positionP)
 
   const overshoot = overshootOf(lut)
 
@@ -258,7 +268,7 @@ export function MotionLab() {
           {ghostPath ? <path d={ghostPath} className="lane-curve-path faint" /> : null}
           {rawSpeedPath ? <path d={rawSpeedPath} className="plot-raw" /> : null}
           <path d={speedPath} data-testid="speed-arc" className="lane-arc" />
-          {/* one playhead through the graph and the ruler — same clock */}
+          {/* graph cursor is linear time (AE); ruler circle is eased position */}
           <line data-testid="plot-cursor" x1={cursorX} y1={plotTop - 6} x2={cursorX} y2={lineY} className="plot-cursor" />
           <circle cx={cursorX} cy={spY(speedAtCursor)} r={4} className="plot-dot" />
 
@@ -267,18 +277,20 @@ export function MotionLab() {
               crawls, a wide gap across the whip, closing back in as it
               settles. More marks so the crawl reads as a picket fence. */}
           <line x1={PAD} y1={lineY} x2={W - PAD} y2={lineY} className="lane-rule" />
-          {Array.from({ length: 29 }, (_, i) => {
-            const tx = trackX(clamp01(evalEase(lut, i / 28)))
-            return <line key={i} x1={tx} y1={lineY - 6} x2={tx} y2={lineY + 6} className="lane-tick" />
+          {Array.from({ length: footprintCount }, (_, i) => {
+            const tx = trackX(clamp01(evalEase(lut, i / (footprintCount - 1))))
+            return (
+              <line key={i} x1={tx} y1={lineY - 7} x2={tx} y2={lineY + 7} className="lane-tick" />
+            )
           })}
-          <circle data-testid="line-dot" cx={trackX(clamp01(eased))} cy={lineY} r={8} className="lane-dot" />
+          <circle data-testid="line-dot" cx={trackX(clamp01(positionP))} cy={lineY} r={8} className="lane-dot" />
         </svg>
         <div className="panel-note">
           {shapingActive
-            ? 'Solid: what plays. Dashed: the arc before strength/decay. The playhead and the circle move together — ticks are the circle’s footprints at equal time steps.'
+            ? 'Solid: what plays. Dashed: the arc before strength/decay. Cursor = time, dot height = current speed, big circle = position. Ticks are position footprints at equal time steps.'
             : ml.read === 'velocity'
-              ? 'The marked arc and this curve are one drawing. The playhead and the circle move together — ticks are the circle’s footprints at equal time steps.'
-              : 'Speed derived from the figure’s arc — cusps are direction changes. The playhead and the circle move together — ticks are the circle’s footprints.'}
+              ? 'The marked arc and this curve are one drawing. Cursor = time, dot height = current speed, big circle = position. Ticks are position footprints at equal time steps.'
+              : 'Speed derived from the figure’s arc — cusps are direction changes. Cursor = time, dot height = current speed, big circle = position. Ticks are position footprints at equal time steps.'}
         </div>
       </div>
       </div>

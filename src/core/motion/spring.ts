@@ -550,28 +550,34 @@ function arcVelocityEasing(
 // ease. Endpoints re-normalized to land exactly 0→1.
 export function applyStrength(lut: Float32Array, strength: number): Float32Array {
   if (strength <= 0.001) return lut
-  // Crawl–whip–settle, never wait–teleport–wait: the powered profile makes
-  // a genuinely narrow spike (AE-snappy is 3.5-6× peak-over-average), but a
-  // pure power crushes low speeds to LITERAL ZERO — dead zones where the
-  // object parks and footprint marks pile invisibly on one pixel. So the
-  // spike rides on a small constant-speed floor: the move is alive end to
-  // end, early footprints creep at even spacing, and the landing glides.
-  const power = 1 + strength * 11
-  const crawl = 0.1 * Math.sqrt(strength) // floor fraction, 0 at strength 0
+  // AE speed-graph influence. The position curve is the integral of a speed
+  // graph, so "strength" simply sharpens that speed graph. Raise the
+  // NORMALIZED speed to a power (>1): low speeds collapse toward a genuine
+  // HOLD (zero stays zero — NO linear floor, so flat = truly stopped), while
+  // the peak is preserved. Re-integrate to position and normalize 0→1.
+  // Power scales smoothly with strength so the slider has a usable range
+  // from a gentle sharpen to a hard hold→whip→settle.
   const n = lut.length
+  const power = 1 + strength * 13
+
+  const vel = new Float32Array(n)
+  let peak = 1e-9
+  for (let i = 1; i < n; i++) {
+    vel[i] = lut[i] - lut[i - 1]
+    const a = Math.abs(vel[i])
+    if (a > peak) peak = a
+  }
+
   const out = new Float32Array(n)
   for (let i = 1; i < n; i++) {
-    const v = (lut[i] - lut[i - 1]) * (n - 1) // de/dp
-    out[i] = out[i - 1] + Math.sign(v) * Math.pow(Math.abs(v), power)
+    const shaped = Math.pow(Math.abs(vel[i]) / peak, power)
+    out[i] = out[i - 1] + Math.sign(vel[i]) * shaped
   }
   const start = out[0]
   const span = out[n - 1] - start
   if (Math.abs(span) < 1e-9) return lut
-  for (let i = 0; i < n; i++) {
-    const powered = (out[i] - start) / span
-    const linear = i / (n - 1)
-    out[i] = (1 - crawl) * powered + crawl * linear
-  }
+  for (let i = 0; i < n; i++) out[i] = (out[i] - start) / span
+  out[0] = 0
   out[n - 1] = 1
   return out
 }
@@ -591,6 +597,66 @@ export function applyDecay(lut: Float32Array, decay: number): Float32Array {
   out[0] = 0
   out[n - 1] = 1
   return out
+}
+
+// Trim a velocity-read position LUT's FROZEN tail. When strength
+// concentrates the travel, the speed graph collapses to ~0 well before the
+// end, so the integrated position reaches 1 early and then sits perfectly
+// still — the object arrives before the timeline ends and parks, so the
+// ruler circle hits the finish line while the time cursor is still
+// sweeping. Detect a genuinely frozen tail (per-sample speed far below the
+// peak, spanning a meaningful chunk of the timeline) and resample the
+// active span [0, end] back onto [0, 1] so the move fills its full duration
+// and lands at t=1 with the cursor. This is velocity-based, so a smooth
+// ease-out that merely decelerates toward the target (speed small but the
+// object still moving) is NOT clipped. No floor is introduced: zero speed
+// stays a true hold, the dead span is simply removed. No-op when there is
+// no frozen tail (e.g. strength 0).
+function trimDeadTail(
+  lut: Float32Array,
+  tAtP: Float32Array,
+): { lut: Float32Array; tAtP: Float32Array } {
+  const n = lut.length
+  let peak = 1e-9
+  for (let i = 1; i < n; i++) {
+    const v = Math.abs(lut[i] - lut[i - 1])
+    if (v > peak) peak = v
+  }
+  const eps = peak * 0.005 // below this the object is effectively stopped
+  let lastActive = n - 1
+  for (let i = n - 1; i >= 1; i--) {
+    if (Math.abs(lut[i] - lut[i - 1]) > eps) {
+      lastActive = i
+      break
+    }
+  }
+  // only trim a SUBSTANTIAL frozen tail (>3% of the timeline); a smooth
+  // ease-out's final sub-eps sample or two must be left untouched
+  const minFrozen = Math.max(3, Math.floor(n * 0.03))
+  if (n - 1 - lastActive < minFrozen) return { lut, tAtP }
+
+  const end = lastActive
+  const outL = new Float32Array(n)
+  const outT = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const f = (i / (n - 1)) * end
+    const i0 = Math.floor(f)
+    const frac = f - i0
+    const i1 = Math.min(n - 1, i0 + 1)
+    outL[i] = lut[i0] * (1 - frac) + lut[i1] * frac
+    outT[i] = tAtP[i0] * (1 - frac) + tAtP[i1] * frac
+  }
+  // Rescale so the trimmed curve reaches exactly 1 at the end. Snapping the
+  // last sample to 1 instead would inject a one-sample velocity spike — the
+  // little tail uptick on the speed graph. The dropped frozen tail carried
+  // only a sliver of travel, so this stays a smooth, monotone settle.
+  const reach = outL[n - 1]
+  if (reach > 1e-6) {
+    for (let i = 0; i < n; i++) outL[i] /= reach
+  }
+  outL[0] = 0
+  outL[n - 1] = 1
+  return { lut: outL, tAtP: outT }
 }
 
 // One entry point: figure → read → mirror → strength → decay.
@@ -632,9 +698,21 @@ export function lissajousEasing(
 
   const shaped = applyDecay(applyStrength(lut, recipe.strength ?? 0), recipe.decay ?? 0)
   if (shaped !== lut) {
-    // speed display must match what actually plays
-    speed = velocityOf(shaped)
     lut = shaped
+  }
+
+  // Velocity read is the integral of a speed graph: trim the dead tail so
+  // the concentrated move lands at t=1 with the time cursor instead of
+  // arriving early and parking.
+  if (recipe.read === 'velocity') {
+    const trimmed = trimDeadTail(lut, tAtP)
+    lut = trimmed.lut
+    tAtP = trimmed.tAtP
+  }
+
+  if (lut !== rawLut) {
+    // speed display must match what actually plays
+    speed = velocityOf(lut)
   }
 
   return { lut, tAtP, arcUnit: raw.arcUnit, speed, rawLut, rawSpeed, frame: raw.frame }

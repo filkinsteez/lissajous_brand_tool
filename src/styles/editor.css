@@ -681,6 +681,7 @@
 .lane-tick {
   stroke: var(--text-faint);
   stroke-width: 1;
+  opacity: 0.8;
 }
 
 .lane-dot {
