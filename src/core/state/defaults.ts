@@ -130,6 +130,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       decay: 0,
       lobe: -1,
       half: 'full',
+      wave: 'sine',
       durationMs: 900,
       presetId: 'ease-in-out',
       pathShape: 'circle',

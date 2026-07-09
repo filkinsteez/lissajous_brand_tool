@@ -13,6 +13,7 @@ import {
   springLUT,
   toCssLinear,
   velocityOf,
+  waveY,
 } from './spring'
 import { samplePathShape } from './pathShapes'
 import { createDefaultProject } from '@/core/state/defaults'
@@ -420,6 +421,56 @@ describe('curveArcEasing', () => {
     expect(minAfter(raw.lut, 0.4)).toBeLessThan(0.1) // the broken full return
     expect(minAfter(bounce.lut, 0.4)).toBeGreaterThan(0.6) // settles near target
     expect(bounce.lut[bounce.lut.length - 1]).toBe(1)
+  })
+
+  it('meta wave: the Meta infinity is a first-class figure', () => {
+    // shape invariants (reference: public/icon-fill.svg) — lobe tops at +1,
+    // bottoms at −1, crossing dropped to −0.4 (the M notch)
+    expect(waveY('meta', Math.PI / 2)).toBeCloseTo(1, 6)
+    expect(waveY('meta', (3 * Math.PI) / 2)).toBeCloseTo(-1, 6)
+    expect(waveY('meta', 0)).toBeCloseTo(-0.4, 6)
+    expect(waveY('meta', Math.PI)).toBeCloseTo(-0.4, 6)
+    // sine untouched
+    expect(waveY('sine', Math.PI / 2)).toBeCloseTo(1, 12)
+
+    // same machinery as the classic figure: lobes enumerable, selectable,
+    // every one a valid 0→1 easing, and cuts land on true zero crossings
+    const params = { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2, wave: 'meta' as const }
+    const lobes = enumerateLobes(params)
+    expect(lobes.length).toBeGreaterThanOrEqual(4)
+    const shapes = new Set<string>()
+    for (let i = 0; i < lobes.length; i++) {
+      const e = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', lobe: i })
+      expect(e.lut[0], `lobe ${i}`).toBe(0)
+      expect(e.lut[e.lut.length - 1], `lobe ${i}`).toBe(1)
+      shapes.add([0.25, 0.5, 0.75].map((t) => evalEase(e.lut, t).toFixed(2)).join(','))
+    }
+    expect(shapes.size).toBeGreaterThan(1)
+    // interior cuts sit on genuine zeros of the meta wave
+    for (const { t0, t1 } of lobes) {
+      for (const edge of [t0, t1]) {
+        const y = waveY('meta', 2 * edge)
+        const x = Math.sin(edge + Math.PI / 2)
+        // an edge is either a wave zero or the window's x-extreme
+        expect(Math.abs(y) < 1e-6 || Math.abs(Math.abs(x) - 1) < 1e-6, `edge ${edge}`).toBe(true)
+      }
+    }
+    // lobes keep one sign — the marked arc never |·|-flips
+    const auto = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta' })
+    let sawPos = false
+    let sawNeg = false
+    for (let i = 0; i < auto.tAtP.length; i++) {
+      const y = waveY('meta', 2 * auto.tAtP[i])
+      if (y > 1e-3) sawPos = true
+      if (y < -1e-3) sawNeg = true
+    }
+    expect(sawPos && sawNeg).toBe(false)
+    // strength and half still apply on the meta figure
+    const strong = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', strength: 0.6 })
+    expect([...strong.lut]).not.toEqual([...auto.lut])
+    const rise = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', half: 'rise' })
+    expect(rise.lut[0]).toBe(0)
+    expect(rise.lut[rise.lut.length - 1]).toBe(1)
   })
 
   it('spring preset oscillates but converges', () => {

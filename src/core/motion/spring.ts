@@ -28,6 +28,37 @@ export type MotionRecipe = {
   // target instead of swinging all the way back (fixes bounce/spring)
   lobe?: number // index into enumerateLobes(); -1/undefined = auto-pick
   half?: 'full' | 'rise' | 'fall' // take one side of the arc, split at its peak
+  wave?: FigureWave // y-oscillation waveform; default classic sine
+}
+
+// The y-oscillation's waveform. 'sine' is the classic Lissajous family.
+// 'meta' is the Meta infinity mark (reference: public/icon-fill.svg): the
+// figure-eight with its crossing dropped BELOW the lobe tops — tops stay
+// at +1, bottoms at −1, and the two passes cross at −META_DIP, which is
+// what draws the M notch between the humps. Everything downstream (lobes,
+// halves, strength, decay) works unchanged because only y(u) changes.
+export type FigureWave = 'sine' | 'meta'
+
+const META_DIP = 0.4
+
+export function waveY(wave: FigureWave, u: number): number {
+  if (wave === 'meta') {
+    const c = Math.cos(u)
+    return Math.sin(u) - META_DIP * c * c
+  }
+  return Math.sin(u)
+}
+
+// Zero crossings of the waveform within one 2π period, ascending. The
+// sine's zeros are 0 and π; the meta wave solves sin u = µ·cos²u →
+// sin u = (−1 + √(1+4µ²)) / 2µ, giving a pair symmetric about π/2.
+function waveZeros(wave: FigureWave): number[] {
+  if (wave === 'meta') {
+    const s = (-1 + Math.sqrt(1 + 4 * META_DIP * META_DIP)) / (2 * META_DIP)
+    const z = Math.asin(s)
+    return [z, Math.PI - z]
+  }
+  return [0, Math.PI]
 }
 
 // Every harvestable lobe of a figure: FULL ARCHES — x-monotone
@@ -40,11 +71,14 @@ export function enumerateLobes(params: {
   frequencyX: number
   frequencyY: number
   phase: number
+  wave?: FigureWave
 }): Lobe[] {
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
+  const wave = params.wave ?? 'sine'
   const TAU = Math.PI * 2
+  const zeros = waveZeros(wave) // y's zero crossings, one 2π period
   const out: Lobe[] = []
 
   for (let k = 0; k < a; k++) {
@@ -55,11 +89,13 @@ export function enumerateLobes(params: {
       const q0 = (u0 - phase) / a
       const q1 = (u1 - phase) / a
       const cuts: number[] = [q0]
-      const mLo = Math.ceil((q0 * b) / Math.PI)
-      const mHi = Math.floor((q1 * b) / Math.PI)
-      for (let m = mLo; m <= mHi; m++) {
-        const tz = (m * Math.PI) / b
-        if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
+      for (const z of zeros) {
+        const mLo = Math.ceil((q0 * b - z) / TAU)
+        const mHi = Math.floor((q1 * b - z) / TAU)
+        for (let m = mLo; m <= mHi; m++) {
+          const tz = (z + TAU * m) / b
+          if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
+        }
       }
       cuts.push(q1)
       cuts.sort((p1, p2) => p1 - p2)
@@ -70,7 +106,7 @@ export function enumerateLobes(params: {
         // skip near-silent slivers
         let peak = 0
         for (let i = 0; i <= 16; i++) {
-          peak = Math.max(peak, Math.abs(Math.sin(b * (t0 + (i / 16) * (t1 - t0)))))
+          peak = Math.max(peak, Math.abs(waveY(wave, b * (t0 + (i / 16) * (t1 - t0)))))
         }
         if (peak < 0.05) continue
         out.push({ t0, t1 })
@@ -295,12 +331,13 @@ export type CurveArcEasing = {
 }
 
 export function curveArcEasing(
-  params: { frequencyX: number; frequencyY: number; phase: number },
+  params: { frequencyX: number; frequencyY: number; phase: number; wave?: FigureWave },
   size = LUT_SIZE,
 ): CurveArcEasing {
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
+  const wave = params.wave ?? 'sine'
   const TAU = Math.PI * 2
 
   // candidate windows: x = sin(a·t + φ) rises −1 → +1 on each of these
@@ -310,7 +347,7 @@ export function curveArcEasing(
   for (let k = 0; k < a; k++) {
     const t0 = (-Math.PI / 2 - phase + TAU * k) / a
     const t1 = t0 + Math.PI / a
-    const dy = Math.sin(b * t1) - Math.sin(b * t0)
+    const dy = waveY(wave, b * t1) - waveY(wave, b * t0)
     if (Math.abs(dy) > Math.abs(bestDy)) {
       bestDy = dy
       bestT0 = t0
@@ -329,7 +366,7 @@ export function curveArcEasing(
       ]) {
         const t0 = (u0 - phase) / a
         const t1 = (u1 - phase) / a
-        const dy = Math.sin(b * t1) - Math.sin(b * t0)
+        const dy = waveY(wave, b * t1) - waveY(wave, b * t0)
         if (Math.abs(dy) > Math.abs(bestDy) + 1e-9) {
           bestDy = dy
           bestT0 = t0
@@ -353,7 +390,7 @@ export function curveArcEasing(
       const t = t0 + p * (t1 - t0)
       lut[i] = (1 - Math.cos(Math.PI * p)) / 2
       tAtP[i] = t
-      arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+      arcUnit.push({ x: Math.sin(a * t + phase), y: waveY(wave, b * t) })
     }
     lut[size - 1] = 1
     return { lut, arcUnit, tAtP, frame: null }
@@ -371,7 +408,7 @@ export function curveArcEasing(
     const t = t0 + (i / fine) * (t1 - t0)
     ts[i] = t
     xs[i] = Math.sin(a * t + phase)
-    ys[i] = Math.sin(b * t)
+    ys[i] = waveY(wave, b * t)
   }
   const xStart = xs[0]
   const xEnd = xs[fine]
@@ -394,7 +431,7 @@ export function curveArcEasing(
 
   const arcStep = Math.max(1, Math.floor(fine / 160))
   for (let i = 0; i <= fine; i += arcStep) {
-    arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: Math.sin(b * ts[i]) })
+    arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: waveY(wave, b * ts[i]) })
   }
 
   return { lut, arcUnit, tAtP, frame: { x0: xStart, x1: xEnd, y0, yScale } }
@@ -407,7 +444,7 @@ export function curveArcEasing(
 // normalized integral, monotone by construction. `half` keeps one side
 // of the arch, split at its speed peak — the classic ease ramps.
 function arcVelocityEasing(
-  params: { frequencyX: number; frequencyY: number; phase: number },
+  params: { frequencyX: number; frequencyY: number; phase: number; wave?: FigureWave },
   size = LUT_SIZE,
   lobeIndex?: number,
   half?: 'full' | 'rise' | 'fall',
@@ -415,6 +452,7 @@ function arcVelocityEasing(
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
+  const wave = params.wave ?? 'sine'
 
   // Harvest unit: a LOBE (see enumerateLobes) — single-signed, so the arc
   // as drawn IS the speed graph. A specific lobe can be requested by
@@ -435,13 +473,13 @@ function arcVelocityEasing(
       let sumSigned = 0
       const probes = 48
       for (let i = 0; i <= probes; i++) {
-        const y = Math.sin(b * (t0 + (i / probes) * (t1 - t0)))
+        const y = waveY(wave, b * (t0 + (i / probes) * (t1 - t0)))
         sumAbs += Math.abs(y)
         sumSigned += y
       }
       const mean = sumAbs / (probes + 1)
       const meanY = sumSigned / (probes + 1)
-      const endPenalty = Math.abs(Math.sin(b * t0)) + Math.abs(Math.sin(b * t1))
+      const endPenalty = Math.abs(waveY(wave, b * t0)) + Math.abs(waveY(wave, b * t1))
       const widthFrac = (t1 - t0) / halfW
       // small rightmost bias settles mirror-symmetric ties deterministically
       const midX = Math.sin(a * ((t0 + t1) / 2) + phase)
@@ -467,7 +505,7 @@ function arcVelocityEasing(
     const t = bestT0 + (i / fine) * (bestT1 - bestT0)
     ts[i] = t
     xs[i] = Math.sin(a * t + phase)
-    sp[i] = Math.abs(Math.sin(b * t))
+    sp[i] = Math.abs(waveY(wave, b * t))
   }
   // orient by ascending screen-x: "read left to right" is literal, so a
   // falling window's samples get reversed rather than time-flipped
@@ -536,7 +574,7 @@ function arcVelocityEasing(
   const arcUnit: { x: number; y: number }[] = []
   for (let i = 0; i <= 160; i++) {
     const t = ts[lo] + (i / 160) * (ts[hi] - ts[lo])
-    arcUnit.push({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+    arcUnit.push({ x: Math.sin(a * t + phase), y: waveY(wave, b * t) })
   }
 
   return {
@@ -666,7 +704,12 @@ export function lissajousEasing(
   recipe: MotionRecipe,
   size = LUT_SIZE,
 ): CurveArcEasing & { speed?: Float32Array; rawLut: Float32Array; rawSpeed?: Float32Array } {
-  const params = { frequencyX: recipe.ratioX, frequencyY: recipe.ratioY, phase: recipe.phase }
+  const params = {
+    frequencyX: recipe.ratioX,
+    frequencyY: recipe.ratioY,
+    phase: recipe.phase,
+    wave: recipe.wave,
+  }
   const raw: CurveArcEasing & { speed?: Float32Array } =
     recipe.read === 'velocity'
       ? arcVelocityEasing(params, size, recipe.lobe, recipe.half)

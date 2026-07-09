@@ -134,6 +134,7 @@ export type MotionLabState = {
   decay: number // 0..1 damping: oscillations settle instead of returning
   lobe: number // which lobe of the figure to harvest; -1 = auto-pick
   half: 'full' | 'rise' | 'fall' // whole arch, or one side split at its peak
+  wave: 'sine' | 'meta' // y waveform: classic Lissajous, or the Meta infinity
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

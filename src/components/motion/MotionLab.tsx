@@ -10,6 +10,7 @@ import {
   overshootOf,
   toCssLinear,
   velocityOf,
+  waveY,
 } from '@/core/motion/spring'
 import { lbsDebug } from '@/core/state/debug'
 
@@ -39,9 +40,9 @@ export function MotionLab() {
       lissajousEasing({
         ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
         reverse: ml.reverse, strength: ml.strength, decay: ml.decay, lobe: ml.lobe,
-        half: ml.half,
+        half: ml.half, wave: ml.wave,
       }),
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half, ml.wave],
   )
   const lut = arc.lut
 
@@ -136,7 +137,7 @@ export function MotionLab() {
       const t = (i / n) * Math.PI * 2
       const x = Math.sin(a * t + phase)
       let h = (x - frame.x0) / (frame.x1 - frame.x0 || 1e-9)
-      let v = (Math.sin(b * t) - frame.y0) / frame.yScale
+      let v = (waveY(ml.wave, b * t) - frame.y0) / frame.yScale
       if (ml.read === 'velocity') v = Math.abs(v)
       if (ml.reverse) h = 1 - h
       if (h < -0.02 || h > 1.02 || v < -0.04 || v > 1.05) {
@@ -148,7 +149,7 @@ export function MotionLab() {
     }
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, arc])
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.wave, arc])
 
   // one assembly, in tandem: the playhead (cursor line + dot on the curve)
   // rides the same eased x as the big circle on the ruler, so they move
@@ -163,6 +164,7 @@ export function MotionLab() {
     const a = ml.ratioX
     const b = ml.ratioY
     const phase = ml.phase
+    const wave = ml.wave
     const map = (u: { x: number; y: number }) => ({
       x: FIG / 2 + u.x * (FIG / 2 - 26),
       y: FIG / 2 - u.y * (FIG / 2 - 26),
@@ -170,7 +172,7 @@ export function MotionLab() {
     let d = ''
     for (let i = 0; i <= 720; i++) {
       const t = (i / 720) * Math.PI * 2
-      const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+      const m = map({ x: Math.sin(a * t + phase), y: waveY(wave, b * t) })
       d += `${d ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
     }
     let arcD = ''
@@ -181,11 +183,11 @@ export function MotionLab() {
     // clickable lobe hit-paths (only meaningful for the speed read)
     const lobePaths =
       ml.read === 'velocity'
-        ? enumerateLobes({ frequencyX: a, frequencyY: b, phase }).map((lobe, index) => {
+        ? enumerateLobes({ frequencyX: a, frequencyY: b, phase, wave }).map((lobe, index) => {
             let ld = ''
             for (let i = 0; i <= 48; i++) {
               const t = lobe.t0 + (i / 48) * (lobe.t1 - lobe.t0)
-              const m = map({ x: Math.sin(a * t + phase), y: Math.sin(b * t) })
+              const m = map({ x: Math.sin(a * t + phase), y: waveY(wave, b * t) })
               ld += `${ld ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
             }
             return { d: ld, index }
@@ -201,7 +203,7 @@ export function MotionLab() {
       return map(arcU[idx])
     }
     return { d: d + ' Z', arcD, lobePaths, tracerAt }
-  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, arc])
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.wave, arc])
   // the dot rides the same eased progress as the ruler ball, but along the
   // full drawn arc — so it leaves the start and reaches the end of the curve
   // together with the animation, whatever the easing
@@ -230,7 +232,8 @@ export function MotionLab() {
       <div className="lane-row">
       <div className="lane lane-figure">
         <div className="lane-label">
-          THE FIGURE — {ml.ratioX}:{ml.ratioY} · PHASE {Math.round((ml.phase * 180) / Math.PI)}°
+          THE FIGURE — {ml.wave === 'meta' ? 'META ∞ ' : ''}{ml.ratioX}:{ml.ratioY} · PHASE{' '}
+          {Math.round((ml.phase * 180) / Math.PI)}°
         </div>
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
           <path d={figure.d} className="lane-curve-path" />
@@ -259,7 +262,7 @@ export function MotionLab() {
       </div>
       <div className="lane lane-figure">
         <div className="lane-label">
-          SPEED GRAPH — THE ARC OF THE {ml.ratioX}:{ml.ratioY} FIGURE
+          SPEED GRAPH — THE ARC OF THE {ml.wave === 'meta' ? 'META ∞ ' : ''}{ml.ratioX}:{ml.ratioY} FIGURE
         </div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
           {/* speed graph — same square frame as the figure panel */}

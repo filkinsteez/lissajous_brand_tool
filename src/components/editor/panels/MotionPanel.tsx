@@ -29,7 +29,7 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, read: p.read,
                     reverse: !!p.reverse, strength: p.strength ?? 0, decay: p.decay ?? 0,
-                    lobe: -1, half: p.half ?? 'full', presetId: p.id,
+                    lobe: -1, half: p.half ?? 'full', wave: p.wave ?? 'sine', presetId: p.id,
                   },
                 })
               }
@@ -38,6 +38,17 @@ export function MotionPanel() {
             </button>
           ))}
         </div>
+        <SegmentedControl
+          label="FIGURE"
+          value={ml.wave}
+          options={[
+            { value: 'sine', label: 'LISSAJOUS' },
+            { value: 'meta', label: 'META ∞' },
+          ]}
+          onChange={(v) =>
+            apply({ motionLab: { wave: v as 'sine' | 'meta', lobe: -1, presetId: undefined } })
+          }
+        />
         <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int}
           onChange={(ratioX) => setT({ motionLab: { ratioX, lobe: -1, presetId: undefined } })} onCommit={commit} />
         <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int}
@@ -83,6 +94,7 @@ export function MotionPanel() {
                 phase: project.lissajous.phase,
                 lobe: -1,
                 half: 'full',
+                wave: 'sine',
                 presetId: undefined,
               },
             })
@@ -112,7 +124,7 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: t.ratioX, ratioY: t.ratioY, phase: t.phase, read: t.read,
                     reverse: !!t.reverse, strength: t.strength ?? 0, decay: t.decay ?? 0,
-                    lobe: -1, half: t.half ?? 'full', presetId: undefined,
+                    lobe: -1, half: t.half ?? 'full', wave: t.wave ?? 'sine', presetId: undefined,
                   },
                 })
               }
