@@ -89,9 +89,10 @@ export function PathLab() {
       lissajousEasing({
         ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
         reverse: ml.reverse, strength: ml.strength, decay: ml.decay,
-        lobe: ml.lobe, half: ml.half, wave: ml.wave,
+        lobe: ml.lobe, half: ml.half,
+        shape: { waist: ml.waist, fullness: ml.fullness, bias: ml.bias },
       }).lut,
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half, ml.wave],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half, ml.waist, ml.fullness, ml.bias],
   )
 
   // ---- text metrics, measured on hidden SVG nodes with the real styles —

@@ -134,7 +134,12 @@ export type MotionLabState = {
   decay: number // 0..1 damping: oscillations settle instead of returning
   lobe: number // which lobe of the figure to harvest; -1 = auto-pick
   half: 'full' | 'rise' | 'fall' // whole arch, or one side split at its peak
-  wave: 'sine' | 'meta' // y waveform: classic Lissajous, or the Meta infinity
+  // the figure design space: smooth warps where classic Lissajous and the
+  // Meta infinity are just two points. All zero at classic.
+  waist: number // 0..1 — narrows the crossover
+  fullness: number // 0..1 — fuller loops, flatter arcs
+  bias: number // −1..1 — skews lobe mass outward/inward
+  twist: number // radians — display rotation of the figure
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

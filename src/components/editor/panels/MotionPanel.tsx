@@ -3,7 +3,7 @@
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { MOTION_PRESETS, MOTION_TOKENS } from '@/core/motion/spring'
+import { META_SHAPE, MOTION_PRESETS, MOTION_TOKENS } from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -29,7 +29,9 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, read: p.read,
                     reverse: !!p.reverse, strength: p.strength ?? 0, decay: p.decay ?? 0,
-                    lobe: -1, half: p.half ?? 'full', wave: p.wave ?? 'sine', presetId: p.id,
+                    lobe: -1, half: p.half ?? 'full',
+                    waist: p.shape?.waist ?? 0, fullness: p.shape?.fullness ?? 0,
+                    bias: p.shape?.bias ?? 0, presetId: p.id,
                   },
                 })
               }
@@ -38,17 +40,6 @@ export function MotionPanel() {
             </button>
           ))}
         </div>
-        <SegmentedControl
-          label="FIGURE"
-          value={ml.wave}
-          options={[
-            { value: 'sine', label: 'LISSAJOUS' },
-            { value: 'meta', label: 'META ∞' },
-          ]}
-          onChange={(v) =>
-            apply({ motionLab: { wave: v as 'sine' | 'meta', lobe: -1, presetId: undefined } })
-          }
-        />
         <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int}
           onChange={(ratioX) => setT({ motionLab: { ratioX, lobe: -1, presetId: undefined } })} onCommit={commit} />
         <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int}
@@ -94,7 +85,9 @@ export function MotionPanel() {
                 phase: project.lissajous.phase,
                 lobe: -1,
                 half: 'full',
-                wave: 'sine',
+                waist: 0,
+                fullness: 0,
+                bias: 0,
                 presetId: undefined,
               },
             })
@@ -105,6 +98,52 @@ export function MotionPanel() {
         <div className="panel-note">
           The source is the velocity: the figure&apos;s arc is the speed graph, and
           position is its integral — same as After Effects.
+        </div>
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">FIGURE SHAPE — A DESIGN SPACE</div>
+        <div className="preset-strip">
+          <button
+            className={ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.twist === 0 ? 'preset-chip active' : 'preset-chip'}
+            onClick={() =>
+              apply({ motionLab: { waist: 0, fullness: 0, bias: 0, twist: 0, presetId: undefined } })
+            }
+          >
+            CLASSIC
+          </button>
+          <button
+            className={ml.waist === META_SHAPE.waist && ml.fullness === META_SHAPE.fullness && ml.bias === META_SHAPE.bias ? 'preset-chip active' : 'preset-chip'}
+            onClick={() =>
+              apply({
+                motionLab: {
+                  ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity',
+                  waist: META_SHAPE.waist, fullness: META_SHAPE.fullness,
+                  bias: META_SHAPE.bias, twist: 0, presetId: undefined,
+                },
+              })
+            }
+          >
+            META ∞
+          </button>
+        </div>
+        <Slider label="WAIST" value={ml.waist} min={0} max={1}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(waist) => setT({ motionLab: { waist, presetId: undefined } })} onCommit={commit} />
+        <Slider label="FULLNESS" value={ml.fullness} min={0} max={1}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(fullness) => setT({ motionLab: { fullness, presetId: undefined } })} onCommit={commit} />
+        <Slider label="BIAS" value={ml.bias} min={-1} max={1} step={0.02}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(bias) => setT({ motionLab: { bias, presetId: undefined } })} onCommit={commit} />
+        <Slider label="TWIST" value={ml.twist} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
+          format={deg}
+          onChange={(twist) => setT({ motionLab: { twist } })} onCommit={commit} />
+        <div className="panel-note">
+          One continuous space of smooth warps: WAIST narrows the crossover,
+          FULLNESS fills the loops and flattens the arcs, BIAS skews the lobe
+          mass, TWIST rotates the drawing. The Meta mark is one point in it —
+          the classic Lissajous is another. Lobe cuts and speed curves stay
+          stable everywhere in the space.
         </div>
       </div>
       <div className="panel-section">
@@ -124,7 +163,9 @@ export function MotionPanel() {
                   motionLab: {
                     ratioX: t.ratioX, ratioY: t.ratioY, phase: t.phase, read: t.read,
                     reverse: !!t.reverse, strength: t.strength ?? 0, decay: t.decay ?? 0,
-                    lobe: -1, half: t.half ?? 'full', wave: t.wave ?? 'sine', presetId: undefined,
+                    lobe: -1, half: t.half ?? 'full',
+                    waist: t.shape?.waist ?? 0, fullness: t.shape?.fullness ?? 0,
+                    bias: t.shape?.bias ?? 0, presetId: undefined,
                   },
                 })
               }

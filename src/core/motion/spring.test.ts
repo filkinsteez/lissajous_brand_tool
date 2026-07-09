@@ -10,10 +10,11 @@ import {
   MOTION_PRESETS,
   MOTION_TOKENS,
   overshootOf,
+  META_SHAPE,
+  shapeY,
   springLUT,
   toCssLinear,
   velocityOf,
-  waveY,
 } from './spring'
 import { samplePathShape } from './pathShapes'
 import { createDefaultProject } from '@/core/state/defaults'
@@ -423,54 +424,70 @@ describe('curveArcEasing', () => {
     expect(bounce.lut[bounce.lut.length - 1]).toBe(1)
   })
 
-  it('meta wave: the Meta infinity is a first-class figure', () => {
-    // shape invariants (reference: public/icon-fill.svg) — lobe tops at +1,
-    // bottoms at −1, crossing dropped to −0.4 (the M notch)
-    expect(waveY('meta', Math.PI / 2)).toBeCloseTo(1, 6)
-    expect(waveY('meta', (3 * Math.PI) / 2)).toBeCloseTo(-1, 6)
-    expect(waveY('meta', 0)).toBeCloseTo(-0.4, 6)
-    expect(waveY('meta', Math.PI)).toBeCloseTo(-0.4, 6)
-    // sine untouched
-    expect(waveY('sine', Math.PI / 2)).toBeCloseTo(1, 12)
+  it('figure design space: smooth warps, zeros pinned, Meta is one point', () => {
+    // neutral shape IS the sine — the classic figure is a point in the space
+    for (const u of [0.3, 1.1, 2.7, 4.4]) {
+      expect(shapeY({ waist: 0, fullness: 0, bias: 0 }, u)).toBeCloseTo(Math.sin(u), 12)
+    }
+    // every shape keeps zeros exactly at u = mπ and spans ±1
+    const shapes = [
+      META_SHAPE,
+      { waist: 1, fullness: 0, bias: 0 },
+      { waist: 0, fullness: 1, bias: 0 },
+      { waist: 0.4, fullness: 0.7, bias: 0.8 },
+      { waist: 0.9, fullness: 0.3, bias: -0.6 },
+    ]
+    for (const s of shapes) {
+      expect(Math.abs(shapeY(s, 0))).toBeLessThan(1e-9)
+      expect(Math.abs(shapeY(s, Math.PI))).toBeLessThan(1e-9)
+      let peak = 0
+      for (let i = 0; i <= 2000; i++) peak = Math.max(peak, Math.abs(shapeY(s, (i / 2000) * Math.PI * 2)))
+      expect(peak).toBeGreaterThan(0.995)
+      expect(peak).toBeLessThanOrEqual(1.0000001)
+    }
+    // waist narrows the crossover: steeper slope through the zero
+    const slope = (s: Parameters<typeof shapeY>[0]) => (shapeY(s, 0.02) - shapeY(s, -0.02)) / 0.04
+    expect(slope({ waist: 0.8, fullness: 0, bias: 0 })).toBeGreaterThan(slope({ waist: 0, fullness: 0, bias: 0 }) * 1.5)
+    // fullness flattens the arcs: more of the lobe near peak height
+    const nearPeak = (s: Parameters<typeof shapeY>[0]) => {
+      let n = 0
+      for (let i = 0; i <= 400; i++) if (shapeY(s, (i / 400) * Math.PI) > 0.9) n++
+      return n
+    }
+    expect(nearPeak({ waist: 0, fullness: 0.9, bias: 0 })).toBeGreaterThan(nearPeak({ waist: 0, fullness: 0, bias: 0 }) * 1.5)
 
-    // same machinery as the classic figure: lobes enumerable, selectable,
-    // every one a valid 0→1 easing, and cuts land on true zero crossings
-    const params = { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2, wave: 'meta' as const }
+    // the whole machinery works at the META point: lobes, halves, strength
+    const params = { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2, shape: META_SHAPE }
     const lobes = enumerateLobes(params)
     expect(lobes.length).toBeGreaterThanOrEqual(4)
-    const shapes = new Set<string>()
+    const luts = new Set<string>()
     for (let i = 0; i < lobes.length; i++) {
-      const e = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', lobe: i })
+      const e = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE, lobe: i })
       expect(e.lut[0], `lobe ${i}`).toBe(0)
       expect(e.lut[e.lut.length - 1], `lobe ${i}`).toBe(1)
-      shapes.add([0.25, 0.5, 0.75].map((t) => evalEase(e.lut, t).toFixed(2)).join(','))
+      luts.add([0.25, 0.5, 0.75].map((t) => evalEase(e.lut, t).toFixed(2)).join(','))
     }
-    expect(shapes.size).toBeGreaterThan(1)
-    // interior cuts sit on genuine zeros of the meta wave
-    for (const { t0, t1 } of lobes) {
-      for (const edge of [t0, t1]) {
-        const y = waveY('meta', 2 * edge)
-        const x = Math.sin(edge + Math.PI / 2)
-        // an edge is either a wave zero or the window's x-extreme
-        expect(Math.abs(y) < 1e-6 || Math.abs(Math.abs(x) - 1) < 1e-6, `edge ${edge}`).toBe(true)
-      }
-    }
+    expect(luts.size).toBeGreaterThan(1)
     // lobes keep one sign — the marked arc never |·|-flips
-    const auto = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta' })
+    const auto = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE })
     let sawPos = false
     let sawNeg = false
     for (let i = 0; i < auto.tAtP.length; i++) {
-      const y = waveY('meta', 2 * auto.tAtP[i])
+      const y = shapeY(META_SHAPE, 2 * auto.tAtP[i])
       if (y > 1e-3) sawPos = true
       if (y < -1e-3) sawNeg = true
     }
     expect(sawPos && sawNeg).toBe(false)
-    // strength and half still apply on the meta figure
-    const strong = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', strength: 0.6 })
-    expect([...strong.lut]).not.toEqual([...auto.lut])
-    const rise = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', wave: 'meta', half: 'rise' })
+    const rise = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE, half: 'rise' })
     expect(rise.lut[0]).toBe(0)
     expect(rise.lut[rise.lut.length - 1]).toBe(1)
+
+    // parameter continuity: a small shape step moves the speed curve a little
+    const a = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: { waist: 0.5, fullness: 0.3, bias: 0 } })
+    const b2 = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: { waist: 0.52, fullness: 0.3, bias: 0 } })
+    let maxD = 0
+    for (let i = 0; i < a.lut.length; i++) maxD = Math.max(maxD, Math.abs(a.lut[i] - b2.lut[i]))
+    expect(maxD).toBeLessThan(0.02)
   })
 
   it('spring preset oscillates but converges', () => {
