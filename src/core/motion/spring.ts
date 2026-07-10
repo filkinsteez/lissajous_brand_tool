@@ -39,67 +39,219 @@ export type MotionRecipe = {
 // same as pure sine, so lobe cutting, halves and the speed-curve
 // machinery stay analytic and stable across the whole space.
 //
-//   waist    0..1  — steepens the zero crossings: the figure-eight's
-//                    crossover narrows from Gerono's wide X toward the
-//                    tight Bernoulli/Meta waist. y = sin·(1 + k·cos²).
-//   fullness 0..1  — soft saturation (tanh): flattens the top/bottom
-//                    arcs and fills the outer loops.
-//   bias    −1..1  — curvature bias: a monotone periodic warp of the
-//                    y-parameter (v = u + β·sin 2u) that skews lobe
-//                    mass outward/inward without moving any zero.
+//   waist    0..1  — v = u + w·sin(2u): the wave rushes through its
+//                    zeros (narrow crossover) and lingers at its peaks
+//                    (flat, full lobes).
+//   bias    −1..1  — v = v − β·sin(v): pulls both extrema toward (or
+//                    away from) the crossing, tilting the lobes' mass.
+//   lean    −1..1  — v = v − λ·sin(v)·(1+cos v)/2: the same pull applied
+//                    to the TOP half only — the humps lean independently
+//                    of the bottoms.
+//   cross   −1..1  — y = sin(v) + c·sin²(v/2): lifts (or drops) the
+//                    figure-eight's crossing while both caps stay pinned
+//                    at zero — the vertical asymmetry of the Meta mark.
+//   fullness 0..1  — soft saturation (tanh): flattens the arcs, fills
+//                    the loops.
+//   morph    0..1  — blends the base oscillation from the pure sine
+//                    toward the Meta profile (a fixed 3-harmonic Fourier
+//                    signature fitted to the mark). 0 = classic, 1 = Meta;
+//                    every other dial composes on top at any blend.
+// All parameter warps are monotone (clamped ranges), so the loop stays
+// single and closed, curvature stays continuous, and the speed machinery
+// stays stable across the whole space.
 export type FigureShape = {
   waist: number
   fullness: number
   bias: number
+  lean: number
+  cross: number
+  morph?: number
 }
 
-export const CLASSIC_SHAPE: FigureShape = { waist: 0, fullness: 0, bias: 0 }
-// calibrated against public/icon-fill.svg by overlaying the mark on the
-// live figure (see the design-space test)
-export const META_SHAPE: FigureShape = { waist: 0.88, fullness: 0.68, bias: 0 }
+export const CLASSIC_SHAPE: FigureShape = { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 0 }
+// The Meta mark, fitted numerically: its centerline was extracted from
+// public/icon-fill.svg (rasterized, then per-column ribbon midpoints for
+// the body plus per-row midpoints around the outer caps) and a 3-harmonic
+// profile least-squares fitted as point-to-curve distance. The decisive
+// parameter is PHASE ≈ 108.6° — the mark's lobes are tilted — plus the
+// harmonic signature below (raised crossing, full round bottoms, slightly
+// peaked tops). Weighted mean fit distance ≈ 0.7% of the half-width.
+// META_ASPECT is the drawing's height/width at the fitted point.
+export const META_SHAPE: FigureShape = { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 1 }
+export const META_ASPECT = 0.63
+export const META_PHASE = 1.8956 // ≈ 108.6°
+
+// The Meta profile: y(v) = sin v + Σ harmonics, 2π-periodic, so bilateral
+// symmetry, the single closed loop and the lobe machinery all survive.
+const META_H = { a2: -0.0812, a3: 0.0229, b0: -0.0071, b1: 0.2944, b2: -0.0945, b3: 0.0169 }
 
 const isNeutralShape = (s?: FigureShape) =>
-  !s || (s.waist === 0 && s.fullness === 0 && s.bias === 0)
+  !s ||
+  (s.waist === 0 &&
+    s.fullness === 0 &&
+    s.bias === 0 &&
+    (s.lean ?? 0) === 0 &&
+    (s.cross ?? 0) === 0 &&
+    (s.morph ?? 0) === 0)
 
-// Both warps are monotone reparameterizations of the y-phase, so the
-// peak stays exactly ±1, every zero stays exactly at u = mπ, the figure
-// keeps its two-fold symmetry (v(u+π) = v(u)+π for both), and — unlike
-// a multiplicative envelope — a single smooth peak can never split.
-//   waist: v = u + w·sin(2u) — the wave rushes through its zeros
-//          (narrow crossover) and lingers at its peaks (flat, full lobes)
-//   bias:  v = v + β·sin²(v) — shifts each peak toward one end of its
-//          half-period, skewing lobe mass without moving any zero
 export function shapeY(shape: FigureShape | undefined, u: number): number {
   if (isNeutralShape(shape)) return Math.sin(u)
   const s = shape as FigureShape
   const w = 0.45 * Math.max(0, Math.min(1, s.waist))
   let v = u + w * Math.sin(2 * u)
   const beta = 0.55 * Math.max(-1, Math.min(1, s.bias))
-  if (beta) v = v + beta * Math.sin(v) * Math.sin(v)
+  if (beta) v = v - beta * Math.sin(v)
+  const lam = 0.55 * Math.max(-1, Math.min(1, s.lean ?? 0))
+  if (lam) v = v - (lam * Math.sin(v) * (1 + Math.cos(v))) / 2
   let y = Math.sin(v)
+  const m = Math.max(0, Math.min(1, s.morph ?? 0))
+  if (m > 0) {
+    y +=
+      m *
+      (META_H.b0 +
+        META_H.a2 * Math.sin(2 * v) +
+        META_H.a3 * Math.sin(3 * v) +
+        META_H.b1 * Math.cos(v) +
+        META_H.b2 * Math.cos(2 * v) +
+        META_H.b3 * Math.cos(3 * v))
+  }
+  const c = 0.5 * Math.max(-1, Math.min(1, s.cross ?? 0))
+  const sh = Math.sin(v / 2)
+  y += c * sh * sh
   const kf = 2.2 * Math.max(0, Math.min(1, s.fullness))
   if (kf > 0.02) y = Math.tanh(kf * y) / Math.tanh(kf)
   return y
 }
 
-// Every harvestable lobe of a figure: FULL ARCHES — x-monotone
-// half-periods cut only at y's zero-crossings, so an arch is one lobe
-// (both sides), never split at x's midpoint. Ordered left→right by their
-// position on the figure so clicking feels spatial.
-export type Lobe = { t0: number; t1: number }
-
-export function enumerateLobes(params: {
+type FigureParams = {
   frequencyX: number
   frequencyY: number
   phase: number
   shape?: FigureShape
-}): Lobe[] {
+}
+
+// A lobe's SPEED is its height above its own BASELINE, and the baseline is
+// the lobe's chord — the straight line joining its two endpoints. Speed
+// then vanishes at both ends by construction and never flips sign mid-arc,
+// so the arc as drawn is the speed graph, cusp-free.
+//
+// When the lobe's endpoints are level (every untilted figure) the chord IS
+// the y = 0 line and this reduces exactly to |y| — the classic reading,
+// unchanged. When they are not (the Meta mark, whose crossing rides above
+// its caps) it is the same arch, read along its own baseline.
+//
+// A STRAIGHT lobe is the exception: its chord lies on the curve, so the
+// height is identically zero. A straight arc has no arch to read, and the
+// figure's own y is the speed — that is what makes 1:1 at phase 0, the
+// line y = x, the quadratic ease.
+type LobeSpeed = {
+  at: (t: number) => number // signed height above the baseline
+  baseAt: (x: number) => number // the baseline itself, in curve space
+}
+
+function lobeSpeedFn(
+  a: number, b: number, phase: number, shape: FigureShape | undefined,
+  t0: number, t1: number,
+): LobeSpeed {
+  const x0 = Math.sin(a * t0 + phase)
+  const x1 = Math.sin(a * t1 + phase)
+  const y0 = shapeY(shape, b * t0)
+  const y1 = shapeY(shape, b * t1)
+  const dx = x1 - x0 || 1e-9
+  const baseAt = (x: number) => y0 + ((y1 - y0) * (x - x0)) / dx
+  const at = (t: number) => shapeY(shape, b * t) - baseAt(Math.sin(a * t + phase))
+
+  for (let i = 1; i < 16; i++) {
+    if (Math.abs(at(t0 + (i / 16) * (t1 - t0))) > 1e-9) return { at, baseAt }
+  }
+  // straight: fall back to the drawing's own baseline
+  return { at: (t) => shapeY(shape, b * t), baseAt: () => 0 }
+}
+
+// The figure's SELF-INTERSECTIONS: parameters where the curve passes back
+// through a point it has already drawn — the waist of the ∞, where the
+// eye says one lobe ends and the next begins.
+//
+// x(t1) = x(t2) forces the two parameters onto one of two families:
+//   same phase:     t2 = t1 + 2πk/a
+//   mirrored phase: t2 = (π - 2φ + 2πk)/a - t1
+// Imposing y(t1) = y(t2) on each leaves a 1-D root find, so the crossings
+// come out analytically-seeded and exact rather than from a polyline
+// intersection sweep. A retraced figure (every point doubled, e.g. 1:2 at
+// phase 0) makes the difference identically zero — there is no isolated
+// crossing, and the caller falls back to y's zeros.
+export function figureCrossings(params: FigureParams): number[] {
+  const a = Math.max(1, Math.round(params.frequencyX))
+  const b = Math.max(1, Math.round(params.frequencyY))
+  const phase = params.phase
+  const shape = params.shape
+  const TAU = Math.PI * 2
+  const X = (t: number) => Math.sin(a * t + phase)
+  const Y = (t: number) => shapeY(shape, b * t)
+
+  const found: number[] = []
+  const add = (t1: number, t2: number) => {
+    const u1 = ((t1 % TAU) + TAU) % TAU
+    const u2 = ((t2 % TAU) + TAU) % TAU
+    const apart = Math.abs(u1 - u2)
+    if (apart < 1e-6 || Math.abs(apart - TAU) < 1e-6) return // same parameter
+    if (Math.abs(X(u1) - X(u2)) > 1e-5 || Math.abs(Y(u1) - Y(u2)) > 1e-5) return
+    if (!found.some((o) => Math.abs(o - u1) < 1e-4)) found.push(u1)
+  }
+
+  const scanFamily = (t2of: (t: number) => number) => {
+    const g = (t: number) => Y(t2of(t)) - Y(t)
+    const N = 720
+    const gs = new Float64Array(N + 1)
+    let gmax = 0
+    for (let i = 0; i <= N; i++) {
+      gs[i] = g((i / N) * TAU)
+      gmax = Math.max(gmax, Math.abs(gs[i]))
+    }
+    // g ≡ 0 means this family maps the figure onto ITSELF: the curve is
+    // retraced (1:1 at phase 0 is the line y = x, drawn twice), so every
+    // point is "shared" and none is an isolated crossing. Bail out before
+    // float noise around zero manufactures sign changes.
+    if (gmax < 1e-6) return
+    for (let i = 1; i <= N; i++) {
+      const pg = gs[i - 1]
+      const gg = gs[i]
+      if ((pg < 0 && gg >= 0) || (pg > 0 && gg <= 0)) {
+        let lo = ((i - 1) / N) * TAU
+        let hi = (i / N) * TAU
+        let glo = pg
+        for (let k = 0; k < 60; k++) {
+          const mid = (lo + hi) / 2
+          const gm = g(mid)
+          if (glo < 0 === gm < 0) { lo = mid; glo = gm } else hi = mid
+        }
+        const r = (lo + hi) / 2
+        add(r, t2of(r))
+      }
+    }
+  }
+
+  for (let k = 1; k < a; k++) scanFamily((t) => t + (TAU * k) / a)
+  for (let k = 0; k < a; k++) scanFamily((t) => (Math.PI - 2 * phase + TAU * k) / a - t)
+
+  return found.sort((p, q) => p - q)
+}
+
+// Every harvestable lobe of a figure: FULL ARCHES — the x-monotone
+// half-periods (cut at the caps, x's extrema) subdivided at the figure's
+// self-intersections, so a lobe runs exactly from cap to crossing, the
+// way the eye reads it. Ordered left→right by their position on the
+// figure so clicking feels spatial.
+export type Lobe = { t0: number; t1: number }
+
+export function enumerateLobes(params: FigureParams): Lobe[] {
   const a = Math.max(1, Math.round(params.frequencyX))
   const b = Math.max(1, Math.round(params.frequencyY))
   const phase = params.phase
   const shape = params.shape
   const TAU = Math.PI * 2
   const out: Lobe[] = []
+  const crossings = figureCrossings(params)
 
   for (let k = 0; k < a; k++) {
     for (const [u0, u1] of [
@@ -108,14 +260,36 @@ export function enumerateLobes(params: {
     ]) {
       const q0 = (u0 - phase) / a
       const q1 = (u1 - phase) / a
-      // every shape in the design space keeps y's zeros at u = mπ — the
-      // same analytic cuts as pure sine, by construction
       const cuts: number[] = [q0]
-      const mLo = Math.ceil((q0 * b) / Math.PI)
-      const mHi = Math.floor((q1 * b) / Math.PI)
-      for (let m = mLo; m <= mHi; m++) {
-        const tz = (m * Math.PI) / b
-        if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
+      // subdivide at the crossings that fall inside this window
+      for (const c of crossings) {
+        for (let m = -2; m <= 2; m++) {
+          const t = c + TAU * m
+          if (t > q0 + 1e-9 && t < q1 - 1e-9) cuts.push(t)
+        }
+      }
+      if (cuts.length === 1) {
+        // no crossing here (a retraced or open figure): fall back to y's
+        // zeros, found numerically so the whole design space works
+        const scan = 96
+        let py = shapeY(shape, b * q0)
+        for (let i = 1; i <= scan; i++) {
+          const t = q0 + (i / scan) * (q1 - q0)
+          const y = shapeY(shape, b * t)
+          if ((py < 0 && y >= 0) || (py > 0 && y <= 0)) {
+            let lo2 = q0 + ((i - 1) / scan) * (q1 - q0)
+            let hi2 = t
+            for (let bi = 0; bi < 45; bi++) {
+              const mid = (lo2 + hi2) / 2
+              const ym = shapeY(shape, b * mid)
+              if ((py < 0 && ym >= 0) || (py > 0 && ym <= 0)) hi2 = mid
+              else lo2 = mid
+            }
+            const tz = (lo2 + hi2) / 2
+            if (tz > q0 + 1e-9 && tz < q1 - 1e-9) cuts.push(tz)
+          }
+          py = y
+        }
       }
       cuts.push(q1)
       cuts.sort((p1, p2) => p1 - p2)
@@ -123,10 +297,11 @@ export function enumerateLobes(params: {
         const t0 = cuts[c]
         const t1 = cuts[c + 1]
         if (t1 - t0 < 1e-3) continue
-        // skip near-silent slivers
+        // skip near-silent slivers: no height above their own baseline
+        const { at } = lobeSpeedFn(a, b, phase, shape, t0, t1)
         let peak = 0
         for (let i = 0; i <= 16; i++) {
-          peak = Math.max(peak, Math.abs(shapeY(shape, b * (t0 + (i / 16) * (t1 - t0)))))
+          peak = Math.max(peak, Math.abs(at(t0 + (i / 16) * (t1 - t0))))
         }
         if (peak < 0.05) continue
         out.push({ t0, t1 })
@@ -339,7 +514,10 @@ export function overshootOf(lut: Float32Array): number {
 // rest of the figure behind the arc. Time is ALWAYS the projected
 // x-coordinate: the arc as drawn IS the curve — what you see marked on
 // the figure is exactly what the speed graph shows.
-export type ArcFrame = { x0: number; x1: number; y0: number; yScale: number }
+// y0/y1 are the arc's BASELINE at x0/x1 — the chord the speed is measured
+// from. For the position read (and any untilted figure) the baseline is
+// flat, y1 === y0, and the frame is a plain offset+scale.
+export type ArcFrame = { x0: number; x1: number; y0: number; y1: number; yScale: number }
 
 export type CurveArcEasing = {
   lut: Float32Array
@@ -454,7 +632,7 @@ export function curveArcEasing(
     arcUnit.push({ x: Math.sin(a * ts[i] + phase), y: shapeY(shape, b * ts[i]) })
   }
 
-  return { lut, arcUnit, tAtP, frame: { x0: xStart, x1: xEnd, y0, yScale } }
+  return { lut, arcUnit, tAtP, frame: { x0: xStart, x1: xEnd, y0, y1: y0, yScale } }
 }
 
 // Velocity read: the arc IS the speed graph (AE's default editor view).
@@ -489,17 +667,20 @@ function arcVelocityEasing(
   } else {
     let bestScore = -Infinity
     for (const { t0, t1 } of lobes) {
+      const { at } = lobeSpeedFn(a, b, phase, shape, t0, t1)
       let sumAbs = 0
       let sumSigned = 0
       const probes = 48
       for (let i = 0; i <= probes; i++) {
-        const y = shapeY(shape, b * (t0 + (i / probes) * (t1 - t0)))
-        sumAbs += Math.abs(y)
-        sumSigned += y
+        const t = t0 + (i / probes) * (t1 - t0)
+        sumAbs += Math.abs(at(t))
+        sumSigned += shapeY(shape, b * t)
       }
       const mean = sumAbs / (probes + 1)
       const meanY = sumSigned / (probes + 1)
-      const endPenalty = Math.abs(shapeY(shape, b * t0)) + Math.abs(shapeY(shape, b * t1))
+      // prefer arch-shaped speed (zero at both ends). A chord-based lobe
+      // scores 0 here by construction; only a straight one can be penalized.
+      const endPenalty = Math.abs(at(t0)) + Math.abs(at(t1))
       const widthFrac = (t1 - t0) / halfW
       // small rightmost bias settles mirror-symmetric ties deterministically
       const midX = Math.sin(a * ((t0 + t1) / 2) + phase)
@@ -521,11 +702,13 @@ function arcVelocityEasing(
   const ts = new Float64Array(fine + 1)
   const xs = new Float64Array(fine + 1)
   const sp = new Float64Array(fine + 1)
+  // speed = the lobe's height above its own baseline (== |y| when level)
+  const lobeSpeed = lobeSpeedFn(a, b, phase, shape, bestT0, bestT1)
   for (let i = 0; i <= fine; i++) {
     const t = bestT0 + (i / fine) * (bestT1 - bestT0)
     ts[i] = t
     xs[i] = Math.sin(a * t + phase)
-    sp[i] = Math.abs(shapeY(shape, b * t))
+    sp[i] = Math.abs(lobeSpeed.at(t))
   }
   // orient by ascending screen-x: "read left to right" is literal, so a
   // falling window's samples get reversed rather than time-flipped
@@ -597,9 +780,16 @@ function arcVelocityEasing(
     arcUnit.push({ x: Math.sin(a * t + phase), y: shapeY(shape, b * t) })
   }
 
+  // the frame's baseline is the lobe's own, sampled at the (possibly
+  // half-sliced) ends — the same line, so the ghosted figure shears with
+  // the arc and the two stay one drawing
   return {
     lut, arcUnit, tAtP, speed,
-    frame: { x0: xStart, x1: xEnd, y0: 0, yScale: peak },
+    frame: {
+      x0: xStart, x1: xEnd,
+      y0: lobeSpeed.baseAt(xStart), y1: lobeSpeed.baseAt(xEnd),
+      yScale: peak,
+    },
   }
 }
 

@@ -11,11 +11,24 @@ export type SliderProps = {
   // fires once at the end of a drag / key adjustment — the store commits
   // one history entry there instead of one per pixel of drag
   onCommit?: () => void
+  // double-click snaps back to this value (one committed history entry)
+  defaultValue?: number
 }
 
-export function Slider({ label, value, min, max, step = 0.01, format, onChange, onCommit }: SliderProps) {
+export function Slider({ label, value, min, max, step = 0.01, format, onChange, onCommit, defaultValue }: SliderProps) {
   return (
-    <label className="ctl">
+    <label
+      className="ctl"
+      onDoubleClick={
+        defaultValue === undefined
+          ? undefined
+          : () => {
+              onChange(defaultValue)
+              onCommit?.()
+            }
+      }
+      title={defaultValue === undefined ? undefined : 'Double-click to reset'}
+    >
       <span className="ctl-label">{label}</span>
       <input
         type="range"

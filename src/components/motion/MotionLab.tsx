@@ -41,9 +41,10 @@ export function MotionLab() {
       lissajousEasing({
         ratioX: ml.ratioX, ratioY: ml.ratioY, phase: ml.phase, read: ml.read,
         reverse: ml.reverse, strength: ml.strength, decay: ml.decay, lobe: ml.lobe,
-        half: ml.half, shape: { waist: ml.waist, fullness: ml.fullness, bias: ml.bias },
+        half: ml.half,
+        shape: { waist: ml.waist, fullness: ml.fullness, bias: ml.bias, lean: ml.lean, cross: ml.cross, morph: ml.morph },
       }),
-    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half, ml.waist, ml.fullness, ml.bias],
+    [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.strength, ml.decay, ml.lobe, ml.half, ml.waist, ml.fullness, ml.bias, ml.lean, ml.cross, ml.morph],
   )
   const lut = arc.lut
 
@@ -138,7 +139,9 @@ export function MotionLab() {
       const t = (i / n) * Math.PI * 2
       const x = Math.sin(a * t + phase)
       let h = (x - frame.x0) / (frame.x1 - frame.x0 || 1e-9)
-      let v = (shapeY({ waist: ml.waist, fullness: ml.fullness, bias: ml.bias }, b * t) - frame.y0) / frame.yScale
+      // the arc's baseline is its chord, so the ghost shears with it
+      const base = frame.y0 + (frame.y1 - frame.y0) * h
+      let v = (shapeY({ waist: ml.waist, fullness: ml.fullness, bias: ml.bias, lean: ml.lean, cross: ml.cross, morph: ml.morph }, b * t) - base) / frame.yScale
       if (ml.read === 'velocity') v = Math.abs(v)
       if (ml.reverse) h = 1 - h
       if (h < -0.02 || h > 1.02 || v < -0.04 || v > 1.05) {
@@ -150,7 +153,7 @@ export function MotionLab() {
     }
     return d
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.waist, ml.fullness, ml.bias, arc])
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.reverse, ml.waist, ml.fullness, ml.bias, ml.lean, ml.cross, ml.morph, arc])
 
   // one assembly, in tandem: the playhead (cursor line + dot on the curve)
   // rides the same eased x as the big circle on the ruler, so they move
@@ -165,10 +168,11 @@ export function MotionLab() {
     const a = ml.ratioX
     const b = ml.ratioY
     const phase = ml.phase
-    const shape: FigureShape = { waist: ml.waist, fullness: ml.fullness, bias: ml.bias }
+    const shape: FigureShape = { waist: ml.waist, fullness: ml.fullness, bias: ml.bias, lean: ml.lean, cross: ml.cross, morph: ml.morph }
+    const aspect = ml.aspect
     const map = (u: { x: number; y: number }) => ({
       x: FIG / 2 + u.x * (FIG / 2 - 26),
-      y: FIG / 2 - u.y * (FIG / 2 - 26),
+      y: FIG / 2 - u.y * (FIG / 2 - 26) * aspect,
     })
     let d = ''
     for (let i = 0; i <= 720; i++) {
@@ -204,7 +208,7 @@ export function MotionLab() {
       return map(arcU[idx])
     }
     return { d: d + ' Z', arcD, lobePaths, tracerAt }
-  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.waist, ml.fullness, ml.bias, arc])
+  }, [ml.ratioX, ml.ratioY, ml.phase, ml.read, ml.waist, ml.fullness, ml.bias, ml.lean, ml.cross, ml.morph, ml.aspect, arc])
   // the dot rides the same eased progress as the ruler ball, but along the
   // full drawn arc — so it leaves the start and reaches the end of the curve
   // together with the animation, whatever the easing
@@ -233,7 +237,7 @@ export function MotionLab() {
       <div className="lane-row">
       <div className="lane lane-figure">
         <div className="lane-label">
-          THE FIGURE — {ml.waist || ml.fullness || ml.bias ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} · PHASE{' '}
+          THE FIGURE — {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} · PHASE{' '}
           {Math.round((ml.phase * 180) / Math.PI)}°
         </div>
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
@@ -268,7 +272,7 @@ export function MotionLab() {
       </div>
       <div className="lane lane-figure">
         <div className="lane-label">
-          SPEED GRAPH — THE ARC OF THE {ml.waist || ml.fullness || ml.bias ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} FIGURE
+          SPEED GRAPH — THE ARC OF THE {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} FIGURE
         </div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
           {/* speed graph — same square frame as the figure panel */}

@@ -138,8 +138,12 @@ export type MotionLabState = {
   // Meta infinity are just two points. All zero at classic.
   waist: number // 0..1 — narrows the crossover
   fullness: number // 0..1 — fuller loops, flatter arcs
-  bias: number // −1..1 — skews lobe mass outward/inward
+  bias: number // −1..1 — pulls both extrema toward/away from the crossing
+  lean: number // −1..1 — the same pull, top half only (hump lean)
+  cross: number // −1..1 — lifts/drops the crossing; caps stay pinned
+  morph: number // 0..1 — blends the base wave from pure sine to the Meta profile
   twist: number // radians — display rotation of the figure
+  aspect: number // 0.4..1 — display height/width of the figure drawing
   durationMs: number
   presetId?: string
   // reserved (path-following text was cut from the lab UI; recipes keep loading)

@@ -3,7 +3,7 @@
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { META_SHAPE, MOTION_PRESETS, MOTION_TOKENS } from '@/core/motion/spring'
+import { META_ASPECT, META_PHASE, MOTION_PRESETS, MOTION_TOKENS } from '@/core/motion/spring'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
@@ -31,7 +31,8 @@ export function MotionPanel() {
                     reverse: !!p.reverse, strength: p.strength ?? 0, decay: p.decay ?? 0,
                     lobe: -1, half: p.half ?? 'full',
                     waist: p.shape?.waist ?? 0, fullness: p.shape?.fullness ?? 0,
-                    bias: p.shape?.bias ?? 0, presetId: p.id,
+                    bias: p.shape?.bias ?? 0, lean: p.shape?.lean ?? 0,
+                    cross: p.shape?.cross ?? 0, morph: p.shape?.morph ?? 0, presetId: p.id,
                   },
                 })
               }
@@ -40,11 +41,11 @@ export function MotionPanel() {
             </button>
           ))}
         </div>
-        <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int}
+        <Slider label="RATIO X" value={ml.ratioX} min={1} max={12} step={1} format={int} defaultValue={1}
           onChange={(ratioX) => setT({ motionLab: { ratioX, lobe: -1, presetId: undefined } })} onCommit={commit} />
-        <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int}
+        <Slider label="RATIO Y" value={ml.ratioY} min={1} max={12} step={1} format={int} defaultValue={2}
           onChange={(ratioY) => setT({ motionLab: { ratioY, lobe: -1, presetId: undefined } })} onCommit={commit} />
-        <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
+        <Slider label="PHASE" value={ml.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg} defaultValue={META_PHASE}
           onChange={(phase) => setT({ motionLab: { phase, presetId: undefined } })} onCommit={commit} />
         <SegmentedControl
           label="DIRECTION"
@@ -69,10 +70,10 @@ export function MotionPanel() {
             }
           />
         ) : null}
-        <Slider label="STRENGTH" value={ml.strength} min={0} max={1}
+        <Slider label="STRENGTH" value={ml.strength} min={0} max={1} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(strength) => setT({ motionLab: { strength, presetId: undefined } })} onCommit={commit} />
-        <Slider label="DECAY" value={ml.decay} min={0} max={1}
+        <Slider label="DECAY" value={ml.decay} min={0} max={1} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(decay) => setT({ motionLab: { decay, presetId: undefined } })} onCommit={commit} />
         <button
@@ -88,6 +89,9 @@ export function MotionPanel() {
                 waist: 0,
                 fullness: 0,
                 bias: 0,
+                lean: 0,
+                cross: 0,
+                morph: 0,
                 presetId: undefined,
               },
             })
@@ -104,21 +108,21 @@ export function MotionPanel() {
         <div className="panel-heading">FIGURE SHAPE — A DESIGN SPACE</div>
         <div className="preset-strip">
           <button
-            className={ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.twist === 0 ? 'preset-chip active' : 'preset-chip'}
+            className={ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.lean === 0 && ml.cross === 0 && ml.morph === 0 && ml.twist === 0 && ml.aspect === 1 ? 'preset-chip active' : 'preset-chip'}
             onClick={() =>
-              apply({ motionLab: { waist: 0, fullness: 0, bias: 0, twist: 0, presetId: undefined } })
+              apply({ motionLab: { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 0, twist: 0, aspect: 1, presetId: undefined } })
             }
           >
             CLASSIC
           </button>
           <button
-            className={ml.waist === META_SHAPE.waist && ml.fullness === META_SHAPE.fullness && ml.bias === META_SHAPE.bias ? 'preset-chip active' : 'preset-chip'}
+            className={ml.morph === 1 && ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.lean === 0 && ml.cross === 0 && ml.aspect === META_ASPECT ? 'preset-chip active' : 'preset-chip'}
             onClick={() =>
               apply({
                 motionLab: {
-                  ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity',
-                  waist: META_SHAPE.waist, fullness: META_SHAPE.fullness,
-                  bias: META_SHAPE.bias, twist: 0, presetId: undefined,
+                  ratioX: 1, ratioY: 2, phase: META_PHASE, read: 'velocity',
+                  waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 1,
+                  twist: 0, aspect: META_ASPECT, lobe: -1, presetId: undefined,
                 },
               })
             }
@@ -126,28 +130,41 @@ export function MotionPanel() {
             META ∞
           </button>
         </div>
-        <Slider label="WAIST" value={ml.waist} min={0} max={1}
+        <Slider label="MORPH" value={ml.morph} min={0} max={1} step={0.01} defaultValue={1}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(morph) => setT({ motionLab: { morph, presetId: undefined } })} onCommit={commit} />
+        <Slider label="WAIST" value={ml.waist} min={0} max={1} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(waist) => setT({ motionLab: { waist, presetId: undefined } })} onCommit={commit} />
-        <Slider label="FULLNESS" value={ml.fullness} min={0} max={1}
+        <Slider label="FULLNESS" value={ml.fullness} min={0} max={1} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(fullness) => setT({ motionLab: { fullness, presetId: undefined } })} onCommit={commit} />
-        <Slider label="BIAS" value={ml.bias} min={-1} max={1} step={0.02}
+        <Slider label="BIAS" value={ml.bias} min={-1} max={1} step={0.02} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(bias) => setT({ motionLab: { bias, presetId: undefined } })} onCommit={commit} />
+        <Slider label="LEAN" value={ml.lean} min={-1} max={1} step={0.02} defaultValue={0}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(lean) => setT({ motionLab: { lean, presetId: undefined } })} onCommit={commit} />
+        <Slider label="CROSSING" value={ml.cross} min={-1} max={1} step={0.02} defaultValue={0}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(cross) => setT({ motionLab: { cross, presetId: undefined } })} onCommit={commit} />
         <Slider label="TWIST" value={ml.twist} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
-          format={deg}
+          format={deg} defaultValue={0}
           onChange={(twist) => setT({ motionLab: { twist } })} onCommit={commit} />
+        <Slider label="ASPECT" value={ml.aspect} min={0.4} max={1} step={0.01} defaultValue={META_ASPECT}
+          format={(v) => `${Math.round(v * 100)}`}
+          onChange={(aspect) => setT({ motionLab: { aspect } })} onCommit={commit} />
         <div className="panel-note">
-          One continuous space of smooth warps: WAIST narrows the crossover,
-          FULLNESS fills the loops and flattens the arcs, BIAS skews the lobe
-          mass, TWIST rotates the drawing. The Meta mark is one point in it —
-          the classic Lissajous is another. Lobe cuts and speed curves stay
-          stable everywhere in the space.
+          One continuous space of smooth warps: MORPH blends the base wave
+          from the classic sine to the Meta profile, WAIST narrows the
+          crossover, FULLNESS fills the loops and flattens the arcs, BIAS
+          skews the lobe mass, TWIST rotates the drawing. The Meta mark is
+          one point in the space — the classic Lissajous is another. Lobe
+          cuts and speed curves stay stable everywhere in it.
         </div>
       </div>
       <div className="panel-section">
-        <Slider label="DURATION" value={ml.durationMs} min={200} max={3000} step={50}
+        <Slider label="DURATION" value={ml.durationMs} min={200} max={3000} step={50} defaultValue={900}
           format={(v) => `${Math.round(v)}ms`}
           onChange={(durationMs) => setT({ motionLab: { durationMs } })} onCommit={commit} />
       </div>
@@ -165,7 +182,8 @@ export function MotionPanel() {
                     reverse: !!t.reverse, strength: t.strength ?? 0, decay: t.decay ?? 0,
                     lobe: -1, half: t.half ?? 'full',
                     waist: t.shape?.waist ?? 0, fullness: t.shape?.fullness ?? 0,
-                    bias: t.shape?.bias ?? 0, presetId: undefined,
+                    bias: t.shape?.bias ?? 0, lean: t.shape?.lean ?? 0,
+                    cross: t.shape?.cross ?? 0, morph: t.shape?.morph ?? 0, presetId: undefined,
                   },
                 })
               }

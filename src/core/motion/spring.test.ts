@@ -5,11 +5,13 @@ import {
   curveArcEasing,
   enumerateLobes,
   evalEase,
+  figureCrossings,
   figureLibrary,
   lissajousEasing,
   MOTION_PRESETS,
   MOTION_TOKENS,
   overshootOf,
+  META_PHASE,
   META_SHAPE,
   shapeY,
   springLUT,
@@ -183,9 +185,28 @@ describe('curveArcEasing', () => {
     expect([...oob.lut]).toEqual([...auto.lut])
   })
 
-  it('harvested lobes never cross zero — no |·|-flipped cusps in the speed graph', () => {
+  // an arc that wanders across its own baseline gets |·|-folded into a W.
+  // The baseline is the arc's CHORD (the line joining its endpoints), which
+  // for a level arc is just y = 0. Staying on one side of it is what makes
+  // the speed graph the drawing.
+  const straysAcrossChord = (arcUnit: { x: number; y: number }[]) => {
+    const p0 = arcUnit[0]
+    const p1 = arcUnit[arcUnit.length - 1]
+    const dx = p1.x - p0.x || 1e-9
+    let sawPos = false
+    let sawNeg = false
+    for (const p of arcUnit) {
+      const s = p.y - (p0.y + ((p1.y - p0.y) * (p.x - p0.x)) / dx)
+      if (s > 1e-3) sawPos = true
+      if (s < -1e-3) sawNeg = true
+    }
+    return sawPos && sawNeg
+  }
+
+  it('harvested lobes never cross their chord — no |·|-flipped cusps in the speed graph', () => {
     // 1:3 near 90° used to pick an S-arc spanning bottom-to-top; |y| turned
-    // it into a W. Lobes must keep one sign so the graph IS the drawing.
+    // it into a W. A lobe must stay on one side of its chord so the graph
+    // IS the drawing.
     for (const [rx, ry, ph] of [[1, 3, (89 * Math.PI) / 180], [1, 5, 0.9], [2, 3, 1.2], [1, 7, 0.4]]) {
       const e = lissajousEasing({ ratioX: rx, ratioY: ry, phase: ph, read: 'velocity' })
       const s = e.speed!
@@ -195,16 +216,62 @@ describe('curveArcEasing', () => {
         interiorMin = Math.min(interiorMin, s[i])
       }
       expect(interiorMin, `${rx}:${ry}@${ph}`).toBeGreaterThan(0.05)
-      // and the signed y over the chosen window keeps one sign
-      let sawPos = false
-      let sawNeg = false
-      for (let i = 0; i < e.tAtP.length; i++) {
-        const y = Math.sin(ry * e.tAtP[i])
-        if (y > 1e-3) sawPos = true
-        if (y < -1e-3) sawNeg = true
-      }
-      expect(sawPos && sawNeg, `${rx}:${ry}@${ph} crosses zero`).toBe(false)
+      expect(straysAcrossChord(e.arcUnit), `${rx}:${ry}@${ph} crosses its chord`).toBe(false)
     }
+  })
+
+  it('lobes are cut at the figure\'s self-intersections', () => {
+    // the classic bowtie crosses itself at the origin, t = π/2 and 3π/2
+    const classic = figureCrossings({ frequencyX: 1, frequencyY: 2, phase: Math.PI / 2 })
+    expect(classic.length).toBe(2)
+    for (const t of classic) {
+      expect(Math.abs(Math.sin(t + Math.PI / 2))).toBeLessThan(1e-6) // x = 0
+      expect(Math.abs(Math.sin(2 * t))).toBeLessThan(1e-6) // y = 0
+    }
+    // the Meta mark's crossing rides ABOVE y = 0 — the old y-zero cut missed
+    // it and left a gap between neighbouring lobes
+    const meta = figureCrossings({ frequencyX: 1, frequencyY: 2, phase: META_PHASE, shape: META_SHAPE })
+    expect(meta.length).toBe(2)
+    for (const t of meta) {
+      expect(Math.abs(Math.sin(t + META_PHASE))).toBeLessThan(1e-4) // still x = 0
+      expect(shapeY(META_SHAPE, 2 * t)).toBeGreaterThan(0.3) // but well above y = 0
+    }
+    // every lobe ends ON a cut, and consecutive lobes share it: no gaps
+    for (const params of [
+      { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2 },
+      { frequencyX: 1, frequencyY: 2, phase: META_PHASE, shape: META_SHAPE },
+    ]) {
+      const lobes = enumerateLobes(params)
+      expect(lobes.length).toBe(4)
+      const pt = (t: number) => [
+        Math.sin(params.frequencyX * t + params.phase),
+        shapeY(params.shape, params.frequencyY * t),
+      ]
+      // walking the lobes left→right, each one's endpoints land on either a
+      // crossing or a cap (|x| = 1) — never mid-curve
+      const crossings = figureCrossings(params)
+      const onCut = (t: number) => {
+        const [x] = pt(t)
+        if (Math.abs(Math.abs(x) - 1) < 1e-3) return true // a cap
+        return crossings.some((c) => {
+          const d = Math.abs(((t - c) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+          return d < 1e-3 || Math.abs(d - Math.PI * 2) < 1e-3
+        })
+      }
+      for (const l of lobes) {
+        expect(onCut(l.t0), `t0 ${l.t0}`).toBe(true)
+        expect(onCut(l.t1), `t1 ${l.t1}`).toBe(true)
+      }
+    }
+  })
+
+  it('a retraced figure has no isolated crossing (and keeps its old lobes)', () => {
+    // 1:1 at phase 0 is the line y = x, drawn twice: every point is shared,
+    // none is a crossing. Float noise must not manufacture cuts here.
+    expect(figureCrossings({ frequencyX: 1, frequencyY: 1, phase: 0 })).toEqual([])
+    // so the line's top half still reads as the quadratic ease-in
+    const quadIn = lissajousEasing({ ratioX: 1, ratioY: 1, phase: 0, read: 'velocity' })
+    for (const p of [0.25, 0.5, 0.75]) expect(evalEase(quadIn.lut, p)).toBeCloseTo(p * p, 2)
   })
 
   it('ease presets carry no treatment: the arc IS what plays', () => {
@@ -424,42 +491,58 @@ describe('curveArcEasing', () => {
     expect(bounce.lut[bounce.lut.length - 1]).toBe(1)
   })
 
-  it('figure design space: smooth warps, zeros pinned, Meta is one point', () => {
+  it('figure design space: smooth warps, Meta is one point', () => {
+    const S = (p: Partial<Parameters<typeof shapeY>[0] & object>) =>
+      ({ waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 0, ...p })
     // neutral shape IS the sine — the classic figure is a point in the space
     for (const u of [0.3, 1.1, 2.7, 4.4]) {
-      expect(shapeY({ waist: 0, fullness: 0, bias: 0 }, u)).toBeCloseTo(Math.sin(u), 12)
+      expect(shapeY(S({}), u)).toBeCloseTo(Math.sin(u), 12)
     }
-    // every shape keeps zeros exactly at u = mπ and spans ±1
+    // cross-free, morph-free shapes keep zeros exactly at u = mπ and the
+    // caps (u = 2πk) pinned at zero; every shape stays near unit amplitude
     const shapes = [
+      S({ waist: 1 }),
+      S({ fullness: 1 }),
+      S({ waist: 0.4, fullness: 0.7, bias: 0.8 }),
+      S({ bias: -0.6, lean: 0.7 }),
       META_SHAPE,
-      { waist: 1, fullness: 0, bias: 0 },
-      { waist: 0, fullness: 1, bias: 0 },
-      { waist: 0.4, fullness: 0.7, bias: 0.8 },
-      { waist: 0.9, fullness: 0.3, bias: -0.6 },
     ]
     for (const s of shapes) {
-      expect(Math.abs(shapeY(s, 0))).toBeLessThan(1e-9)
-      expect(Math.abs(shapeY(s, Math.PI))).toBeLessThan(1e-9)
+      if (!(s.morph ?? 0)) {
+        expect(Math.abs(shapeY(s, 0))).toBeLessThan(1e-9) // cap
+        if (!s.cross) expect(Math.abs(shapeY(s, Math.PI))).toBeLessThan(1e-9)
+      }
       let peak = 0
       for (let i = 0; i <= 2000; i++) peak = Math.max(peak, Math.abs(shapeY(s, (i / 2000) * Math.PI * 2)))
-      expect(peak).toBeGreaterThan(0.995)
-      expect(peak).toBeLessThanOrEqual(1.0000001)
+      expect(peak).toBeGreaterThan(0.9)
+      expect(peak).toBeLessThanOrEqual(1.13)
     }
+    // the Meta profile carries the mark's raised crossing, and MORPH blends
+    // to it linearly from the sine
+    expect(shapeY(META_SHAPE, 0)).toBeGreaterThan(0.15)
+    for (const u of [0.4, 1.3, 2.9, 4.1, 5.6]) {
+      const mid = (shapeY(S({}), u) + shapeY(META_SHAPE, u)) / 2
+      expect(shapeY(S({ morph: 0.5 }), u)).toBeCloseTo(mid, 12)
+    }
+    // cross lifts the crossing while the caps stay put
+    expect(shapeY(S({ cross: -0.98 }), Math.PI)).toBeLessThan(-0.3)
+    expect(Math.abs(shapeY(S({ cross: -0.98 }), 0))).toBeLessThan(1e-9)
     // waist narrows the crossover: steeper slope through the zero
     const slope = (s: Parameters<typeof shapeY>[0]) => (shapeY(s, 0.02) - shapeY(s, -0.02)) / 0.04
-    expect(slope({ waist: 0.8, fullness: 0, bias: 0 })).toBeGreaterThan(slope({ waist: 0, fullness: 0, bias: 0 }) * 1.5)
+    expect(slope(S({ waist: 0.8 }))).toBeGreaterThan(slope(S({})) * 1.5)
     // fullness flattens the arcs: more of the lobe near peak height
     const nearPeak = (s: Parameters<typeof shapeY>[0]) => {
       let n = 0
       for (let i = 0; i <= 400; i++) if (shapeY(s, (i / 400) * Math.PI) > 0.9) n++
       return n
     }
-    expect(nearPeak({ waist: 0, fullness: 0.9, bias: 0 })).toBeGreaterThan(nearPeak({ waist: 0, fullness: 0, bias: 0 }) * 1.5)
+    expect(nearPeak(S({ fullness: 0.9 }))).toBeGreaterThan(nearPeak(S({})) * 1.5)
 
-    // the whole machinery works at the META point: lobes, halves, strength
-    const params = { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2, shape: META_SHAPE }
+    // the whole machinery works at the META point (its fitted phase):
+    // lobes enumerable and selectable, every one a valid 0→1 easing
+    const params = { frequencyX: 1, frequencyY: 2, phase: META_PHASE, shape: META_SHAPE }
     const lobes = enumerateLobes(params)
-    expect(lobes.length).toBeGreaterThanOrEqual(4)
+    expect(lobes.length).toBeGreaterThanOrEqual(3)
     const luts = new Set<string>()
     for (let i = 0; i < lobes.length; i++) {
       const e = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE, lobe: i })
@@ -468,26 +551,32 @@ describe('curveArcEasing', () => {
       luts.add([0.25, 0.5, 0.75].map((t) => evalEase(e.lut, t).toFixed(2)).join(','))
     }
     expect(luts.size).toBeGreaterThan(1)
-    // lobes keep one sign — the marked arc never |·|-flips
+    // the marked arc stays on one side of its chord — never |·|-flips. (The
+    // Meta lobe runs from a crossing ABOVE y = 0 to a cap BELOW it, so raw y
+    // does change sign; the chord is the baseline that matters.)
     const auto = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE })
-    let sawPos = false
-    let sawNeg = false
-    for (let i = 0; i < auto.tAtP.length; i++) {
-      const y = shapeY(META_SHAPE, 2 * auto.tAtP[i])
-      if (y > 1e-3) sawPos = true
-      if (y < -1e-3) sawNeg = true
+    expect(straysAcrossChord(auto.arcUnit)).toBe(false)
+    let interiorMin = Infinity
+    for (let i = Math.floor(auto.speed!.length * 0.12); i < auto.speed!.length * 0.88; i++) {
+      interiorMin = Math.min(interiorMin, auto.speed![i])
     }
-    expect(sawPos && sawNeg).toBe(false)
+    expect(interiorMin).toBeGreaterThan(0.05)
     const rise = lissajousEasing({ ratioX: 1, ratioY: 2, phase: params.phase, read: 'velocity', shape: META_SHAPE, half: 'rise' })
     expect(rise.lut[0]).toBe(0)
     expect(rise.lut[rise.lut.length - 1]).toBe(1)
 
     // parameter continuity: a small shape step moves the speed curve a little
-    const a = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: { waist: 0.5, fullness: 0.3, bias: 0 } })
-    const b2 = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: { waist: 0.52, fullness: 0.3, bias: 0 } })
+    const a = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: S({ waist: 0.5, fullness: 0.3 }) })
+    const b2 = lissajousEasing({ ratioX: 1, ratioY: 2, phase: Math.PI / 2, read: 'velocity', shape: S({ waist: 0.52, fullness: 0.3 }) })
     let maxD = 0
     for (let i = 0; i < a.lut.length; i++) maxD = Math.max(maxD, Math.abs(a.lut[i] - b2.lut[i]))
     expect(maxD).toBeLessThan(0.02)
+    // ...including along the morph axis toward the Meta point
+    const m1 = lissajousEasing({ ratioX: 1, ratioY: 2, phase: META_PHASE, read: 'velocity', shape: S({ morph: 0.5 }) })
+    const m2 = lissajousEasing({ ratioX: 1, ratioY: 2, phase: META_PHASE, read: 'velocity', shape: S({ morph: 0.52 }) })
+    let maxM = 0
+    for (let i = 0; i < m1.lut.length; i++) maxM = Math.max(maxM, Math.abs(m1.lut[i] - m2.lut[i]))
+    expect(maxM).toBeLessThan(0.02)
   })
 
   it('spring preset oscillates but converges', () => {
