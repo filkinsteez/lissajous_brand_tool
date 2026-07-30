@@ -8,6 +8,7 @@ import { BLUR_FRAGMENT_SHADER, BRIGHT_PASS_FRAGMENT_SHADER } from './shaders/blo
 import { COMPOSITE_FRAGMENT_SHADER } from './shaders/composite'
 import { FIELD_FRAGMENT_SHADER } from './shaders/field'
 import { FULLSCREEN_VERTEX_SHADER } from './shaders/fullscreen'
+import { SMEAR_FRAGMENT_SHADER } from './shaders/smear'
 
 type CanvasLike = HTMLCanvasElement | OffscreenCanvas
 
@@ -25,6 +26,7 @@ type InternalTarget = {
 
 type Programs = {
   field: WebGLProgram
+  smear: WebGLProgram
   bright: WebGLProgram
   blur: WebGLProgram
   composite: WebGLProgram
@@ -103,6 +105,7 @@ export class BackgroundRenderer {
   private curveTex: WebGLTexture | null = null
   private paletteTex: WebGLTexture | null = null
   private sceneTarget: InternalTarget | null = null
+  private smearTarget: InternalTarget | null = null
   private bloomHalfA: InternalTarget | null = null
   private bloomHalfB: InternalTarget | null = null
   private bloomQuarterA: InternalTarget | null = null
@@ -131,6 +134,7 @@ export class BackgroundRenderer {
     }
     if (this.programs) {
       gl.deleteProgram(this.programs.field)
+      gl.deleteProgram(this.programs.smear)
       gl.deleteProgram(this.programs.bright)
       gl.deleteProgram(this.programs.blur)
       gl.deleteProgram(this.programs.composite)
@@ -139,6 +143,7 @@ export class BackgroundRenderer {
     if (this.curveTex) gl.deleteTexture(this.curveTex)
     if (this.paletteTex) gl.deleteTexture(this.paletteTex)
     deleteTarget(gl, this.sceneTarget ?? undefined)
+    deleteTarget(gl, this.smearTarget ?? undefined)
     deleteTarget(gl, this.bloomHalfA ?? undefined)
     deleteTarget(gl, this.bloomHalfB ?? undefined)
     deleteTarget(gl, this.bloomQuarterA ?? undefined)
@@ -156,7 +161,14 @@ export class BackgroundRenderer {
     if (this.canvas.width !== width) this.canvas.width = width
     if (this.canvas.height !== height) this.canvas.height = height
     this.ensureTargets(width, height)
-    if (!this.sceneTarget || !this.bloomHalfA || !this.bloomHalfB || !this.bloomQuarterA || !this.bloomQuarterB) {
+    if (
+      !this.sceneTarget ||
+      !this.smearTarget ||
+      !this.bloomHalfA ||
+      !this.bloomHalfB ||
+      !this.bloomQuarterA ||
+      !this.bloomQuarterB
+    ) {
       return false
     }
 
@@ -188,6 +200,13 @@ export class BackgroundRenderer {
     setUniform1f(gl, programs.field, 'uTime', tSec)
     setUniform1f(gl, programs.field, 'uSeed', project.background.seed)
     setUniform1f(gl, programs.field, 'uWidth', project.background.width)
+    setUniform1f(gl, programs.field, 'uFieldScale', project.background.fieldScale ?? 1)
+    setUniform2f(
+      gl, programs.field, 'uFieldOffset',
+      project.background.fieldOffsetX ?? 0,
+      project.background.fieldOffsetY ?? 0,
+    )
+    setUniform1f(gl, programs.field, 'uForm', project.background.form ?? 0)
     setUniform1f(gl, programs.field, 'uSoftness', project.background.softness)
     setUniform1f(gl, programs.field, 'uWarp', project.background.warp)
     setUniform1f(gl, programs.field, 'uDrift', project.background.drift)
@@ -218,10 +237,33 @@ export class BackgroundRenderer {
     setUniform4fv(gl, programs.field, 'uMasses[0]', masses.data)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
+    // smear: pull the composed field along the curve's flow
+    gl.viewport(0, 0, width, height)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.smearTarget.fbo)
+    gl.useProgram(programs.smear)
+    this.bindTexture(0, this.sceneTarget.tex)
+    this.bindTexture(1, this.curveTex)
+    setUniform1i(gl, programs.smear, 'uSceneTex', 0)
+    setUniform1i(gl, programs.smear, 'uCurveTex', 1)
+    setUniform2f(gl, programs.smear, 'uResolution', width, height)
+    setUniform2f(gl, programs.smear, 'uCurveScale', sx, sy)
+    setUniform1i(gl, programs.smear, 'uKnotCount', curveTex.width)
+    setUniform1f(gl, programs.smear, 'uFieldScale', project.background.fieldScale ?? 1)
+    setUniform2f(
+      gl, programs.smear, 'uFieldOffset',
+      project.background.fieldOffsetX ?? 0,
+      project.background.fieldOffsetY ?? 0,
+    )
+    setUniform1f(gl, programs.smear, 'uDrift', project.background.drift)
+    setUniform1f(gl, programs.smear, 'uWarp', project.background.warp)
+    setUniform1f(gl, programs.smear, 'uSeed', project.background.seed)
+    setUniform1f(gl, programs.smear, 'uTime', tSec)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
     gl.viewport(0, 0, this.bloomHalfA.width, this.bloomHalfA.height)
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.bloomHalfA.fbo)
     gl.useProgram(programs.bright)
-    this.bindTexture(0, this.sceneTarget.tex)
+    this.bindTexture(0, this.smearTarget.tex)
     setUniform1i(gl, programs.bright, 'uSceneTex', 0)
     setUniform1f(gl, programs.bright, 'uThreshold', 0.34)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
@@ -247,7 +289,7 @@ export class BackgroundRenderer {
     gl.viewport(0, 0, width, height)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.useProgram(programs.composite)
-    this.bindTexture(0, this.sceneTarget.tex)
+    this.bindTexture(0, this.smearTarget.tex)
     this.bindTexture(1, this.bloomHalfA.tex)
     this.bindTexture(2, this.bloomQuarterA.tex)
     setUniform1i(gl, programs.composite, 'uSceneTex', 0)
@@ -275,6 +317,7 @@ export class BackgroundRenderer {
     try {
       this.programs = {
         field: createProgram(gl, FULLSCREEN_VERTEX_SHADER, FIELD_FRAGMENT_SHADER),
+        smear: createProgram(gl, FULLSCREEN_VERTEX_SHADER, SMEAR_FRAGMENT_SHADER),
         bright: createProgram(gl, FULLSCREEN_VERTEX_SHADER, BRIGHT_PASS_FRAGMENT_SHADER),
         blur: createProgram(gl, FULLSCREEN_VERTEX_SHADER, BLUR_FRAGMENT_SHADER),
         composite: createProgram(gl, FULLSCREEN_VERTEX_SHADER, COMPOSITE_FRAGMENT_SHADER),
@@ -369,12 +412,14 @@ export class BackgroundRenderer {
     if (!gl) return
     if (this.sceneTarget && this.sceneTarget.width === width && this.sceneTarget.height === height) return
     deleteTarget(gl, this.sceneTarget ?? undefined)
+    deleteTarget(gl, this.smearTarget ?? undefined)
     deleteTarget(gl, this.bloomHalfA ?? undefined)
     deleteTarget(gl, this.bloomHalfB ?? undefined)
     deleteTarget(gl, this.bloomQuarterA ?? undefined)
     deleteTarget(gl, this.bloomQuarterB ?? undefined)
 
     this.sceneTarget = createRenderTarget(gl, width, height)
+    this.smearTarget = createRenderTarget(gl, width, height)
     const halfW = Math.max(1, Math.floor(width * 0.5))
     const halfH = Math.max(1, Math.floor(height * 0.5))
     const quarterW = Math.max(1, Math.floor(width * 0.25))

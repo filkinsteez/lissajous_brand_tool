@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { downloadPNG } from '@/core/export/png'
+import { downloadPNG, exportPNG } from '@/core/export/png'
 import { encodeShareHash } from '@/core/state/compress'
 
 // variant 'motion' drops the poster-only PNG render; the share link
@@ -14,6 +14,21 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
   const apply = useStore((s) => s.apply)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+
+  // dev capture hook: the REAL export pipeline as a dataURL, so the
+  // devshot loop can verify exports without touching the filesystem
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return
+    ;(window as unknown as { __lbsExportPng?: (s?: 1 | 2 | 4) => Promise<string> }).__lbsExportPng =
+      async (s = 1) => {
+        const blob = await exportPNG(useStore.getState().project, s)
+        return await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.readAsDataURL(blob)
+        })
+      }
+  }, [])
 
   const flash = (msg: string) => {
     setNote(msg)

@@ -983,3 +983,9 @@
   background: var(--text);
 }
 
+
+.inspector-subnav {
+  margin: 10px 12px 2px;
+  flex-wrap: wrap;
+}
+

@@ -1,38 +1,33 @@
 'use client'
 
-import { useStore, type EditorMode } from '@/core/state/store'
+import { useStore } from '@/core/state/store'
 
-const MODES: { id: EditorMode; label: string }[] = [
-  { id: 'compose', label: 'LAYOUT' },
-  { id: 'motion', label: 'MOTION' },
-  { id: 'path', label: 'PATH' },
-]
-
-// 'setup' (construction view) is a state of LAYOUT, not its own tab
-const isActive = (id: EditorMode, mode: EditorMode) =>
-  id === 'compose' ? mode === 'compose' || mode === 'setup' : mode === id
-
+// Two tabs: DESIGN is the poster (canvas, field, shapes, type), MOTION
+// is the animation side (the easing lab and the path lab live under it).
+// 'setup' (construction view) is a state of DESIGN, not its own tab.
 export function ModeSwitcher() {
   const mode = useStore((s) => s.ui.mode)
   const setUi = useStore((s) => s.setUi)
+  const designActive = mode === 'compose' || mode === 'setup'
+  const motionActive = mode === 'motion' || mode === 'path'
   return (
     <div className="mode-switcher" role="tablist" aria-label="Editor mode">
-      {MODES.map((m) => (
-        <button
-          key={m.id}
-          role="tab"
-          aria-selected={isActive(m.id, mode)}
-          className={isActive(m.id, mode) ? 'mode-tab active' : 'mode-tab'}
-          onClick={() =>
-            setUi({
-              mode: m.id,
-              activePanel: m.id === 'motion' ? 'motion' : m.id === 'path' ? 'path' : 'compose',
-            })
-          }
-        >
-          {m.label}
-        </button>
-      ))}
+      <button
+        role="tab"
+        aria-selected={designActive}
+        className={designActive ? 'mode-tab active' : 'mode-tab'}
+        onClick={() => setUi({ mode: 'compose', activePanel: 'compose' })}
+      >
+        DESIGN
+      </button>
+      <button
+        role="tab"
+        aria-selected={motionActive}
+        className={motionActive ? 'mode-tab active' : 'mode-tab'}
+        onClick={() => setUi({ mode: 'motion', activePanel: 'motion' })}
+      >
+        MOTION
+      </button>
     </div>
   )
 }

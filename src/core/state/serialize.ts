@@ -43,6 +43,9 @@ function normalizeBackground(project: ProjectState): ProjectState {
       paletteId,
       roles: roles.length ? roles : [...fallback.roles],
       lockedRoles,
+      // the ground is always the brand blue now — the INK/NEUTRAL options
+      // were cut, and older saves would otherwise be stuck on them
+      ground: 'blue',
     },
   }
 }

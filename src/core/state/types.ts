@@ -119,6 +119,11 @@ export type BackgroundState = {
   seed: number
   layers: number
   width: number
+  fieldScale: number // 0.5..4 — zooms the whole figure event (fields + geometry)
+  fieldOffsetX: number // -1..1 — pans the figure, fraction of artboard width
+  fieldOffsetY: number // -1..1 — fraction of artboard height
+  form: number // 0..1 — how legibly the figure reads: 0 = abstract field,
+  // 1 = the curve's lobes as filled shapes with a rim fringe
   softness: number
   arcSpread: number
   warp: number
@@ -126,6 +131,35 @@ export type BackgroundState = {
   grain: number
   contrast: number
   presetId?: string
+}
+
+// The cloner register: the curve duplicated as nested hairline contour
+// offsets — field lines around the mark, drawn over the background.
+// STEP / RANDOM / DEPTH are C4D-style effectors: per-clone modulation by
+// index (step), by seeded jitter (random), and by a 2.5D stacked-plane
+// parallax (depth).
+export type ClonerState = {
+  enabled: boolean
+  count: number // 1..14 contour levels
+  spacing: number // 0.01..0.16 of the artboard's short edge — first offset
+  growth: number // 1..2.2 — offset progression exponent (1 = even rings)
+  weight: number // 0.5..4 — hairline stroke, artboard px
+  tone: 'paper' | 'ink' // hairline color
+  step: number // 0..1 — progressive fade + thinning across the family
+  random: number // 0..1 — seeded per-clone position/rotation jitter
+  depth: number // 0..1 — 2.5D parallax: per-clone scale + drift, far fades
+}
+
+// The lattice register: a grid of primitive shapes whose STATE changes
+// where the curve passes — the Provencher plates / Das Fest read. The
+// lattice runs edge to edge; the figure appears by substitution.
+export type PatternState = {
+  enabled: boolean
+  cells: number // 12..64 — columns; rows follow the artboard ratio
+  size: number // 0.2..1 — primitive size relative to the cell
+  range: number // 0.5..4 — how far (in cells) the curve's influence reaches
+  mode: 'lattice' | 'trace' // full grid with highlights vs curve cells only
+  tone: 'paper' | 'ink'
 }
 
 // Post-MVP; reserved so recipes stay forward-compatible.
@@ -213,6 +247,8 @@ export type ProjectState = {
   glyphField: GlyphFieldState
   material: MaterialState
   background: BackgroundState
+  cloner: ClonerState
+  pattern: PatternState
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]

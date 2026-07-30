@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/core/state/store'
-import { renderController } from '@/render/renderController'
 import { renderToCanvas } from '@/render/backgroundGL'
 
 function syncCanvasBackingStore(canvas: HTMLCanvasElement): { width: number; height: number } {
@@ -25,18 +24,35 @@ export function BackgroundLayer() {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const renderFrame = (timeMs: number) => {
+    // the field is a STILL: rendered frozen (time derived from the seed),
+    // re-rendered only when the project changes or the canvas resizes —
+    // no animation loop, no per-frame GPU load
+    const renderFrame = () => {
       const next = syncCanvasBackingStore(canvas)
       sizeRef.current = next
-      renderToCanvas(canvas, useStore.getState().project, next.width, next.height, { timeMs })
+      renderToCanvas(canvas, useStore.getState().project, next.width, next.height, { frozen: true })
     }
 
-    const ro = new ResizeObserver(() => {
-      renderFrame(performance.now())
-    })
+    // dev capture hook: re-render synchronously and read back in the same
+    // task (the GL context has no preserveDrawingBuffer, so a stale read
+    // returns blank) — used by the devshot loop while iterating on the field
+    // PNG: lossless — JPEG's block transform was adding its own artifacts
+    // to the very gradients under inspection
+    ;(window as unknown as { __lbsBgShot?: () => string }).__lbsBgShot = () => {
+      renderFrame()
+      return canvas.toDataURL('image/png')
+    }
+
+    const ro = new ResizeObserver(renderFrame)
     ro.observe(canvas)
-    renderFrame(performance.now())
-    const unsub = renderController.subscribe((_, t) => renderFrame(t))
+    renderFrame()
+    let lastProject = useStore.getState().project
+    const unsub = useStore.subscribe((state) => {
+      if (state.project !== lastProject) {
+        lastProject = state.project
+        renderFrame()
+      }
+    })
     return () => {
       ro.disconnect()
       unsub()

@@ -3,6 +3,10 @@ import { getDerived } from '@/core/pipeline'
 import { columnSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
 import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
+import { buildContourLevels } from '@/core/cloner/contours'
+import { cloneTransforms } from '@/core/cloner/effectors'
+import { buildLattice } from '@/core/pattern/lattice'
+import { INK, PAPER } from '@/core/state/defaults'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
 
@@ -23,6 +27,90 @@ function drawCover(
   ctx.rect(x, y, w, h)
   ctx.clip()
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
+  ctx.restore()
+}
+
+// The shape registers, drawn with the SAME engines and effector math as
+// the live layers — Path2D accepts the engines' SVG path data directly,
+// so the export is the same drawing at target resolution.
+function drawClones(
+  ctx: CanvasRenderingContext2D,
+  project: ProjectState,
+  derived: Derived,
+  scale: number,
+) {
+  const cloner = project.cloner
+  if (!cloner.enabled) return
+  const W = project.artboard.width
+  const H = project.artboard.height
+  const levels = buildContourLevels(
+    derived.samples,
+    W,
+    H,
+    { count: Math.round(cloner.count), spacing: cloner.spacing, growth: cloner.growth },
+    {
+      scale: project.background.fieldScale ?? 1,
+      offsetX: project.background.fieldOffsetX ?? 0,
+      offsetY: project.background.fieldOffsetY ?? 0,
+    },
+  )
+  const transforms = cloneTransforms(cloner, levels.length, Math.min(W, H), project.background.seed)
+  const stroke = cloner.tone === 'ink' ? INK : PAPER
+  for (let i = 0; i < levels.length; i++) {
+    const t = transforms[i]
+    ctx.save()
+    ctx.scale(scale, scale)
+    ctx.translate(t.dx, t.dy)
+    ctx.translate(W / 2, H / 2)
+    ctx.rotate((t.rotateDeg * Math.PI) / 180)
+    ctx.scale(t.scale, t.scale)
+    ctx.translate(-W / 2, -H / 2)
+    ctx.globalAlpha = t.opacity
+    ctx.strokeStyle = stroke
+    ctx.lineWidth = t.weight
+    ctx.lineCap = 'round'
+    ctx.stroke(new Path2D(levels[i].d))
+    ctx.restore()
+  }
+}
+
+function drawPattern(
+  ctx: CanvasRenderingContext2D,
+  project: ProjectState,
+  derived: Derived,
+  scale: number,
+) {
+  const pattern = project.pattern
+  if (!pattern.enabled) return
+  const tiers = buildLattice(
+    derived.samples,
+    project.artboard.width,
+    project.artboard.height,
+    { cells: pattern.cells, size: pattern.size, range: pattern.range, mode: pattern.mode },
+    {
+      scale: project.background.fieldScale ?? 1,
+      offsetX: project.background.fieldOffsetX ?? 0,
+      offsetY: project.background.fieldOffsetY ?? 0,
+    },
+  )
+  const tone = pattern.tone === 'ink' ? INK : PAPER
+  ctx.save()
+  ctx.scale(scale, scale)
+  const fillTier = (d: string, alpha: number) => {
+    if (!d) return
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = tone
+    ctx.fill(new Path2D(d))
+  }
+  fillTier(tiers.dots, 0.45)
+  fillTier(tiers.circles, 0.8)
+  if (tiers.rings) {
+    ctx.globalAlpha = 0.95
+    ctx.strokeStyle = tone
+    ctx.lineWidth = 2
+    ctx.stroke(new Path2D(tiers.rings))
+  }
+  fillTier(tiers.squares, 1)
   ctx.restore()
 }
 
@@ -133,6 +221,10 @@ export async function exportPNG(
 
   const derived = getDerived(project)
 
+  // layer order matches the artboard: field -> clones -> pattern -> images -> type
+  drawClones(ctx, project, derived, scale)
+  drawPattern(ctx, project, derived, scale)
+
   const bg = project.images.find((im) => im.id === project.bgImageId)
   if (bg) drawCover(ctx, await loadImage(bg.src), 0, 0, outW, outH)
   const grid = derived.grid
@@ -167,7 +259,13 @@ export async function downloadPNG(
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `lissajous-${project.lissajous.frequencyX}-${project.lissajous.frequencyY}-${project.seed}-${scale}x.png`
+  // timestamped so successive exports never overwrite each other
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp =
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
+    `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  a.download = `lissajous-${stamp}-${scale}x.png`
   a.click()
   URL.revokeObjectURL(url)
 }
