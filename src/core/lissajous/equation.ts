@@ -64,18 +64,19 @@ function metaProfileDD(v: number): number {
   )
 }
 
-// The fitted Meta profile is already aligned for the artboard's y-down
-// convention used across the poster, path and export renderers.
+// The Meta profile was fitted in the motion lab's y-UP graph space (raised
+// crossing = positive y). Artboard space is y-DOWN, so negate the fitted
+// profile here to keep the mark upright in layout, path and export renderers.
 export function unitPos(p: CurveParams, t: number): [number, number] {
   if (p.kind === 'meta') {
-    return [Math.sin(p.a * t + p.phase), META_ASPECT * metaProfile(p.b * t)]
+    return [Math.sin(p.a * t + p.phase), -META_ASPECT * metaProfile(p.b * t)]
   }
   return [Math.sin(p.a * t + p.phase), Math.sin(p.b * t)]
 }
 
 export function unitVel(p: CurveParams, t: number): [number, number] {
   if (p.kind === 'meta') {
-    return [p.a * Math.cos(p.a * t + p.phase), META_ASPECT * p.b * metaProfileD(p.b * t)]
+    return [p.a * Math.cos(p.a * t + p.phase), -META_ASPECT * p.b * metaProfileD(p.b * t)]
   }
   return [p.a * Math.cos(p.a * t + p.phase), p.b * Math.cos(p.b * t)]
 }
@@ -84,7 +85,7 @@ export function unitAcc(p: CurveParams, t: number): [number, number] {
   if (p.kind === 'meta') {
     return [
       -p.a * p.a * Math.sin(p.a * t + p.phase),
-      META_ASPECT * p.b * p.b * metaProfileDD(p.b * t),
+      -META_ASPECT * p.b * p.b * metaProfileDD(p.b * t),
     ]
   }
   return [-p.a * p.a * Math.sin(p.a * t + p.phase), -p.b * p.b * Math.sin(p.b * t)]

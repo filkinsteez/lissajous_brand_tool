@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { META_PHASE, unitPos } from './equation'
 import { sampleCurve } from './sampler'
 import { findIntersections } from './intersections'
 import type { LissajousState } from '@/core/state/types'
@@ -19,6 +20,11 @@ const W = 1200
 const H = 1600
 
 describe('sampleCurve', () => {
+  it('keeps the fitted Meta mark upright in y-down artboard space', () => {
+    const [, y] = unitPos({ a: 1, b: 2, phase: META_PHASE, kind: 'meta' }, 0)
+    expect(y).toBeLessThan(0)
+  })
+
   it('is a closed curve in artboard space', () => {
     const s = sampleCurve(base, W, H)
     expect(s[0].x).toBeCloseTo(s[s.length - 1].x, 6)
