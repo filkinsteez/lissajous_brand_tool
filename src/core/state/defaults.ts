@@ -1,4 +1,6 @@
 ﻿import { PROJECT_VERSION, type ArtboardPresetId, type ProjectState } from './types'
+import { META_ASPECT, META_PHASE } from '@/core/lissajous/equation'
+import { BRAND_PALETTE } from '@/core/color/palette'
 
 export const ARTBOARD_PRESETS: Record<ArtboardPresetId, { width: number; height: number; label: string }> = {
   portrait: { width: 1200, height: 1600, label: 'Portrait 3:4' },
@@ -10,23 +12,43 @@ export const ARTBOARD_PRESETS: Record<ArtboardPresetId, { width: number; height:
 export const INK = '#141412'
 export const PAPER = '#f4f2ed'
 
-export function createDefaultProject(seed = 1913): ProjectState {
+export const DEFAULT_BACKGROUND_STATE: ProjectState['background'] = {
+  mode: 'field',
+  paletteId: BRAND_PALETTE.id,
+  roles: ['blue', 'cyan', 'magenta', 'orange', 'yellow', 'green', 'violet', 'neutral', 'ink'],
+  lockedRoles: ['blue', 'cyan', 'magenta'],
+  ground: 'ink',
+  seed: 6508,
+  layers: 6,
+  width: 0.46,
+  softness: 0.96,
+  arcSpread: 1.52,
+  warp: 0.64,
+  drift: 0.18,
+  grain: 0.1,
+  contrast: 1.56,
+}
+
+export function createDefaultProject(seed?: number): ProjectState {
+  const projectSeed = seed ?? 1913
+  const backgroundSeed = seed ?? DEFAULT_BACKGROUND_STATE.seed
   return {
     version: PROJECT_VERSION,
-    seed,
+    seed: projectSeed,
     layoutSeed: 0,
     artboard: { preset: 'portrait', ...ARTBOARD_PRESETS.portrait, background: PAPER },
     lissajous: {
       frequencyX: 1,
       frequencyY: 2,
-      phase: Math.PI / 2,
+      phase: META_PHASE,
       amplitudeX: 0.92,
       amplitudeY: 0.92,
       rotation: 0,
       offsetX: 0,
       offsetY: 0,
       sampleDensity: 2048,
-      presetId: '1:2',
+      curve: 'meta',
+      presetId: 'meta',
     },
     grid: {
       mode: 'strict',
@@ -42,7 +64,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'headline',
         role: 'headline',
-        text: 'LISSAJOUS 1:2',
+        text: 'META ∞',
         fontFamily: 'flex',
         size: 120,
         weight: 640,
@@ -58,7 +80,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'caption',
         role: 'caption',
-        text: 'The grid on this poster is built from the crossings of a 1:2 curve. Adjust it in the System section.',
+        text: 'The grid on this poster is built from the crossings of the Meta ∞ curve. Adjust it in the System section.',
         fontFamily: 'flex',
         size: 24,
         weight: 460,
@@ -74,7 +96,7 @@ export function createDefaultProject(seed = 1913): ProjectState {
       {
         id: 'metadata',
         role: 'metadata',
-        text: 'LBS 001 — RATIO 1:2 — PHASE 90°',
+        text: 'LBS 001 — META ∞ — PHASE 109°',
         fontFamily: 'mono',
         size: 16,
         weight: 400,
@@ -120,10 +142,14 @@ export function createDefaultProject(seed = 1913): ProjectState {
       ink: INK,
       paper: PAPER,
     },
+    background: {
+      ...DEFAULT_BACKGROUND_STATE,
+      seed: backgroundSeed,
+    },
     motionLab: {
       ratioX: 1,
       ratioY: 2,
-      phase: Math.PI / 2,
+      phase: META_PHASE,
       read: 'velocity',
       reverse: false,
       strength: 0,
@@ -135,11 +161,9 @@ export function createDefaultProject(seed = 1913): ProjectState {
       bias: 0,
       lean: 0,
       cross: 0,
-      morph: 0,
-      twist: 0,
-      aspect: 1,
+      morph: 1,
+      aspect: META_ASPECT,
       durationMs: 900,
-      presetId: 'ease-in-out',
       pathShape: 'circle',
       pathText: 'LISSAJOUS — ',
       pathTextSize: 46,

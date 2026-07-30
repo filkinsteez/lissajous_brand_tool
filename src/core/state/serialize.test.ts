@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createDefaultProject } from './defaults'
 import { deserializeProject, serializeProject } from './serialize'
 import { decodeShareHash, encodeShareHash } from './compress'
+import { BRAND_PALETTE } from '@/core/color/palette'
 
 describe('recipe serialization', () => {
   it('round-trips the full project', () => {
@@ -18,6 +19,18 @@ describe('recipe serialization', () => {
     expect(loaded!.lissajous.frequencyX).toBe(5)
     expect(loaded!.lissajous.frequencyY).toBe(createDefaultProject().lissajous.frequencyY)
     expect(loaded!.typeBlocks.length).toBe(3)
+    expect(loaded!.background.mode).toBe(createDefaultProject().background.mode)
+    expect(loaded!.background.paletteId).toBe(BRAND_PALETTE.id)
+  })
+
+  it('normalizes unsupported palette ids', () => {
+    const loaded = deserializeProject(
+      '{"version":1,"seed":7,"background":{"paletteId":"unknown","roles":["cyan"],"lockedRoles":["yellow"]}}',
+    )
+    expect(loaded).not.toBeNull()
+    expect(loaded!.background.paletteId).toBe(BRAND_PALETTE.id)
+    expect(loaded!.background.roles).toEqual(['cyan'])
+    expect(loaded!.background.lockedRoles).toEqual(['yellow'])
   })
 
   it('rejects wrong versions and garbage', () => {

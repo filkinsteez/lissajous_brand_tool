@@ -17,6 +17,9 @@ export function samplePathShape(
     offsetX: 0,
     offsetY: 0,
     sampleDensity: count,
+    // the fixed shapes are pure circles/ovals/eights — never the Meta warp,
+    // even when the SYSTEM curve is Meta. Only 'system' follows liss.curve.
+    curve: undefined,
   }
   switch (shape) {
     case 'circle': {

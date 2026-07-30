@@ -241,10 +241,7 @@ export function MotionLab() {
           {Math.round((ml.phase * 180) / Math.PI)}°
         </div>
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
-          {/* TWIST is a rigid rotation of the whole drawing — arc, lobes and
-              tracer turn together, so the marked-arc identity is preserved
-              up to orientation */}
-          <g transform={ml.twist ? `rotate(${((ml.twist * 180) / Math.PI).toFixed(1)} ${FIG / 2} ${FIG / 2})` : undefined}>
+          <g>
             <path d={figure.d} className="lane-curve-path" />
             <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" />
             {figure.lobePaths.map(({ d, index }) => (

@@ -4,13 +4,17 @@ import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { TextField } from '@/components/controls/TextField'
+import { META_PHASE, type CurveKind } from '@/core/lissajous/equation'
 import type { PathScene } from '@/core/state/types'
 
 const int = (v: number) => String(Math.round(v))
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
 
-// Path figure presets: the shapes that read instantly as tracks.
-const PATH_PRESETS = [
+// Path figure presets: the shapes that read instantly as tracks. META ∞ is
+// the warped 1:2 mark, offered as a track like the rest.
+type PathPreset = { id: string; label: string; ratioX: number; ratioY: number; phase: number; curve?: CurveKind }
+const PATH_PRESETS: PathPreset[] = [
+  { id: 'meta', label: 'META', ratioX: 1, ratioY: 2, phase: META_PHASE, curve: 'meta' },
   { id: 'circle', label: 'CIRCLE', ratioX: 1, ratioY: 1, phase: Math.PI / 2 },
   { id: 'arch', label: 'ARCH', ratioX: 1, ratioY: 2, phase: Math.PI / 2 },
   { id: 'eight', label: 'EIGHT', ratioX: 2, ratioY: 1, phase: Math.PI / 2 },
@@ -51,7 +55,7 @@ export function PathPanel() {
             <button
               key={p.id}
               className="preset-chip"
-              onClick={() => apply({ pathLab: { ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase } })}
+              onClick={() => apply({ pathLab: { ratioX: p.ratioX, ratioY: p.ratioY, phase: p.phase, curve: p.curve } })}
             >
               {p.label}
             </button>
@@ -64,11 +68,12 @@ export function PathPanel() {
                   ratioX: project.lissajous.frequencyX,
                   ratioY: project.lissajous.frequencyY,
                   phase: project.lissajous.phase,
+                  curve: project.lissajous.curve,
                 },
               })
             }
           >
-            SYSTEM ({project.lissajous.frequencyX}:{project.lissajous.frequencyY})
+            SYSTEM ({project.lissajous.curve === 'meta' ? 'META' : `${project.lissajous.frequencyX}:${project.lissajous.frequencyY}`})
           </button>
         </div>
         <Slider label="RATIO X" value={pl.ratioX} min={1} max={8} step={1} format={int}

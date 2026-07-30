@@ -29,14 +29,19 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
 
-function pathLiss(ratioX: number, ratioY: number, phase: number): LissajousState {
+function pathLiss(
+  ratioX: number,
+  ratioY: number,
+  phase: number,
+  curve?: LissajousState['curve'],
+): LissajousState {
   // reduce by the gcd: a 2:2 figure IS the 1:1 ellipse traced twice, and a
   // retraced path makes everything riding it overprint itself
   const g = Math.max(1, gcd(Math.round(ratioX), Math.round(ratioY)))
   return {
     frequencyX: Math.round(ratioX) / g, frequencyY: Math.round(ratioY) / g, phase,
     amplitudeX: 0.8, amplitudeY: 0.76, rotation: 0, offsetX: 0, offsetY: 0,
-    sampleDensity: 1024,
+    sampleDensity: 1024, curve,
   }
 }
 
@@ -47,29 +52,27 @@ export function PathLab() {
   const pl = project.pathLab
   const ml = project.motionLab
 
-  const elapsedRef = useRef(0)
-  const [, setFrame] = useState(0)
+  const [elapsedMs, setElapsedMs] = useState(0)
 
   useEffect(() => {
     if (!playing) return
     return renderController.subscribe((dt) => {
-      elapsedRef.current += dt * 1000
-      setFrame((f) => f + 1)
+      setElapsedMs((t) => t + dt * 1000)
     })
   }, [playing])
-  const t = elapsedRef.current
+  const t = elapsedMs
 
   // the path figure and its arc-length parameterization (uniform speed
   // in SPACE — the raw curve parameter bunches up near the extremes)
   const path = useMemo(() => {
-    const samples = sampleCurve(pathLiss(pl.ratioX, pl.ratioY, pl.phase), W, H, 1024)
+    const samples = sampleCurve(pathLiss(pl.ratioX, pl.ratioY, pl.phase, pl.curve), W, H, 1024)
     return {
       d: samplesToPathD(samples),
       doubledD: samplesToSmoothDoubledPathD(samples),
       lut: buildArcLUT(samples),
       samples,
     }
-  }, [pl.ratioX, pl.ratioY, pl.phase])
+  }, [pl.ratioX, pl.ratioY, pl.phase, pl.curve])
   const total = path.lut.total
 
   // the marquee track is smooth Béziers, so its true length differs a hair
@@ -278,7 +281,6 @@ export function PathLab() {
       vw: lerp(zoomW, W, q),
       head,
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pl.scene, pl.text, pl.textSize, pl.durationMs, textCums, brandLut, path, t])
 
   const viewBox = reveal
@@ -290,7 +292,7 @@ export function PathLab() {
       <div className="lab-header">
         <span className="lab-title">PATH</span>
         <span className="lab-sub">
-          {pl.ratioX}:{pl.ratioY} · phase {Math.round((pl.phase * 180) / Math.PI)}° ·{' '}
+          {pl.curve === 'meta' ? 'META ∞' : `${pl.ratioX}:${pl.ratioY}`} · phase {Math.round((pl.phase * 180) / Math.PI)}° ·{' '}
           {pl.scene === 'flow'
             ? 'text on path'
             : pl.scene === 'orbit'

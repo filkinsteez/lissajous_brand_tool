@@ -6,7 +6,7 @@ import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { layoutTypeBlock, type BlockLayout } from '@/core/typography/textBlocks'
 import { FONT_STACKS, nearestStaticWeight, variationSettings } from '@/core/typography/fonts'
-import { INK } from '@/core/state/defaults'
+import { INK, PAPER } from '@/core/state/defaults'
 import type { EditorialGrid } from '@/core/grid/types'
 import type { TypeBlockState } from '@/core/state/types'
 
@@ -65,6 +65,8 @@ export function TypeLayer() {
   const selectedBlockId = useStore((s) => s.ui.selectedBlockId)
   const setUi = useStore((s) => s.setUi)
   const derived = getDerived(project)
+  const fallbackTypeColor =
+    project.background.mode === 'field' && project.background.ground !== 'neutral' ? PAPER : INK
   const layerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
 
@@ -150,7 +152,7 @@ export function TypeLayer() {
               lineHeight: block.lineHeight,
               letterSpacing: `${block.tracking}em`,
               textAlign: block.align,
-              color: block.color ?? INK,
+              color: block.color ?? fallbackTypeColor,
               WebkitTextStroke: block.strokeWidth
                 ? `${block.strokeWidth}px ${block.strokeColor ?? INK}`
                 : undefined,

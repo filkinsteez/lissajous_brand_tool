@@ -2,6 +2,7 @@ import type { ProjectState } from '@/core/state/types'
 import { getDerived } from '@/core/pipeline'
 import { columnSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
+import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
 
@@ -120,6 +121,15 @@ export async function exportPNG(
 
   ctx.fillStyle = project.artboard.background
   ctx.fillRect(0, 0, outW, outH)
+
+  if (project.background.mode === 'field') {
+    const bgCanvas = document.createElement('canvas')
+    const rendered = renderBackgroundToCanvas(bgCanvas, project, outW, outH, {
+      frozen: true,
+      timeMs: 0,
+    })
+    if (rendered) ctx.drawImage(bgCanvas, 0, 0, outW, outH)
+  }
 
   const derived = getDerived(project)
 

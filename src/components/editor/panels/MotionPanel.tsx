@@ -78,7 +78,8 @@ export function MotionPanel() {
           onChange={(decay) => setT({ motionLab: { decay, presetId: undefined } })} onCommit={commit} />
         <button
           className="ctl-action"
-          onClick={() =>
+          onClick={() => {
+            const isMeta = project.lissajous.curve === 'meta'
             apply({
               motionLab: {
                 ratioX: project.lissajous.frequencyX,
@@ -91,13 +92,18 @@ export function MotionPanel() {
                 bias: 0,
                 lean: 0,
                 cross: 0,
-                morph: 0,
+                morph: isMeta ? 1 : 0,
+                aspect: isMeta ? META_ASPECT : 1,
                 presetId: undefined,
               },
             })
-          }
+          }}
         >
-          MATCH SYSTEM CURVE ({project.lissajous.frequencyX}:{project.lissajous.frequencyY})
+          MATCH SYSTEM CURVE (
+          {project.lissajous.curve === 'meta'
+            ? 'META'
+            : `${project.lissajous.frequencyX}:${project.lissajous.frequencyY}`}
+          )
         </button>
         <div className="panel-note">
           The source is the velocity: the figure&apos;s arc is the speed graph, and
@@ -108,9 +114,9 @@ export function MotionPanel() {
         <div className="panel-heading">FIGURE SHAPE — A DESIGN SPACE</div>
         <div className="preset-strip">
           <button
-            className={ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.lean === 0 && ml.cross === 0 && ml.morph === 0 && ml.twist === 0 && ml.aspect === 1 ? 'preset-chip active' : 'preset-chip'}
+            className={ml.waist === 0 && ml.fullness === 0 && ml.bias === 0 && ml.lean === 0 && ml.cross === 0 && ml.morph === 0 && ml.aspect === 1 ? 'preset-chip active' : 'preset-chip'}
             onClick={() =>
-              apply({ motionLab: { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 0, twist: 0, aspect: 1, presetId: undefined } })
+              apply({ motionLab: { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 0, aspect: 1, presetId: undefined } })
             }
           >
             CLASSIC
@@ -122,7 +128,7 @@ export function MotionPanel() {
                 motionLab: {
                   ratioX: 1, ratioY: 2, phase: META_PHASE, read: 'velocity',
                   waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 1,
-                  twist: 0, aspect: META_ASPECT, lobe: -1, presetId: undefined,
+                  aspect: META_ASPECT, lobe: -1, presetId: undefined,
                 },
               })
             }
@@ -148,9 +154,6 @@ export function MotionPanel() {
         <Slider label="CROSSING" value={ml.cross} min={-1} max={1} step={0.02} defaultValue={0}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(cross) => setT({ motionLab: { cross, presetId: undefined } })} onCommit={commit} />
-        <Slider label="TWIST" value={ml.twist} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
-          format={deg} defaultValue={0}
-          onChange={(twist) => setT({ motionLab: { twist } })} onCommit={commit} />
         <Slider label="ASPECT" value={ml.aspect} min={0.4} max={1} step={0.01} defaultValue={META_ASPECT}
           format={(v) => `${Math.round(v * 100)}`}
           onChange={(aspect) => setT({ motionLab: { aspect } })} onCommit={commit} />
@@ -158,8 +161,8 @@ export function MotionPanel() {
           One continuous space of smooth warps: MORPH blends the base wave
           from the classic sine to the Meta profile, WAIST narrows the
           crossover, FULLNESS fills the loops and flattens the arcs, BIAS
-          skews the lobe mass, TWIST rotates the drawing. The Meta mark is
-          one point in the space — the classic Lissajous is another. Lobe
+          skews the lobe mass. The Meta mark is one point in the space — the
+          classic Lissajous is another. Lobe
           cuts and speed curves stay stable everywhere in it.
         </div>
       </div>

@@ -5,8 +5,6 @@ import type { EditorialGrid, GridGuide } from './types'
 
 type Cluster = { pos: number; weight: number; sources: number[] }
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-
 // Agglomerative 1-D clustering of node coordinates. Nodes closer than
 // mergeGap collapse into one score-weighted guide position.
 function clusterAxis(

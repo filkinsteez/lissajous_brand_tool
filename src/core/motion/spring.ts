@@ -4,6 +4,8 @@
 // sibling — one sine family drives both the structure and the motion.
 // ζ ≥ 1 gives smooth eases, ζ < 1 overshoots into spring/bounce territory.
 
+import { META_ASPECT, META_HARMONICS, META_PHASE } from '@/core/lissajous/equation'
+
 export type SpringParams = {
   stiffness: number // ω (rad/s)
   damping: number // ζ
@@ -78,12 +80,13 @@ export const CLASSIC_SHAPE: FigureShape = { waist: 0, fullness: 0, bias: 0, lean
 // peaked tops). Weighted mean fit distance ≈ 0.7% of the half-width.
 // META_ASPECT is the drawing's height/width at the fitted point.
 export const META_SHAPE: FigureShape = { waist: 0, fullness: 0, bias: 0, lean: 0, cross: 0, morph: 1 }
-export const META_ASPECT = 0.63
-export const META_PHASE = 1.8956 // ≈ 108.6°
+// META_ASPECT/META_PHASE live in core/lissajous/equation so the layout grid,
+// the path lab and this motion lab all warp to one Meta definition.
+export { META_ASPECT, META_PHASE }
 
 // The Meta profile: y(v) = sin v + Σ harmonics, 2π-periodic, so bilateral
 // symmetry, the single closed loop and the lobe machinery all survive.
-const META_H = { a2: -0.0812, a3: 0.0229, b0: -0.0071, b1: 0.2944, b2: -0.0945, b3: 0.0169 }
+const META_H = META_HARMONICS
 
 const isNeutralShape = (s?: FigureShape) =>
   !s ||

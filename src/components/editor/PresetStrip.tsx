@@ -2,17 +2,21 @@
 
 import { useStore } from '@/core/state/store'
 import { applyRatioPreset, RATIO_PRESETS, type RatioPreset } from '@/core/lissajous/presets'
+import { unitPos } from '@/core/lissajous/equation'
 
 const W = 56
 const H = 40
 
-// each chip SHOWS its figure — "3:2" means nothing until you see the curve
+// each chip SHOWS its figure — "3:2" (or META) means nothing until you see
+// the curve. Drawn through the same unitPos the sampler uses, in the same
+// y-DOWN artboard convention, so the META chip matches the poster exactly.
 function figurePath(p: RatioPreset): string {
   let d = ''
   for (let i = 0; i <= 240; i++) {
     const t = (i / 240) * Math.PI * 2
-    const x = W / 2 + Math.sin(p.frequencyX * t + p.phase) * (W / 2 - 5)
-    const y = H / 2 - Math.sin(p.frequencyY * t) * (H / 2 - 5)
+    const [ux, uy] = unitPos({ a: p.frequencyX, b: p.frequencyY, phase: p.phase, kind: p.curve }, t)
+    const x = W / 2 + ux * (W / 2 - 5)
+    const y = H / 2 + uy * (H / 2 - 5)
     d += `${d ? ' L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`
   }
   return d + ' Z'

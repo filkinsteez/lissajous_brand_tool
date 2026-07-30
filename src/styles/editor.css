@@ -99,6 +99,12 @@
   inset: 0;
 }
 
+.background-layer {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* ---- inspector -------------------------------------------------------- */
 
 .inspector-wrap {
@@ -483,6 +489,18 @@
   background: var(--text);
   color: var(--chrome-0);
   border-color: var(--text);
+}
+
+.bg-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.bg-role-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* ratio chips: 3 across, figures fill the panel width */

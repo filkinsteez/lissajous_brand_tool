@@ -2,7 +2,7 @@ import type { ProjectState } from '@/core/state/types'
 import type { EditorialGrid } from '@/core/grid/types'
 import { layoutTypeBlock } from '@/core/typography/textBlocks'
 import { variationSettings } from '@/core/typography/fonts'
-import { INK } from '@/core/state/defaults'
+import { INK, PAPER } from '@/core/state/defaults'
 
 // Rasterizes the type layer through an SVG <foreignObject>: the browser's
 // own text engine wraps lines exactly like the editor DOM, and fonts are
@@ -75,6 +75,8 @@ export async function renderTypeToCanvas(
 ): Promise<void> {
   const { width: W, height: H } = project.artboard
   const faces = await collectFontFaces()
+  const fallbackTypeColor =
+    project.background.mode === 'field' && project.background.ground !== 'neutral' ? PAPER : INK
 
   const blocksHtml = project.typeBlocks
     .filter((b) => b.text)
@@ -93,7 +95,7 @@ export async function renderTypeToCanvas(
         `line-height:${b.lineHeight}`,
         `letter-spacing:${b.tracking}em`,
         `text-align:${b.align}`,
-        `color:${b.color ?? INK}`,
+        `color:${b.color ?? fallbackTypeColor}`,
         ...(b.strokeWidth ? [`-webkit-text-stroke:${b.strokeWidth}px ${b.strokeColor ?? INK}`] : []),
         ...(b.background ? [`background:${b.background}`] : []),
         `white-space:pre-wrap`,

@@ -19,7 +19,7 @@ export function sampleCurve(
   count?: number,
 ): CurveSample[] {
   const n = Math.max(64, Math.floor(count ?? liss.sampleDensity))
-  const p: CurveParams = { a: liss.frequencyX, b: liss.frequencyY, phase: liss.phase }
+  const p: CurveParams = { a: liss.frequencyX, b: liss.frequencyY, phase: liss.phase, kind: liss.curve }
 
   const cx = artW / 2 + (liss.offsetX * artW) / 2
   const cy = artH / 2 + (liss.offsetY * artH) / 2

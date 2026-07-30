@@ -1,3 +1,6 @@
+import type { CurveKind } from '@/core/lissajous/equation'
+import type { ColorRole } from '@/core/color/palette'
+
 export const PROJECT_VERSION = 1
 
 export type ArtboardPresetId = 'portrait' | 'a-series' | 'square' | 'wide'
@@ -19,6 +22,7 @@ export type LissajousState = {
   offsetX: number // -1..1, normalized to half-extent
   offsetY: number
   sampleDensity: number // live sample count; export uses a higher ladder
+  curve?: CurveKind // undefined = classic Lissajous; 'meta' = the ∞ mark
   presetId?: string
 }
 
@@ -104,6 +108,26 @@ export type MaterialState = {
   paper: string
 }
 
+export type BackgroundMode = 'flat' | 'field'
+
+export type BackgroundState = {
+  mode: BackgroundMode
+  paletteId: string
+  roles: ColorRole[]
+  lockedRoles: ColorRole[]
+  ground: ColorRole
+  seed: number
+  layers: number
+  width: number
+  softness: number
+  arcSpread: number
+  warp: number
+  drift: number
+  grain: number
+  contrast: number
+  presetId?: string
+}
+
 // Post-MVP; reserved so recipes stay forward-compatible.
 export type ImageState = {
   transform: { x: number; y: number; scale: number }
@@ -142,7 +166,6 @@ export type MotionLabState = {
   lean: number // −1..1 — the same pull, top half only (hump lean)
   cross: number // −1..1 — lifts/drops the crossing; caps stay pinned
   morph: number // 0..1 — blends the base wave from pure sine to the Meta profile
-  twist: number // radians — display rotation of the figure
   aspect: number // 0.4..1 — display height/width of the figure drawing
   durationMs: number
   presetId?: string
@@ -166,6 +189,7 @@ export type PathLabState = {
   ratioX: number // the path figure, 1..8
   ratioY: number
   phase: number // radians
+  curve?: CurveKind // undefined = classic Lissajous; 'meta' = the ∞ mark
   text: string
   textSize: number // px in stage units
   speed: number // revolutions per second along the path (flow)
@@ -188,6 +212,7 @@ export type ProjectState = {
   typeBlocks: TypeBlockState[]
   glyphField: GlyphFieldState
   material: MaterialState
+  background: BackgroundState
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]

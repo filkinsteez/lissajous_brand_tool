@@ -1,6 +1,7 @@
 'use client'
 
 import { useStore } from '@/core/state/store'
+import { BackgroundLayer } from './BackgroundLayer'
 import { LissajousOverlay } from './LissajousOverlay'
 import { TypeLayer } from './TypeLayer'
 import { ImagesLayer } from './ImagesLayer'
@@ -16,6 +17,7 @@ export function Artboard() {
 
   return (
     <div className="artboard" style={{ background }}>
+      <BackgroundLayer />
       <ImagesLayer />
       <TypeLayer />
       {mode === 'setup' || showGuides || dragging || systemAdjusting ? <LissajousOverlay /> : null}

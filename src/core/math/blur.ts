@@ -8,8 +8,8 @@ export function boxBlur(
   radius: number,
   passes = 3,
 ): Float32Array {
-  let src = data
-  let dst = new Float32Array(data.length)
+  const src = data
+  const dst = new Float32Array(data.length)
   const r = Math.max(1, Math.round(radius))
   const norm = 1 / (2 * r + 1)
 
