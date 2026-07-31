@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/core/state/store'
+import { history, useStore } from '@/core/state/store'
+import { createDefaultProject } from '@/core/state/defaults'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { downloadPNG, exportPNG } from '@/core/export/png'
 import { encodeShareHash } from '@/core/state/compress'
@@ -84,6 +85,20 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
           }}
         >
           COPY SHARE LINK
+        </button>
+        <button
+          className="ctl-action"
+          onClick={() => {
+            // non-destructive reset: the current composition goes onto the
+            // undo stack, so Ctrl+Z brings it straight back
+            const s = useStore.getState()
+            history.push(s.project)
+            s.replaceProject(createDefaultProject(), { keepHistory: true })
+            s.setUi({ selectedLayerId: undefined, selectedBlockId: 'headline' })
+            flash('RESET TO DEFAULTS — UNDO RESTORES')
+          }}
+        >
+          NEW PROJECT
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
       </div>

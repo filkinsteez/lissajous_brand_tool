@@ -194,7 +194,11 @@ void addPigment(vec3 lin, float w) {
 }
 
 void main() {
-  vec2 px = vUv * uResolution;
+  // ARTBOARD pixel space, y down from the top — the same space the curve
+  // knots, mass points and type rects arrive in. GL's vUv runs y-up, so
+  // without this flip the whole figure event renders vertically mirrored
+  // against the layout curve.
+  vec2 px = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
   float minDim = max(min(uResolution.x, uResolution.y), 1.0);
   vec2 p = px / minDim;
 

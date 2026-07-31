@@ -102,8 +102,14 @@ vec2 safeDir(vec2 v, vec2 fallback) {
   return len > 1e-4 ? v / len : fallback;
 }
 
+// screen space (y down, matching the knot texture) back to texture UV
+vec2 screenToUv(vec2 p) {
+  return vec2(p.x / uResolution.x, 1.0 - p.y / uResolution.y);
+}
+
 void main() {
-  vec2 px = vUv * uResolution;
+  // artboard pixel space, y down — matches the knots (see field.ts)
+  vec2 px = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
   float minDim = max(min(uResolution.x, uResolution.y), 1.0);
 
   float smearPx = uDrift * minDim * 0.9;
@@ -189,7 +195,7 @@ void main() {
     dirF = safeDir(mix(safeDir(cF, dirF), dirF, obey), dirF);
     posF += dirF * stepLen;
     float wF = exp(-float(i) * 0.11);
-    acc += texture(uSceneTex, clamp(posF / uResolution, vec2(0.0), vec2(1.0))).rgb * wF;
+    acc += texture(uSceneTex, clamp(screenToUv(posF), vec2(0.0), vec2(1.0))).rgb * wF;
     wsum += wF;
 
     vec2 cB = curl(posB / minDim * curlScale + seedOff);
@@ -197,7 +203,7 @@ void main() {
     posB += dirB * stepLen;
     // shorter memory backward: streaks get a direction
     float wB = exp(-float(i) * 0.26);
-    acc += texture(uSceneTex, clamp(posB / uResolution, vec2(0.0), vec2(1.0))).rgb * wB;
+    acc += texture(uSceneTex, clamp(screenToUv(posB), vec2(0.0), vec2(1.0))).rgb * wB;
     wsum += wB;
   }
 
