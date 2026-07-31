@@ -4,16 +4,19 @@ import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { buildLattice } from '@/core/pattern/lattice'
-import { INK, PAPER } from '@/core/state/defaults'
+import type { ShapeLayer } from '@/core/state/types'
+import { layerBaseColor } from '@/core/layers/paint'
+import { layerStyle } from './layerPaint'
+
+type PatternLayerT = Extract<ShapeLayer, { type: 'pattern' }>
 
 // The lattice register: primitives on a grid, state swapped where the
 // curve passes. Rides the background's zoom + pan like every register.
-export function PatternLayer() {
+export function PatternLayer({ layer }: { layer: PatternLayerT }) {
   const project = useStore((s) => s.project)
-  const pattern = project.pattern
+  const pattern = layer.params
 
   const tiers = useMemo(() => {
-    if (!pattern.enabled) return null
     const derived = getDerived(project)
     return buildLattice(
       derived.samples,
@@ -31,7 +34,6 @@ export function PatternLayer() {
     project.lissajous,
     project.artboard.width,
     project.artboard.height,
-    pattern.enabled,
     pattern.cells,
     pattern.size,
     pattern.range,
@@ -41,9 +43,9 @@ export function PatternLayer() {
     project.background.fieldOffsetY,
   ])
 
-  if (!pattern.enabled || !tiers) return null
+  if (!tiers) return null
 
-  const tone = pattern.tone === 'ink' ? INK : PAPER
+  const tone = layerBaseColor(layer.color, project)
 
   return (
     <svg
@@ -51,6 +53,7 @@ export function PatternLayer() {
       viewBox={`0 0 ${project.artboard.width} ${project.artboard.height}`}
       preserveAspectRatio="none"
       aria-hidden
+      style={layerStyle(layer)}
     >
       {tiers.dots ? <path d={tiers.dots} fill={tone} opacity={0.45} /> : null}
       {tiers.circles ? <path d={tiers.circles} fill={tone} opacity={0.8} /> : null}

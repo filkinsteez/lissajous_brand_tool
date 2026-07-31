@@ -3,7 +3,6 @@ import { buildImageCells, type PixelGrid } from './imageArray'
 import type { ImageArrayState } from '@/core/state/types'
 
 const base: ImageArrayState = {
-  enabled: true,
   imageId: 'x',
   cells: 10,
   size: 0.7,

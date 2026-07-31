@@ -14,6 +14,7 @@ export type UiState = {
   mounted: boolean
   showGuides: boolean // optional construction guides while composing
   selectedBlockId: string
+  selectedLayerId?: string // the shape layer whose controls the panel shows
   dragging: boolean // a type block is being dragged — guides show while true
   systemAdjusting: boolean // a SYSTEM control is being worked — curve reveals itself
   motionPlaying: boolean
@@ -55,6 +56,9 @@ export function mergeDeep<T>(base: T, patch: DeepPartial<T>): T {
 export type StoreState = {
   project: ProjectState
   ui: UiState
+  // bumped on every history mutation so undo/redo buttons can read
+  // history.depth reactively (the History instance itself is not a store)
+  historyVersion: number
   setUi: (patch: Partial<UiState>) => void
   // Discrete change: one history entry per call (toggles, text edits, preset picks).
   apply: (patch: ProjectPatch) => void
@@ -73,6 +77,7 @@ let preTransient: ProjectState | null = null
 
 export const useStore = create<StoreState>()((set, get) => ({
   project: createDefaultProject(),
+  historyVersion: 0,
   ui: {
     mode: 'compose',
     activePanel: 'compose',
@@ -90,7 +95,7 @@ export const useStore = create<StoreState>()((set, get) => ({
   apply: (patch) => {
     const before = get().project
     history.push(before)
-    set({ project: mergeDeep(before, patch) })
+    set({ project: mergeDeep(before, patch), historyVersion: get().historyVersion + 1 })
   },
 
   setTransient: (patch) => {
@@ -105,23 +110,23 @@ export const useStore = create<StoreState>()((set, get) => ({
       history.push(preTransient)
     }
     preTransient = null
-    set({ ui: { ...s.ui, quality: 'hq' } })
+    set({ ui: { ...s.ui, quality: 'hq' }, historyVersion: s.historyVersion + 1 })
   },
 
   replaceProject: (project, opts) => {
     if (!opts?.keepHistory) history.clear()
     preTransient = null
-    set({ project })
+    set({ project, historyVersion: get().historyVersion + 1 })
   },
 
   undo: () => {
     const prev = history.undo(get().project)
-    if (prev) set({ project: prev })
+    if (prev) set({ project: prev, historyVersion: get().historyVersion + 1 })
   },
 
   redo: () => {
     const next = history.redo(get().project)
-    if (next) set({ project: next })
+    if (next) set({ project: next, historyVersion: get().historyVersion + 1 })
   },
 }))
 

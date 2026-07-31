@@ -1,5 +1,5 @@
-import { PROJECT_VERSION, type ProjectState } from './types'
-import { createDefaultProject } from './defaults'
+import { PROJECT_VERSION, type ProjectState, type ShapeLayer, type ShapeLayerType } from './types'
+import { createDefaultProject, createShapeLayer, DEFAULT_LAYER_PARAMS } from './defaults'
 import { mergeDeep, type DeepPartial } from './store'
 import { BRAND_PALETTE, BRAND_ROLE_ORDER, PALETTES, type ColorRole } from '@/core/color/palette'
 
@@ -13,26 +13,70 @@ export function serializeProject(project: ProjectState): string {
 export function deserializeProject(json: string | null | undefined): ProjectState | null {
   if (!json) return null
   try {
-    const raw = JSON.parse(json) as DeepPartial<ProjectState> & { version?: number }
+    const raw = JSON.parse(json) as Record<string, unknown> & DeepPartial<ProjectState>
     if (!raw || typeof raw !== 'object') return null
     if (raw.version !== PROJECT_VERSION) return null
+    migrateRegistersToLayers(raw)
     const seed = typeof raw.seed === 'number' ? raw.seed : undefined
     const merged = mergeDeep(createDefaultProject(seed), raw)
-    return normalizeBackground(normalizeTones(merged))
+    return normalizeBackground(normalizeLayers(merged))
   } catch {
     return null
   }
 }
 
-// the ink colorway was cut: the shape registers always draw in paper —
-// older saves carrying 'ink' would otherwise be stuck with no UI for it
-function normalizeTones(project: ProjectState): ProjectState {
-  return {
-    ...project,
-    cloner: { ...project.cloner, tone: 'paper' },
-    pattern: { ...project.pattern, tone: 'paper' },
-    sheet: { ...project.sheet, tone: 'paper' },
+// Saves from before the layer stack carried five singleton registers
+// (cloner/pattern/sheet/repeater/imageArray), each with an `enabled`
+// flag. Enabled ones become layers in the old fixed z-order; the old
+// keys are dropped so they don't ghost through the merge.
+const LEGACY_ORDER: { key: string; type: ShapeLayerType }[] = [
+  { key: 'cloner', type: 'clones' },
+  { key: 'pattern', type: 'pattern' },
+  { key: 'sheet', type: 'sheet' },
+  { key: 'imageArray', type: 'array' },
+  { key: 'repeater', type: 'repeater' },
+]
+
+function migrateRegistersToLayers(raw: Record<string, unknown>): void {
+  const hasLegacy = LEGACY_ORDER.some((r) => raw[r.key] !== undefined)
+  if (!hasLegacy) return
+  if (raw.layers === undefined) {
+    const layers: ShapeLayer[] = []
+    for (const { key, type } of LEGACY_ORDER) {
+      const reg = raw[key]
+      if (!reg || typeof reg !== 'object') continue
+      const { enabled, tone, ...params } = reg as Record<string, unknown> & {
+        enabled?: boolean
+        tone?: string
+      }
+      void tone
+      if (!enabled) continue
+      const layer = createShapeLayer(type, layers)
+      layers.push({
+        ...layer,
+        params: { ...DEFAULT_LAYER_PARAMS[type], ...params },
+      } as ShapeLayer)
+    }
+    raw.layers = layers
   }
+  for (const { key } of LEGACY_ORDER) delete raw[key]
+}
+
+// Layers arriving from saves may be partial or malformed — fill each
+// from a freshly minted layer of its type and drop unknown types.
+function normalizeLayers(project: ProjectState): ProjectState {
+  const valid = new Set<ShapeLayerType>(['clones', 'pattern', 'sheet', 'repeater', 'array'])
+  const layers = (Array.isArray(project.layers) ? project.layers : [])
+    .filter((l) => l && typeof l === 'object' && valid.has((l as ShapeLayer).type))
+    .map((l) => {
+      const fresh = createShapeLayer(l.type, [])
+      return {
+        ...fresh,
+        ...l,
+        params: { ...DEFAULT_LAYER_PARAMS[l.type], ...(l.params ?? {}) },
+      } as ShapeLayer
+    })
+  return { ...project, layers }
 }
 
 function asRoles(value: unknown): ColorRole[] {

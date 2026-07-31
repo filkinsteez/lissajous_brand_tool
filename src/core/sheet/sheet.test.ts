@@ -3,7 +3,6 @@ import { buildSheetClones, metaUnitOutline, unitPolygon } from './sheet'
 import type { SheetState } from '@/core/state/types'
 
 const base: SheetState = {
-  enabled: true,
   shape: 'circle',
   layout: 'grid',
   countX: 4,
@@ -15,7 +14,6 @@ const base: SheetState = {
   noise: 0,
   strokeMix: 0,
   curve: 0,
-  tone: 'paper',
 }
 
 const diagonal: { x: number; y: number }[] = Array.from({ length: 64 }, (_, i) => ({

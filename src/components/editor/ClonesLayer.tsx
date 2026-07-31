@@ -5,18 +5,21 @@ import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { buildContourLevels } from '@/core/cloner/contours'
 import { cloneTransforms } from '@/core/cloner/effectors'
-import { INK, PAPER } from '@/core/state/defaults'
+import type { ShapeLayer } from '@/core/state/types'
+import { layerBaseColor } from '@/core/layers/paint'
+import { layerStyle } from './layerPaint'
+
+type ClonesLayerT = Extract<ShapeLayer, { type: 'clones' }>
 
 // The cloner: nested hairline offsets of the curve, drawn over the
 // background — the reference's field-line register. The contours follow
 // the SAME zoom + pan as the background figure, so the two registers
 // stay one geometry.
-export function ClonesLayer() {
+export function ClonesLayer({ layer }: { layer: ClonesLayerT }) {
   const project = useStore((s) => s.project)
-  const cloner = project.cloner
+  const cloner = layer.params
 
   const levels = useMemo(() => {
-    if (!cloner.enabled) return []
     const derived = getDerived(project)
     return buildContourLevels(
       derived.samples,
@@ -36,7 +39,6 @@ export function ClonesLayer() {
     project.lissajous,
     project.artboard.width,
     project.artboard.height,
-    cloner.enabled,
     cloner.count,
     cloner.spacing,
     cloner.growth,
@@ -45,9 +47,9 @@ export function ClonesLayer() {
     project.background.fieldOffsetY,
   ])
 
-  if (!cloner.enabled || !levels.length) return null
+  if (!levels.length) return null
 
-  const stroke = cloner.tone === 'ink' ? INK : PAPER
+  const stroke = layerBaseColor(layer.color, project)
   const W = project.artboard.width
   const H = project.artboard.height
   const transforms = cloneTransforms(cloner, levels.length, Math.min(W, H), project.background.seed)
@@ -58,6 +60,7 @@ export function ClonesLayer() {
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="none"
       aria-hidden
+      style={layerStyle(layer)}
     >
       {levels.map((level, i) => {
         const t = transforms[i]

@@ -1,4 +1,4 @@
-import type { ProjectState } from '@/core/state/types'
+import type { ProjectState, ShapeLayer } from '@/core/state/types'
 import { getDerived } from '@/core/pipeline'
 import { columnSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
@@ -10,7 +10,8 @@ import { buildSheetClones, metaUnitOutline, unitPolygon, type SheetClone } from 
 import { buildRepeats } from '@/core/repeater/repeater'
 import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
 import { BRAND_PALETTE } from '@/core/color/palette'
-import { INK, PAPER } from '@/core/state/defaults'
+import { layerBaseColor, fieldSampler, type FieldSampler } from '@/core/layers/paint'
+import { textureTile, paintTextureTile, type TextureKind } from '@/core/texture/textures'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
 
@@ -34,17 +35,55 @@ function drawCover(
   ctx.restore()
 }
 
-// The shape registers, drawn with the SAME engines and effector math as
-// the live layers — Path2D accepts the engines' SVG path data directly,
-// so the export is the same drawing at target resolution.
+// The shape layers, drawn with the SAME engines and effector math as
+// the live components — Path2D accepts the engines' SVG path data
+// directly, so the export is the same drawing at target resolution.
+
+type LayerPaint = {
+  fill: string | CanvasPattern // texture pattern or flat color
+  stroke: string
+  colorAt: FieldSampler | null // SAMPLED: per-clone color override
+}
+
+// The subtexture as a canvas pattern: the tile is rasterized at export
+// resolution, then transformed back to artboard units so it lines up
+// with the painters' scaled coordinate space.
+function resolveLayerPaint(
+  ctx: CanvasRenderingContext2D,
+  layer: ShapeLayer,
+  project: ProjectState,
+  scale: number,
+): LayerPaint {
+  const base = layerBaseColor(layer.color, project)
+  const sampled = layer.color === 'sampled' && layer.texture === 'solid'
+  let fill: string | CanvasPattern = base
+  if (layer.texture !== 'solid') {
+    const tileCanvas = paintTextureTile(
+      textureTile(layer.texture as TextureKind, layer.texDensity),
+      base,
+      scale,
+    )
+    const pat = ctx.createPattern(tileCanvas, 'repeat')
+    if (pat) {
+      pat.setTransform(new DOMMatrix([1 / scale, 0, 0, 1 / scale, 0, 0]))
+      fill = pat
+    }
+  }
+  return {
+    fill,
+    stroke: base,
+    colorAt: sampled ? fieldSampler(project) : null,
+  }
+}
+
 function drawClones(
   ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'clones' }>,
   project: ProjectState,
   derived: Derived,
   scale: number,
 ) {
-  const cloner = project.cloner
-  if (!cloner.enabled) return
+  const cloner = layer.params
   const W = project.artboard.width
   const H = project.artboard.height
   const levels = buildContourLevels(
@@ -59,7 +98,7 @@ function drawClones(
     },
   )
   const transforms = cloneTransforms(cloner, levels.length, Math.min(W, H), project.background.seed)
-  const stroke = cloner.tone === 'ink' ? INK : PAPER
+  const stroke = layerBaseColor(layer.color, project)
   for (let i = 0; i < levels.length; i++) {
     const t = transforms[i]
     ctx.save()
@@ -80,12 +119,12 @@ function drawClones(
 
 function drawPattern(
   ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'pattern' }>,
   project: ProjectState,
   derived: Derived,
   scale: number,
 ) {
-  const pattern = project.pattern
-  if (!pattern.enabled) return
+  const pattern = layer.params
   const tiers = buildLattice(
     derived.samples,
     project.artboard.width,
@@ -97,7 +136,7 @@ function drawPattern(
       offsetY: project.background.fieldOffsetY ?? 0,
     },
   )
-  const tone = pattern.tone === 'ink' ? INK : PAPER
+  const tone = layerBaseColor(layer.color, project)
   ctx.save()
   ctx.scale(scale, scale)
   const fillTier = (d: string, alpha: number) => {
@@ -125,7 +164,7 @@ function paintShapeClones(
   clones: SheetClone[],
   project: ProjectState,
   scale: number,
-  tone: string,
+  paint: LayerPaint,
 ) {
   const strokeW = Math.max(
     1.5,
@@ -138,14 +177,15 @@ function paintShapeClones(
 
   ctx.save()
   ctx.scale(scale, scale)
-  ctx.fillStyle = tone
-  ctx.strokeStyle = tone
   for (const c of clones) {
     ctx.save()
     ctx.globalAlpha = c.opacity
+    const sampledHex = paint.colorAt ? paint.colorAt(c.x, c.y) : null
+    ctx.fillStyle = sampledHex ?? paint.fill
+    ctx.strokeStyle = sampledHex ?? paint.stroke
     ctx.translate(c.x, c.y)
     ctx.rotate(c.rotate)
-    const paint = (path?: Path2D, lw = strokeW) => {
+    const draw = (path?: Path2D, lw = strokeW) => {
       if (c.stroked) {
         ctx.lineWidth = lw
         if (path) ctx.stroke(path)
@@ -156,23 +196,23 @@ function paintShapeClones(
     if (c.shape === 'circle') {
       ctx.beginPath()
       ctx.arc(0, 0, c.r, 0, Math.PI * 2)
-      paint()
+      draw()
     } else if (c.shape === 'half') {
       ctx.beginPath()
       ctx.arc(0, 0, c.r, Math.PI, Math.PI * 2)
       ctx.closePath()
-      paint()
+      draw()
     } else if (c.shape === 'quarter') {
       ctx.beginPath()
       ctx.moveTo(-c.r, -c.r)
       ctx.arc(-c.r, -c.r, c.r * 2, 0, Math.PI / 2)
       ctx.closePath()
-      paint()
+      draw()
     } else if (c.shape === 'meta') {
       // the path is unit-scale, so the stroke must be compensated or the
       // ctx.scale multiplies it into a blob
       ctx.scale(c.r, c.r)
-      paint(metaPath, strokeW / Math.max(c.r, 0.5))
+      draw(metaPath, strokeW / Math.max(c.r, 0.5))
     } else {
       const pts = unitPolygon(c.shape)
       ctx.beginPath()
@@ -180,7 +220,7 @@ function paintShapeClones(
         i === 0 ? ctx.moveTo(p.x * c.r, p.y * c.r) : ctx.lineTo(p.x * c.r, p.y * c.r),
       )
       ctx.closePath()
-      paint()
+      draw()
     }
     ctx.restore()
   }
@@ -189,21 +229,21 @@ function paintShapeClones(
 
 function drawRepeater(
   ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'repeater' }>,
   project: ProjectState,
   scale: number,
 ) {
-  if (!project.repeater.enabled) return
-  const clones = buildRepeats(project.repeater, project.artboard.width, project.artboard.height)
-  paintShapeClones(ctx, clones, project, scale, PAPER)
+  const clones = buildRepeats(layer.params, project.artboard.width, project.artboard.height)
+  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale))
 }
 
 async function drawImageArray(
   ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'array' }>,
   project: ProjectState,
   scale: number,
 ) {
-  const state = project.imageArray
-  if (!state.enabled) return
+  const state = layer.params
   const image = project.images.find((im) => im.id === state.imageId) ?? project.images[0]
   if (!image) return
   const el = await loadImage(image.src)
@@ -224,12 +264,12 @@ async function drawImageArray(
 
 function drawSheet(
   ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'sheet' }>,
   project: ProjectState,
   derived: Derived,
   scale: number,
 ) {
-  const sheet = project.sheet
-  if (!sheet.enabled) return
+  const sheet = layer.params
   // the CURVE effector reads the layout figure under the background's
   // zoom + pan — identical to the live layer
   let curvePts: { x: number; y: number }[] | undefined
@@ -256,7 +296,7 @@ function drawSheet(
     project.background.seed,
     curvePts,
   )
-  paintShapeClones(ctx, clones, project, scale, sheet.tone === 'ink' ? INK : PAPER)
+  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale))
 }
 
 // Compositor: background → images (bg + grid blocks) → SVG type, all
@@ -366,13 +406,32 @@ export async function exportPNG(
 
   const derived = getDerived(project)
 
-  // layer order matches the artboard:
-  // field -> clones -> pattern -> sheet -> array -> repeater -> images -> type
-  drawClones(ctx, project, derived, scale)
-  drawPattern(ctx, project, derived, scale)
-  drawSheet(ctx, project, derived, scale)
-  await drawImageArray(ctx, project, scale)
-  drawRepeater(ctx, project, scale)
+  // the shape layer stack, in project order (index 0 = bottom). Each
+  // layer flattens onto a scratch canvas, then composites with its
+  // opacity + blend — the same semantics as CSS mix-blend-mode on the
+  // live elements (opacity applies to the flattened layer, not per
+  // shape, so self-overlaps stay clean).
+  const visibleLayers = project.layers.filter((l) => l.visible)
+  if (visibleLayers.length) {
+    const scratch = document.createElement('canvas')
+    scratch.width = outW
+    scratch.height = outH
+    const sctx = scratch.getContext('2d')
+    if (!sctx) throw new Error('2d context unavailable')
+    for (const layer of visibleLayers) {
+      sctx.clearRect(0, 0, outW, outH)
+      if (layer.type === 'clones') drawClones(sctx, layer, project, derived, scale)
+      else if (layer.type === 'pattern') drawPattern(sctx, layer, project, derived, scale)
+      else if (layer.type === 'sheet') drawSheet(sctx, layer, project, derived, scale)
+      else if (layer.type === 'array') await drawImageArray(sctx, layer, project, scale)
+      else drawRepeater(sctx, layer, project, scale)
+      ctx.save()
+      ctx.globalAlpha = layer.opacity
+      ctx.globalCompositeOperation = layer.blend === 'normal' ? 'source-over' : layer.blend
+      ctx.drawImage(scratch, 0, 0)
+      ctx.restore()
+    }
+  }
 
   const bg = project.images.find((im) => im.id === project.bgImageId)
   if (bg) drawCover(ctx, await loadImage(bg.src), 0, 0, outW, outH)

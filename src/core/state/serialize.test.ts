@@ -33,6 +33,33 @@ describe('recipe serialization', () => {
     expect(loaded!.background.lockedRoles).toEqual(['yellow'])
   })
 
+  it('migrates pre-layer-stack registers into layers', () => {
+    // an old save: enabled repeater + sheet, disabled pattern — enabled
+    // registers become layers in the legacy z-order, params carried over
+    const loaded = deserializeProject(
+      JSON.stringify({
+        version: 1,
+        seed: 3,
+        sheet: { enabled: true, shape: 'circle', countX: 12, tone: 'ink' },
+        repeater: { enabled: true, mode: 'linear', count: 9 },
+        pattern: { enabled: false, cells: 20 },
+      }),
+    )
+    expect(loaded).not.toBeNull()
+    expect(loaded!.layers.map((l) => l.type)).toEqual(['sheet', 'repeater'])
+    const sheet = loaded!.layers[0]
+    expect(sheet.type === 'sheet' && sheet.params.countX).toBe(12)
+    expect(sheet.params).not.toHaveProperty('enabled')
+    expect(sheet.params).not.toHaveProperty('tone')
+    const rep = loaded!.layers[1]
+    expect(rep.type === 'repeater' && rep.params.count).toBe(9)
+    // defaults fill the unspecified params
+    expect(rep.type === 'repeater' && rep.params.radius).toBe(0.28)
+    // the old singleton keys do not ghost into the project
+    expect(loaded).not.toHaveProperty('sheet')
+    expect(loaded).not.toHaveProperty('repeater')
+  })
+
   it('rejects wrong versions and garbage', () => {
     expect(deserializeProject('{"version":99}')).toBeNull()
     expect(deserializeProject('not json')).toBeNull()

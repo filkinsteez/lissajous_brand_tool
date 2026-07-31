@@ -316,6 +316,20 @@ export function enumerateLobes(params: FigureParams): Lobe[] {
   return out.sort((l1, l2) => midX(l1) - midX(l2))
 }
 
+// A lobe that hangs below the figure's waist. Top lobes read as travel
+// arches; bottom lobes read as SETTLES — selecting one applies the heavy
+// decay envelope (the whip-and-glide), which is what a mass dropping
+// into rest looks like. The distinction is the lobe's mean height.
+export function lobeIsBottom(params: FigureParams, lobe: Lobe): boolean {
+  const b = Math.max(1, Math.round(params.frequencyY))
+  const probes = 32
+  let sum = 0
+  for (let i = 0; i <= probes; i++) {
+    sum += shapeY(params.shape, b * (lobe.t0 + (i / probes) * (lobe.t1 - lobe.t0)))
+  }
+  return sum / (probes + 1) < -0.05
+}
+
 export type MotionPreset = MotionRecipe & { id: string; label: string }
 
 // Family members read as easings — the traditional AE set, all from the

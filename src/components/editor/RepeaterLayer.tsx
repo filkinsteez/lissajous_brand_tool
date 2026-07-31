@@ -4,23 +4,28 @@ import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
 import { buildRepeats } from '@/core/repeater/repeater'
 import type { SheetClone } from '@/core/sheet/sheet'
+import type { ShapeLayer } from '@/core/state/types'
+import { layerBaseColor, fieldSampler } from '@/core/layers/paint'
+import { layerStyle, fillPaint, TexturePatternDef } from './layerPaint'
 import { shapeD, metaGlyphD } from './SheetLayer'
-import { PAPER } from '@/core/state/defaults'
+
+type RepeaterLayerT = Extract<ShapeLayer, { type: 'repeater' }>
 
 // The repeater drawn as SVG — same painters as the sheet, so the two
 // registers stay one drawing language. Meta glyphs instance a private
-// def (the sheet's may not be mounted).
-export function RepeaterLayer() {
+// def per layer.
+export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
   const project = useStore((s) => s.project)
-  const rep = project.repeater
+  const rep = layer.params
 
-  const clones = useMemo(() => {
-    if (!rep.enabled) return null
-    return buildRepeats(rep, project.artboard.width, project.artboard.height)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rep, project.artboard.width, project.artboard.height])
+  const baseColor = layerBaseColor(layer.color, project)
+  const sampler =
+    layer.color === 'sampled' && layer.texture === 'solid' ? fieldSampler(project) : null
 
-  if (!rep.enabled || !clones) return null
+  const clones = useMemo(
+    () => buildRepeats(rep, project.artboard.width, project.artboard.height),
+    [rep, project.artboard.width, project.artboard.height],
+  )
 
   const strokeW = Math.max(
     1.5,
@@ -37,9 +42,9 @@ export function RepeaterLayer() {
     if (c.stroked) strokedD += shapeD(c)
     else filledD += shapeD(c)
   }
-  // per-clone opacity varies (FADE), so batched paths only work when the
-  // fade is flat — otherwise draw individually
-  const flatFade = rep.fade < 0.01
+  // per-clone opacity (FADE) and per-clone sampled color both force
+  // individual paths; the batched pair covers the flat case
+  const batched = rep.fade < 0.01 && !sampler
 
   return (
     <svg
@@ -47,38 +52,45 @@ export function RepeaterLayer() {
       viewBox={`0 0 ${project.artboard.width} ${project.artboard.height}`}
       preserveAspectRatio="none"
       aria-hidden
+      style={layerStyle(layer)}
     >
       <defs>
-        <path id="repeater-meta-glyph" d={metaGlyphD()} />
+        <path id={`repeater-meta-${layer.id}`} d={metaGlyphD()} />
+        <TexturePatternDef layer={layer} color={baseColor} />
       </defs>
-      {flatFade ? (
+      {batched ? (
         <>
-          {filledD ? <path d={filledD} fill={PAPER} fillRule="evenodd" /> : null}
+          {filledD ? (
+            <path d={filledD} fill={fillPaint(layer, baseColor)} fillRule="evenodd" />
+          ) : null}
           {strokedD ? (
-            <path d={strokedD} fill="none" stroke={PAPER} strokeWidth={strokeW} />
+            <path d={strokedD} fill="none" stroke={baseColor} strokeWidth={strokeW} />
           ) : null}
         </>
       ) : (
         clones
           .filter((c) => c.shape !== 'meta')
-          .map((c, i) => (
-            <path
-              key={i}
-              d={shapeD(c)}
-              fill={c.stroked ? 'none' : PAPER}
-              stroke={c.stroked ? PAPER : 'none'}
-              strokeWidth={c.stroked ? strokeW : undefined}
-              opacity={c.opacity}
-              fillRule="evenodd"
-            />
-          ))
+          .map((c, i) => {
+            const color = sampler ? sampler(c.x, c.y) : baseColor
+            return (
+              <path
+                key={i}
+                d={shapeD(c)}
+                fill={c.stroked ? 'none' : sampler ? color : fillPaint(layer, baseColor)}
+                stroke={c.stroked ? color : 'none'}
+                strokeWidth={c.stroked ? strokeW : undefined}
+                opacity={c.opacity}
+                fillRule="evenodd"
+              />
+            )
+          })
       )}
       {metas.map((c, i) => (
         <use
           key={i}
-          href="#repeater-meta-glyph"
+          href={`#repeater-meta-${layer.id}`}
           fill="none"
-          stroke={PAPER}
+          stroke={sampler ? sampler(c.x, c.y) : baseColor}
           strokeWidth={strokeW / Math.max(c.r, 0.5)}
           opacity={c.opacity}
           transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${((c.rotate * 180) / Math.PI).toFixed(1)}) scale(${c.r.toFixed(2)})`}

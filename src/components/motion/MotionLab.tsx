@@ -7,6 +7,7 @@ import {
   enumerateLobes,
   evalEase,
   lissajousEasing,
+  lobeIsBottom,
   overshootOf,
   shapeY,
   toCssLinear,
@@ -186,16 +187,17 @@ export function MotionLab() {
       arcD += `${arcD ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
     }
     // clickable lobe hit-paths (only meaningful for the speed read)
+    const figParams = { frequencyX: a, frequencyY: b, phase, shape }
     const lobePaths =
       ml.read === 'velocity'
-        ? enumerateLobes({ frequencyX: a, frequencyY: b, phase, shape }).map((lobe, index) => {
+        ? enumerateLobes(figParams).map((lobe, index) => {
             let ld = ''
             for (let i = 0; i <= 48; i++) {
               const t = lobe.t0 + (i / 48) * (lobe.t1 - lobe.t0)
               const m = map({ x: Math.sin(a * t + phase), y: shapeY(shape, b * t) })
               ld += `${ld ? ' L' : 'M'} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`
             }
-            return { d: ld, index }
+            return { d: ld, index, bottom: lobeIsBottom(figParams, lobe) }
           })
         : []
     // the dot rides the DRAWN arc itself (arcUnit), so it always travels the
@@ -244,18 +246,27 @@ export function MotionLab() {
           <g>
             <path d={figure.d} className="lane-curve-path" />
             <path d={figure.arcD} data-testid="figure-arc" className="lane-arc" />
-            {figure.lobePaths.map(({ d, index }) => (
+            {figure.lobePaths.map(({ d, index, bottom }) => (
               <path
                 key={index}
                 d={d}
                 data-testid={`lobe-${index}`}
                 className={ml.lobe === index ? 'lane-lobe selected' : 'lane-lobe'}
-                onClick={() =>
+                onClick={() => {
+                  const deselecting = ml.lobe === index
                   useStore.getState().apply({
-                    // clicking picks the WHOLE arch — both sides of the parabola
-                    motionLab: { lobe: ml.lobe === index ? -1 : index, half: 'full', presetId: undefined },
+                    // clicking picks the WHOLE arch — both sides of the parabola.
+                    // A BOTTOM lobe reads as a settle: the heavy decay envelope
+                    // rides in on the DECAY dial (visible, adjustable); top
+                    // lobes and deselection clear it back to the raw arc.
+                    motionLab: {
+                      lobe: deselecting ? -1 : index,
+                      half: 'full',
+                      presetId: undefined,
+                      decay: !deselecting && bottom ? 0.85 : 0,
+                    },
                   })
-                }
+                }}
               />
             ))}
             <circle cx={figTracer.x} cy={figTracer.y} r={6} className="lane-dot" />

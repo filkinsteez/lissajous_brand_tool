@@ -140,12 +140,10 @@ export type BackgroundState = {
 // index (step), by seeded jitter (random), and by a 2.5D stacked-plane
 // parallax (depth).
 export type ClonerState = {
-  enabled: boolean
   count: number // 1..14 contour levels
   spacing: number // 0.01..0.16 of the artboard's short edge — first offset
   growth: number // 1..2.2 — offset progression exponent (1 = even rings)
   weight: number // 0.5..4 — hairline stroke, artboard px
-  tone: 'paper' | 'ink' // hairline color
   step: number // 0..1 — progressive fade + thinning across the family
   random: number // 0..1 — seeded per-clone position/rotation jitter
   depth: number // 0..1 — 2.5D parallax: per-clone scale + drift, far fades
@@ -169,7 +167,6 @@ export type SheetShape =
   | 'mixed'
 
 export type SheetState = {
-  enabled: boolean
   shape: SheetShape
   layout: 'grid' | 'packed' // packed = recursive subdivision, mixed cell sizes
   countX: number // 2..64 — columns (packed: base columns before subdivision)
@@ -182,7 +179,6 @@ export type SheetState = {
   strokeMix: number // 0..1 — fraction of the population drawn as outlines
   curve: number // 0..1 — CURVE effector: clones swell near the figure and
   // flip to filled inside its lobes — the mark emerges through the sheet
-  tone: 'paper' | 'ink'
 }
 
 // The repeater register: one seed shape echoed N times with an
@@ -192,7 +188,6 @@ export type SheetState = {
 // each oriented along its spoke; GRID lays countX×countY copies around
 // the origin with the accumulation sweeping in reading order.
 export type RepeaterState = {
-  enabled: boolean
   shape: SheetShape
   mode: 'linear' | 'radial' | 'grid'
   count: number // linear/radial: 2..48 copies
@@ -217,7 +212,6 @@ export type RepeaterState = {
 // pulls each glyph toward the image's own sampled color, from pure
 // graphic array to image mosaic.
 export type ImageArrayState = {
-  enabled: boolean
   imageId: string | null // which upload drives the array
   cells: number // 16..96 — columns; rows follow the artboard ratio
   size: number // 0.2..1 — glyph size relative to the cell
@@ -230,13 +224,46 @@ export type ImageArrayState = {
 // where the curve passes — the Provencher plates / Das Fest read. The
 // lattice runs edge to edge; the figure appears by substitution.
 export type PatternState = {
-  enabled: boolean
   cells: number // 12..64 — columns; rows follow the artboard ratio
   size: number // 0.2..1 — primitive size relative to the cell
   range: number // 0.5..4 — how far (in cells) the curve's influence reaches
   mode: 'lattice' | 'trace' // full grid with highlights vs curve cells only
-  tone: 'paper' | 'ink'
 }
+
+// ---------------------------------------------------------------------------
+// The shape layer stack. The five registers stopped being singletons:
+// each is a layer TYPE, instantiable any number of times, stacked in
+// z-order (index 0 = bottom), each with its own opacity, blend mode,
+// color and fill texture. Live rendering uses CSS mix-blend-mode; the
+// PNG export replicates it with globalCompositeOperation — the mode
+// names are shared by both.
+export type ShapeLayerType = 'clones' | 'pattern' | 'sheet' | 'repeater' | 'array'
+export type LayerBlend = 'normal' | 'multiply' | 'screen' | 'overlay'
+// r0..r2 are the palette's three leading roles; 'sampled' reads the
+// gradient field's color underneath each clone (sheet/repeater only)
+export type LayerColor = 'paper' | 'ink' | 'r0' | 'r1' | 'r2' | 'sampled'
+// subtexture: filled shapes carry micro-texture instead of flat paint
+export type LayerTexture = 'solid' | 'dither' | 'hatch' | 'dots'
+
+export type ShapeLayerBase = {
+  id: string
+  name: string
+  visible: boolean
+  opacity: number // 0..1 — applied to the flattened layer, not per shape
+  blend: LayerBlend
+  color: LayerColor
+  texture: LayerTexture
+  texDensity: number // 0..1 — how heavy the micro-texture weave runs
+}
+
+export type ShapeLayer = ShapeLayerBase &
+  (
+    | { type: 'clones'; params: ClonerState }
+    | { type: 'pattern'; params: PatternState }
+    | { type: 'sheet'; params: SheetState }
+    | { type: 'repeater'; params: RepeaterState }
+    | { type: 'array'; params: ImageArrayState }
+  )
 
 // Post-MVP; reserved so recipes stay forward-compatible.
 export type ImageState = {
@@ -323,11 +350,7 @@ export type ProjectState = {
   glyphField: GlyphFieldState
   material: MaterialState
   background: BackgroundState
-  cloner: ClonerState
-  pattern: PatternState
-  sheet: SheetState
-  repeater: RepeaterState
-  imageArray: ImageArrayState
+  layers: ShapeLayer[]
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]

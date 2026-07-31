@@ -8,6 +8,7 @@ import {
   figureCrossings,
   figureLibrary,
   lissajousEasing,
+  lobeIsBottom,
   MOTION_PRESETS,
   MOTION_TOKENS,
   overshootOf,
@@ -631,6 +632,33 @@ describe('curveArcEasing', () => {
       }
     }
     expect(swings).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('lobeIsBottom', () => {
+  it('splits a symmetric figure into top and bottom lobes', () => {
+    const params = { frequencyX: 1, frequencyY: 2, phase: Math.PI / 2 }
+    const lobes = enumerateLobes(params)
+    const flags = lobes.map((l) => lobeIsBottom(params, l))
+    // both halves of the plane are represented, and the flag actually
+    // tracks the lobe's mean height
+    expect(flags.some(Boolean)).toBe(true)
+    expect(flags.some((f) => !f)).toBe(true)
+    for (let i = 0; i < lobes.length; i++) {
+      let sum = 0
+      for (let k = 0; k <= 32; k++) {
+        sum += shapeY(undefined, 2 * (lobes[i].t0 + (k / 32) * (lobes[i].t1 - lobes[i].t0)))
+      }
+      expect(flags[i]).toBe(sum / 33 < -0.05)
+    }
+  })
+
+  it('classifies the Meta mark lobes despite its raised crossing', () => {
+    const params = { frequencyX: 1, frequencyY: 2, phase: META_PHASE, shape: META_SHAPE }
+    const lobes = enumerateLobes(params)
+    const flags = lobes.map((l) => lobeIsBottom(params, l))
+    expect(flags.some(Boolean)).toBe(true)
+    expect(flags.some((f) => !f)).toBe(true)
   })
 })
 

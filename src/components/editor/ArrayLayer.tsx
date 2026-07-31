@@ -4,23 +4,25 @@ import { useEffect, useRef } from 'react'
 import { useStore } from '@/core/state/store'
 import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
 import { BRAND_PALETTE } from '@/core/color/palette'
+import type { ShapeLayer } from '@/core/state/types'
+import { layerStyle } from './layerPaint'
+
+type ArrayLayerT = Extract<ShapeLayer, { type: 'array' }>
 
 // The array register: an uploaded image re-drawn as a glyph array.
 // Canvas, not SVG — thousands of individually colored cells are trivial
 // for 2D canvas and would be DOM soup as elements.
-export function ArrayLayer() {
+export function ArrayLayer({ layer }: { layer: ArrayLayerT }) {
   const project = useStore((s) => s.project)
-  const state = project.imageArray
+  const state = layer.params
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgCache = useRef<{ src: string; el: HTMLImageElement } | null>(null)
 
-  const image = state.enabled
-    ? project.images.find((im) => im.id === state.imageId) ?? project.images[0]
-    : undefined
+  const image = project.images.find((im) => im.id === state.imageId) ?? project.images[0]
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !state.enabled || !image) return
+    if (!canvas || !image) return
     let alive = true
 
     const render = (el: HTMLImageElement) => {
@@ -58,7 +60,14 @@ export function ArrayLayer() {
     }
   }, [state, image, project.artboard.width, project.artboard.height, project.background.roles])
 
-  if (!state.enabled || !image) return null
+  if (!image) return null
 
-  return <canvas ref={canvasRef} className="artboard-layer shape-canvas" aria-hidden />
+  return (
+    <canvas
+      ref={canvasRef}
+      className="artboard-layer shape-canvas"
+      aria-hidden
+      style={layerStyle(layer)}
+    />
+  )
 }
