@@ -122,7 +122,9 @@ export const DEFAULT_BACKGROUND_STATE: ProjectState['background'] = {
   mode: 'field',
   paletteId: BRAND_PALETTE.id,
   roles: ['blue', 'cyan', 'magenta', 'orange', 'yellow', 'green', 'violet', 'neutral', 'ink'],
-  lockedRoles: ['blue', 'cyan', 'magenta'],
+  // nothing is pinned by default: SHUFFLE re-deals the palette order, and
+  // locking has no UI to release it again
+  lockedRoles: [],
   ground: 'blue',
   seed: 6508,
   layers: 6,
@@ -175,7 +177,7 @@ export function createDefaultProject(seed?: number): ProjectState {
       {
         id: 'headline',
         role: 'headline',
-        text: 'META ∞',
+        text: 'META',
         fontFamily: 'flex',
         // sized for the 1920-wide default artboard
         size: 190,
@@ -192,7 +194,7 @@ export function createDefaultProject(seed?: number): ProjectState {
       {
         id: 'caption',
         role: 'caption',
-        text: 'The grid on this poster is built from the crossings of the Meta ∞ curve. Adjust it in the System section.',
+        text: 'The color, layout, and design are built from the same mathematical formula that creates the Meta symbol – creating an infinitely scalable and modular brand system.',
         fontFamily: 'flex',
         size: 27,
         weight: 460,

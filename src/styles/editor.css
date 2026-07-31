@@ -35,6 +35,23 @@
   gap: 8px;
 }
 
+.topbar-shuffle {
+  padding: 0 10px;
+  height: 22px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.topbar-shuffle:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
 .topbar-history {
   width: 26px;
   height: 22px;
@@ -327,10 +344,15 @@ canvas.shape-canvas {
 
 /* expanded hit zone: tiny blocks stay selectable — the pseudo-element
    enlarges the clickable area without changing the visual box */
+/* generous halo around tiny blocks — but it must NEVER take pointer
+   events: as a positioned pseudo-element it paints over the block's own
+   text, and it was swallowing the clicks that place the caret while
+   editing. Near-miss selection is handled geometrically in TypeLayer. */
 .type-block::before {
   content: '';
   position: absolute;
   inset: -12px;
+  pointer-events: none;
 }
 
 .type-block:hover {

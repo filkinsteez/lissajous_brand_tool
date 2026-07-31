@@ -3,7 +3,6 @@
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { TextField } from '@/components/controls/TextField'
 import { ColorField } from '@/components/controls/ColorField'
 import { Toggle } from '@/components/controls/Toggle'
 import { FONT_LABELS } from '@/core/typography/fonts'
@@ -44,8 +43,11 @@ export function TypePanel() {
           options={blocks.map((b) => ({ value: b.id, label: b.role.toUpperCase() }))}
           onChange={(id) => setUi({ selectedBlockId: id })}
         />
-        <TextField label="TEXT" value={block.text} multiline={block.role !== 'metadata'}
-          onChange={(text) => patchBlock({ text })} onCommit={commit} />
+        <div className="panel-note">
+          Text is edited on the canvas: double-click a block to type,
+          double-click empty canvas for a new one. This panel styles the
+          selected block.
+        </div>
       </div>
       <div className="panel-section">
         <SegmentedControl<FontFamilyId>

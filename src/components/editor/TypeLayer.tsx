@@ -332,7 +332,13 @@ export function TypeLayer() {
             contentEditable={editing}
             suppressContentEditableWarning
             spellCheck={false}
-            onClick={() => setUi({ selectedBlockId: block.id, activePanel: 'compose' })}
+            // while editing the click belongs to the caret: re-selecting
+            // would churn a re-render under the cursor for no reason
+            onClick={
+              editing
+                ? undefined
+                : () => setUi({ selectedBlockId: block.id, activePanel: 'compose' })
+            }
             onDoubleClick={() => setEditingId(block.id)}
             onKeyDown={editing ? (e) => onEditKeyDown(e, block) : undefined}
             onBlur={editing ? (e) => onEditBlur(e, block) : undefined}

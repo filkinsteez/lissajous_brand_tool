@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { history as projectHistory, useStore } from '@/core/state/store'
+import { shuffleProject } from '@/core/state/shuffle'
+import { getDerived } from '@/core/pipeline'
 import { installDebugHook } from '@/core/state/debug'
 import { renderController } from '@/render/renderController'
 import { decodeShareHash, encodeShareHash } from '@/core/state/compress'
@@ -83,6 +85,16 @@ export function EditorShell() {
         </div>
         <ModeSwitcher />
         <div className="topbar-right">
+          <button
+            className="topbar-shuffle"
+            title="Shuffle the grid, layout and shader (one undo step)"
+            onClick={() => {
+              const s = useStore.getState()
+              s.apply(shuffleProject(s.project, getDerived(s.project).grid, s.project.layoutSeed + 1))
+            }}
+          >
+            SHUFFLE
+          </button>
           <button
             className="topbar-history"
             aria-label="Undo"
