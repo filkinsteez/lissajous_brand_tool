@@ -97,7 +97,7 @@ export function shapeD(c: SheetClone): string {
   }
 }
 
-function metaGlyphD(): string {
+export function metaGlyphD(): string {
   const pts = metaUnitOutline()
   let d = ''
   for (let i = 0; i < pts.length; i++) {

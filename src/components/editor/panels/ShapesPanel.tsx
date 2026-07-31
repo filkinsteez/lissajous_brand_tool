@@ -1,9 +1,11 @@
 'use client'
 
+import { useRef } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
+import { importImageFile } from '@/core/images'
 
 const pct = (v: number) => `${Math.round(v * 100)}`
 const int = (v: number) => String(Math.round(v))
@@ -16,6 +18,23 @@ export function ShapesPanel() {
   const apply = useStore((s) => s.apply)
   const setT = useStore((s) => s.setTransient)
   const commit = useStore((s) => s.commitTransient)
+
+  // array assets live in project.images with an arr- prefix: available to
+  // the array register, invisible to the grid's image blocks
+  const arrayFileRef = useRef<HTMLInputElement>(null)
+  const addArrayAsset = async (files: FileList | null) => {
+    if (!files?.length) return
+    try {
+      const src = await importImageFile(files[0])
+      const id = `arr-${Date.now().toString(36)}`
+      apply({
+        images: [...project.images, { id, src, anchor: { col: 0, row: 0, colSpan: 1, rowSpan: 1 } }],
+        imageArray: { imageId: id, enabled: true },
+      })
+    } catch {
+      // unreadable file — skip it
+    }
+  }
 
   return (
     <div className="panel">
@@ -77,6 +96,169 @@ export function ShapesPanel() {
           larger figures by accident. CURVE is the field effector: clones
           swell along the figure and flip to filled inside its lobes, so
           the mark prints itself through the sheet.
+        </div>
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">ARRAY</div>
+        <Toggle
+          label="ENABLED"
+          value={project.imageArray.enabled}
+          onChange={(enabled) => apply({ imageArray: { enabled } })}
+        />
+        <input
+          ref={arrayFileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            void addArrayAsset(e.target.files)
+            e.target.value = ''
+          }}
+        />
+        <button className="ctl-action" onClick={() => arrayFileRef.current?.click()}>
+          ADD IMAGE
+        </button>
+        {project.images.length ? (
+          <div className="thumb-strip">
+            {project.images.map((im) => (
+              <div key={im.id} className="thumb-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={im.src}
+                  alt=""
+                  className={
+                    (project.imageArray.imageId ?? project.images[0]?.id) === im.id
+                      ? 'img-thumb bg-active'
+                      : 'img-thumb'
+                  }
+                  onClick={() => apply({ imageArray: { imageId: im.id } })}
+                />
+                {im.id.startsWith('arr-') ? (
+                  <button
+                    className="thumb-remove"
+                    aria-label="Remove array image"
+                    onClick={() =>
+                      apply({
+                        images: project.images.filter((x) => x.id !== im.id),
+                        imageArray: {
+                          imageId: project.imageArray.imageId === im.id ? null : project.imageArray.imageId,
+                        },
+                      })
+                    }
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <Slider label="CELLS" value={project.imageArray.cells} min={16} max={96} step={1} format={int}
+          onChange={(v) => setT({ imageArray: { cells: v } })} onCommit={commit} />
+        <Slider label="SIZE" value={project.imageArray.size} min={0.2} max={1} step={0.05} format={pct}
+          onChange={(v) => setT({ imageArray: { size: v } })} onCommit={commit} />
+        <Slider label="THRESHOLD" value={project.imageArray.threshold} min={0.1} max={1} step={0.02} format={pct}
+          onChange={(v) => setT({ imageArray: { threshold: v } })} onCommit={commit} />
+        <Slider label="BLEND" value={project.imageArray.blend} min={0} max={1} format={pct} defaultValue={0}
+          onChange={(v) => setT({ imageArray: { blend: v } })} onCommit={commit} />
+        <Toggle
+          label="INVERT"
+          value={project.imageArray.invert}
+          onChange={(invert) => apply({ imageArray: { invert } })}
+        />
+        <div className="panel-note">
+          An image re-drawn as a glyph array: darkness picks the mark
+          (squares and crosses in the depths, circles and rings in the
+          mids, dots at the edge), color deals from the palette, and
+          BLEND pulls the glyphs toward the image&apos;s own color — graphic
+          array at 0, image mosaic at 100. ADD IMAGE keeps the asset
+          array-only; images placed on the grid work too.
+        </div>
+      </div>
+      <div className="panel-section">
+        <div className="panel-heading">REPEATER</div>
+        <Toggle
+          label="ENABLED"
+          value={project.repeater.enabled}
+          onChange={(enabled) => apply({ repeater: { enabled } })}
+        />
+        <SegmentedControl<'linear' | 'radial' | 'grid'>
+          label="MODE"
+          value={project.repeater.mode}
+          options={[
+            { value: 'linear', label: 'LINEAR' },
+            { value: 'radial', label: 'RADIAL' },
+            { value: 'grid', label: 'GRID' },
+          ]}
+          onChange={(mode) => apply({ repeater: { mode } })}
+        />
+        <SegmentedControl<'circle' | 'square' | 'triangle' | 'half' | 'quarter' | 'cross' | 'meta' | 'mixed'>
+          label="SHAPE"
+          value={project.repeater.shape}
+          options={[
+            { value: 'circle', label: 'CIRCLE' },
+            { value: 'square', label: 'SQUARE' },
+            { value: 'triangle', label: 'TRI' },
+            { value: 'half', label: 'HALF' },
+            { value: 'quarter', label: 'QTR' },
+            { value: 'cross', label: 'CROSS' },
+            { value: 'meta', label: 'META' },
+            { value: 'mixed', label: 'MIX' },
+          ]}
+          onChange={(shape) => apply({ repeater: { shape } })}
+        />
+        {project.repeater.mode === 'grid' ? (
+          <>
+            <Slider label="COUNT X" value={project.repeater.countX} min={2} max={12} step={1} format={int}
+              onChange={(v) => setT({ repeater: { countX: v } })} onCommit={commit} />
+            <Slider label="COUNT Y" value={project.repeater.countY} min={2} max={12} step={1} format={int}
+              onChange={(v) => setT({ repeater: { countY: v } })} onCommit={commit} />
+          </>
+        ) : (
+          <Slider label="COUNT" value={project.repeater.count} min={2} max={48} step={1} format={int}
+            onChange={(v) => setT({ repeater: { count: v } })} onCommit={commit} />
+        )}
+        <Slider label="SIZE" value={project.repeater.size} min={0.02} max={0.3} step={0.005} format={pct}
+          onChange={(v) => setT({ repeater: { size: v } })} onCommit={commit} />
+        <Slider label="ORIGIN X" value={project.repeater.originX} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
+          onChange={(v) => setT({ repeater: { originX: v } })} onCommit={commit} />
+        <Slider label="ORIGIN Y" value={project.repeater.originY} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
+          onChange={(v) => setT({ repeater: { originY: v } })} onCommit={commit} />
+        {project.repeater.mode !== 'radial' ? (
+          <>
+            <Slider label="STEP X" value={project.repeater.stepX} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.05}
+              onChange={(v) => setT({ repeater: { stepX: v } })} onCommit={commit} />
+            <Slider label="STEP Y" value={project.repeater.stepY} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.035}
+              onChange={(v) => setT({ repeater: { stepY: v } })} onCommit={commit} />
+          </>
+        ) : (
+          <>
+            <Slider label="RADIUS" value={project.repeater.radius} min={0.05} max={0.6} step={0.01} format={pct}
+              onChange={(v) => setT({ repeater: { radius: v } })} onCommit={commit} />
+            <Slider label="SPAN" value={project.repeater.span} min={Math.PI / 6} max={Math.PI * 2} step={Math.PI / 36}
+              format={(v) => `${Math.round((v * 180) / Math.PI)}°`}
+              onChange={(v) => setT({ repeater: { span: v } })} onCommit={commit} />
+          </>
+        )}
+        <Slider label="ROTATE" value={project.repeater.rotate} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
+          format={(v) => `${Math.round((v * 180) / Math.PI)}°`} defaultValue={0}
+          onChange={(v) => setT({ repeater: { rotate: v } })} onCommit={commit} />
+        <Slider label="SCALE STEP" value={project.repeater.scaleStep} min={0.7} max={1.3} step={0.01} format={pct} defaultValue={1}
+          onChange={(v) => setT({ repeater: { scaleStep: v } })} onCommit={commit} />
+        <Slider label="FADE" value={project.repeater.fade} min={0} max={1} format={pct} defaultValue={0.2}
+          onChange={(v) => setT({ repeater: { fade: v } })} onCommit={commit} />
+        <Toggle
+          label="STROKE"
+          value={project.repeater.stroked}
+          onChange={(stroked) => apply({ repeater: { stroked } })}
+        />
+        <div className="panel-note">
+          One seed shape echoed with an accumulating step — offset, turn
+          and scale compound per copy. LINEAR makes cascades and echo
+          trails; RADIAL makes fans and rosettes, each copy riding its
+          spoke; GRID lays a lattice around the origin with STEP as cell
+          spacing, the turn and scale sweeping in reading order. FADE
+          ramps the family out.
         </div>
       </div>
       <div className="panel-section">

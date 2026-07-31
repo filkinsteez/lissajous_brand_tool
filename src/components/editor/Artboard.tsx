@@ -5,6 +5,8 @@ import { BackgroundLayer } from './BackgroundLayer'
 import { ClonesLayer } from './ClonesLayer'
 import { PatternLayer } from './PatternLayer'
 import { SheetLayer } from './SheetLayer'
+import { ArrayLayer } from './ArrayLayer'
+import { RepeaterLayer } from './RepeaterLayer'
 import { LissajousOverlay } from './LissajousOverlay'
 import { TypeLayer } from './TypeLayer'
 import { ImagesLayer } from './ImagesLayer'
@@ -24,6 +26,8 @@ export function Artboard() {
       <ClonesLayer />
       <PatternLayer />
       <SheetLayer />
+      <ArrayLayer />
+      <RepeaterLayer />
       <ImagesLayer />
       <TypeLayer />
       {mode === 'setup' || showGuides || dragging || systemAdjusting ? <LissajousOverlay /> : null}

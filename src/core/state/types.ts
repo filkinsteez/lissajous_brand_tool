@@ -185,6 +185,47 @@ export type SheetState = {
   tone: 'paper' | 'ink'
 }
 
+// The repeater register: one seed shape echoed N times with an
+// ACCUMULATING per-step transform — C4D/Cavalry repeater semantics.
+// LINEAR steps offset+rotation+scale per copy (cascades, echo trails);
+// RADIAL places copies on an arc around the origin (fans, rosettes),
+// each oriented along its spoke; GRID lays countX×countY copies around
+// the origin with the accumulation sweeping in reading order.
+export type RepeaterState = {
+  enabled: boolean
+  shape: SheetShape
+  mode: 'linear' | 'radial' | 'grid'
+  count: number // linear/radial: 2..48 copies
+  countX: number // grid: 2..12 columns
+  countY: number // grid: 2..12 rows
+  size: number // seed half-size, fraction of the short edge (0.02..0.3)
+  originX: number // 0..1 of artboard width
+  originY: number // 0..1 of artboard height
+  stepX: number // linear: per-step offset; grid: cell spacing (of width)
+  stepY: number
+  radius: number // radial: ring radius, fraction of the short edge
+  span: number // radial: total arc in radians (up to 2π)
+  rotate: number // per-step rotation, radians
+  scaleStep: number // per-step scale multiplier (0.7..1.3)
+  fade: number // 0..1 — opacity falloff across the family
+  stroked: boolean // the whole family as outlines
+}
+
+// The array register: an uploaded image re-drawn as a glyph array —
+// per-cell luminance picks a glyph tier (dark = heavy marks, light =
+// faint lattice), glyph color deals from the brand palette, and BLEND
+// pulls each glyph toward the image's own sampled color, from pure
+// graphic array to image mosaic.
+export type ImageArrayState = {
+  enabled: boolean
+  imageId: string | null // which upload drives the array
+  cells: number // 16..96 — columns; rows follow the artboard ratio
+  size: number // 0.2..1 — glyph size relative to the cell
+  threshold: number // 0..1 — luminance cutoff: lighter cells fall to lattice
+  blend: number // 0..1 — palette deal -> sampled image color
+  invert: boolean // read light-on-dark images
+}
+
 // The lattice register: a grid of primitive shapes whose STATE changes
 // where the curve passes — the Provencher plates / Das Fest read. The
 // lattice runs edge to edge; the figure appears by substitution.
@@ -285,6 +326,8 @@ export type ProjectState = {
   cloner: ClonerState
   pattern: PatternState
   sheet: SheetState
+  repeater: RepeaterState
+  imageArray: ImageArrayState
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]

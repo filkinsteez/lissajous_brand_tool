@@ -6,7 +6,10 @@ import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundG
 import { buildContourLevels } from '@/core/cloner/contours'
 import { cloneTransforms } from '@/core/cloner/effectors'
 import { buildLattice } from '@/core/pattern/lattice'
-import { buildSheetClones, metaUnitOutline, unitPolygon } from '@/core/sheet/sheet'
+import { buildSheetClones, metaUnitOutline, unitPolygon, type SheetClone } from '@/core/sheet/sheet'
+import { buildRepeats } from '@/core/repeater/repeater'
+import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
+import { BRAND_PALETTE } from '@/core/color/palette'
 import { INK, PAPER } from '@/core/state/defaults'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
@@ -115,6 +118,110 @@ function drawPattern(
   ctx.restore()
 }
 
+// one painter for every clone-based register (sheet + repeater), so the
+// export is the live drawing at target resolution
+function paintShapeClones(
+  ctx: CanvasRenderingContext2D,
+  clones: SheetClone[],
+  project: ProjectState,
+  scale: number,
+  tone: string,
+) {
+  const strokeW = Math.max(
+    1.5,
+    Math.min(project.artboard.width, project.artboard.height) * 0.0035,
+  )
+  const metaPts = metaUnitOutline()
+  const metaPath = new Path2D()
+  metaPts.forEach((p, i) => (i === 0 ? metaPath.moveTo(p.x, p.y) : metaPath.lineTo(p.x, p.y)))
+  metaPath.closePath()
+
+  ctx.save()
+  ctx.scale(scale, scale)
+  ctx.fillStyle = tone
+  ctx.strokeStyle = tone
+  for (const c of clones) {
+    ctx.save()
+    ctx.globalAlpha = c.opacity
+    ctx.translate(c.x, c.y)
+    ctx.rotate(c.rotate)
+    const paint = (path?: Path2D, lw = strokeW) => {
+      if (c.stroked) {
+        ctx.lineWidth = lw
+        if (path) ctx.stroke(path)
+        else ctx.stroke()
+      } else if (path) ctx.fill(path, 'evenodd')
+      else ctx.fill()
+    }
+    if (c.shape === 'circle') {
+      ctx.beginPath()
+      ctx.arc(0, 0, c.r, 0, Math.PI * 2)
+      paint()
+    } else if (c.shape === 'half') {
+      ctx.beginPath()
+      ctx.arc(0, 0, c.r, Math.PI, Math.PI * 2)
+      ctx.closePath()
+      paint()
+    } else if (c.shape === 'quarter') {
+      ctx.beginPath()
+      ctx.moveTo(-c.r, -c.r)
+      ctx.arc(-c.r, -c.r, c.r * 2, 0, Math.PI / 2)
+      ctx.closePath()
+      paint()
+    } else if (c.shape === 'meta') {
+      // the path is unit-scale, so the stroke must be compensated or the
+      // ctx.scale multiplies it into a blob
+      ctx.scale(c.r, c.r)
+      paint(metaPath, strokeW / Math.max(c.r, 0.5))
+    } else {
+      const pts = unitPolygon(c.shape)
+      ctx.beginPath()
+      pts.forEach((p, i) =>
+        i === 0 ? ctx.moveTo(p.x * c.r, p.y * c.r) : ctx.lineTo(p.x * c.r, p.y * c.r),
+      )
+      ctx.closePath()
+      paint()
+    }
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
+function drawRepeater(
+  ctx: CanvasRenderingContext2D,
+  project: ProjectState,
+  scale: number,
+) {
+  if (!project.repeater.enabled) return
+  const clones = buildRepeats(project.repeater, project.artboard.width, project.artboard.height)
+  paintShapeClones(ctx, clones, project, scale, PAPER)
+}
+
+async function drawImageArray(
+  ctx: CanvasRenderingContext2D,
+  project: ProjectState,
+  scale: number,
+) {
+  const state = project.imageArray
+  if (!state.enabled) return
+  const image = project.images.find((im) => im.id === state.imageId) ?? project.images[0]
+  if (!image) return
+  const el = await loadImage(image.src)
+  const W = project.artboard.width
+  const H = project.artboard.height
+  const cols = Math.max(4, Math.round(state.cells))
+  const rows = Math.max(4, Math.round(H / (W / cols)))
+  const pixels = samplePixels(el, cols, rows)
+  if (!pixels) return
+  const roles = project.background.roles.slice(0, 3)
+  const palette = roles.map((r) => BRAND_PALETTE.roles[r].base)
+  const cells = buildImageCells(state, W, H, pixels, palette)
+  ctx.save()
+  ctx.scale(scale, scale)
+  paintImageCells(ctx, cells)
+  ctx.restore()
+}
+
 function drawSheet(
   ctx: CanvasRenderingContext2D,
   project: ProjectState,
@@ -149,66 +256,7 @@ function drawSheet(
     project.background.seed,
     curvePts,
   )
-  const tone = sheet.tone === 'ink' ? INK : PAPER
-  const strokeW = Math.max(
-    1.5,
-    Math.min(project.artboard.width, project.artboard.height) * 0.0035,
-  )
-  // shared unit meta glyph, transformed per clone
-  const metaPts = metaUnitOutline()
-  const metaPath = new Path2D()
-  metaPts.forEach((p, i) => (i === 0 ? metaPath.moveTo(p.x, p.y) : metaPath.lineTo(p.x, p.y)))
-  metaPath.closePath()
-
-  ctx.save()
-  ctx.scale(scale, scale)
-  ctx.fillStyle = tone
-  ctx.strokeStyle = tone
-  for (const c of clones) {
-    ctx.save()
-    ctx.globalAlpha = c.opacity
-    ctx.translate(c.x, c.y)
-    ctx.rotate(c.rotate)
-    const paint = (path?: Path2D) => {
-      if (c.stroked) {
-        ctx.lineWidth = strokeW
-        if (path) ctx.stroke(path)
-        else ctx.stroke()
-      } else if (path) ctx.fill(path, 'evenodd')
-      else ctx.fill()
-    }
-    if (c.shape === 'circle') {
-      ctx.beginPath()
-      ctx.arc(0, 0, c.r, 0, Math.PI * 2)
-      paint()
-    } else if (c.shape === 'half') {
-      ctx.beginPath()
-      ctx.arc(0, 0, c.r, Math.PI, Math.PI * 2)
-      ctx.closePath()
-      paint()
-    } else if (c.shape === 'quarter') {
-      // quarter disc anchored in the local corner (-r, -r), radius 2r
-      ctx.beginPath()
-      ctx.moveTo(-c.r, -c.r)
-      ctx.arc(-c.r, -c.r, c.r * 2, 0, Math.PI / 2)
-      ctx.closePath()
-      paint()
-    } else if (c.shape === 'meta') {
-      ctx.scale(c.r, c.r)
-      if (c.stroked) ctx.lineWidth = strokeW / Math.max(c.r, 0.5)
-      paint(metaPath)
-    } else {
-      const pts = unitPolygon(c.shape)
-      ctx.beginPath()
-      pts.forEach((p, i) =>
-        i === 0 ? ctx.moveTo(p.x * c.r, p.y * c.r) : ctx.lineTo(p.x * c.r, p.y * c.r),
-      )
-      ctx.closePath()
-      paint()
-    }
-    ctx.restore()
-  }
-  ctx.restore()
+  paintShapeClones(ctx, clones, project, scale, sheet.tone === 'ink' ? INK : PAPER)
 }
 
 // Compositor: background → images (bg + grid blocks) → SVG type, all
@@ -318,10 +366,13 @@ export async function exportPNG(
 
   const derived = getDerived(project)
 
-  // layer order matches the artboard: field -> clones -> pattern -> sheet -> images -> type
+  // layer order matches the artboard:
+  // field -> clones -> pattern -> sheet -> array -> repeater -> images -> type
   drawClones(ctx, project, derived, scale)
   drawPattern(ctx, project, derived, scale)
   drawSheet(ctx, project, derived, scale)
+  await drawImageArray(ctx, project, scale)
+  drawRepeater(ctx, project, scale)
 
   const bg = project.images.find((im) => im.id === project.bgImageId)
   if (bg) drawCover(ctx, await loadImage(bg.src), 0, 0, outW, outH)
@@ -330,6 +381,7 @@ export async function exportPNG(
   const nRows = rows.length - 1
   for (const im of project.images) {
     if (im.id === project.bgImageId) continue
+    if (im.id.startsWith('arr-')) continue
     const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan)
     const r0 = Math.max(0, Math.min(nRows - 1, im.anchor.row))
     const r1 = Math.max(r0 + 1, Math.min(nRows, r0 + im.anchor.rowSpan))

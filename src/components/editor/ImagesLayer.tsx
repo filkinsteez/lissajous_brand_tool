@@ -17,7 +17,10 @@ function ImagesLayerInner() {
   const project = useStore((s) => s.project)
   const grid = getDerived(project).grid
   const bg = project.images.find((im) => im.id === project.bgImageId) ?? null
-  const blocks = project.images.filter((im) => im.id !== project.bgImageId)
+  // arr- assets belong to the array register — never drawn as blocks
+  const blocks = project.images.filter(
+    (im) => im.id !== project.bgImageId && !im.id.startsWith('arr-'),
+  )
   const rows = grid.rowBoundaries
   const nRows = rows.length - 1
 

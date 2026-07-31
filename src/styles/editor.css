@@ -291,8 +291,16 @@
 
 /* the shape registers are pictures, not controls — they must never eat
    pointer events meant for the canvas editor */
-svg.shape-layer {
+svg.shape-layer,
+canvas.shape-canvas {
   pointer-events: none;
+}
+
+canvas.shape-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* expanded hit zone: tiny blocks stay selectable — the pseudo-element

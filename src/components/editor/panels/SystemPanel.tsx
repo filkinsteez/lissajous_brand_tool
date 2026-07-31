@@ -87,8 +87,11 @@ export function SystemPanel() {
   }
 
   // uploads sit on the grid as image blocks (the image-as-background
-  // feature was cut: the generated field IS the background)
-  const uploads = project.images.filter((im) => !im.id.startsWith('bgi-'))
+  // feature was cut: the generated field IS the background); arr- assets
+  // belong to the SHAPES tab's array register and are managed there
+  const uploads = project.images.filter(
+    (im) => !im.id.startsWith('bgi-') && !im.id.startsWith('arr-'),
+  )
 
   return (
     <div className="panel">
@@ -129,8 +132,13 @@ export function SystemPanel() {
         </button>
         <button
           className="ctl-action"
-          onClick={() => apply({ images: [], bgImageId: null })}
-          disabled={project.images.length === 0}
+          onClick={() =>
+            apply({
+              images: project.images.filter((x) => x.id.startsWith('arr-')),
+              bgImageId: null,
+            })
+          }
+          disabled={uploads.length === 0}
         >
           CLEAR ALL IMAGE BLOCKS
         </button>
