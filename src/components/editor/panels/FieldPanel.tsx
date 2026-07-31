@@ -201,7 +201,7 @@ export function FieldPanel() {
   return (
     <div className="panel">
       <div className="panel-section">
-        <div className="panel-heading">COLOR</div>
+        <div className="panel-heading">SHADER</div>
         <SegmentedControl<'flat' | 'field'>
           value={project.background.mode}
           options={[
