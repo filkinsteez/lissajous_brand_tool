@@ -5,7 +5,6 @@ import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
-import { PresetStrip } from '../PresetStrip'
 import { ARTBOARD_PRESETS } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
@@ -160,13 +159,6 @@ export function SystemPanel() {
         </div>
       </div>
       <div className="panel-section">
-        <div className="panel-heading">RATIO</div>
-        <PresetStrip />
-        <button className="ctl-action primary" onClick={shuffle}>
-          SHUFFLE LAYOUT
-        </button>
-      </div>
-      <div className="panel-section">
         <div className="panel-heading">CURVE</div>
         <Slider label="FREQ X" value={liss.frequencyX} min={1} max={12} step={1}
           onChange={(v) => curve({ lissajous: { frequencyX: v, presetId: undefined } })} onCommit={settle} />
@@ -188,6 +180,9 @@ export function SystemPanel() {
       </div>
       <div className="panel-section">
         <div className="panel-heading">STRUCTURE</div>
+        <button className="ctl-action primary" onClick={shuffle}>
+          SHUFFLE LAYOUT
+        </button>
         <div className="panel-note">
           Columns and rows are clustered from the curve&apos;s crossings, then
           evened out to the counts below.

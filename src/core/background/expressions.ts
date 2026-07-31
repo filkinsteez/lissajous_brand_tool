@@ -1,4 +1,4 @@
-﻿import { BRAND_ROLE_ORDER, type ColorRole } from '@/core/color/palette'
+import { BRAND_ROLE_ORDER, type ColorRole } from '@/core/color/palette'
 import type { BackgroundState } from '@/core/state/types'
 
 export type BackgroundExpression = {
@@ -33,6 +33,7 @@ export const CURATED_BACKGROUND_EXPRESSIONS: BackgroundExpression[] = [
       fieldScale: 1,
       fieldOffsetX: 0,
       fieldOffsetY: 0,
+      typeCalm: false,
       form: 0.65,
       softness: 0.96,
       arcSpread: 1.52,
@@ -58,6 +59,7 @@ export const CURATED_BACKGROUND_EXPRESSIONS: BackgroundExpression[] = [
       fieldScale: 1.4,
       fieldOffsetX: 0,
       fieldOffsetY: 0,
+      typeCalm: false,
       form: 0.45,
       softness: 1,
       arcSpread: 0.82,
@@ -83,6 +85,7 @@ export const CURATED_BACKGROUND_EXPRESSIONS: BackgroundExpression[] = [
       fieldScale: 1,
       fieldOffsetX: 0,
       fieldOffsetY: 0,
+      typeCalm: false,
       form: 0.25,
       softness: 0.88,
       arcSpread: 1.86,
@@ -108,6 +111,7 @@ export const CURATED_BACKGROUND_EXPRESSIONS: BackgroundExpression[] = [
       fieldScale: 1,
       fieldOffsetX: 0,
       fieldOffsetY: 0,
+      typeCalm: false,
       form: 0.1,
       softness: 0.98,
       arcSpread: 1.28,

@@ -54,7 +54,7 @@ export function ClonesLayer() {
 
   return (
     <svg
-      className="artboard-layer"
+      className="artboard-layer shape-layer"
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="none"
       aria-hidden

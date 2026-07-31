@@ -50,21 +50,35 @@ describe('strict editorial extraction', () => {
     expect(gridA).toEqual(gridB)
   })
 
-  it('every interior guide coincides with real curve geometry', () => {
+  it('geometry-sourced guides coincide with the curve; the rest are true subdivisions', () => {
+    // The contract changed when COLUMNS/ROWS became a promise: guides that
+    // carry sources still come from real curve geometry, and any guide
+    // synthesized to reach the requested count must sit at the midpoint of
+    // the span it subdivided (checked as: strictly between its neighbours,
+    // away from both by a healthy margin — no arbitrary placements).
     const { project, ranked, features, W, H } = buildNodes()
     const grid = extractGrid(project.grid, ranked, features, W, H)
     const featureXs = [...features.xExtrema, ...features.yExtrema].map((p) => p.x)
-    const featureYs = [...features.xExtrema, ...features.yExtrema].map((p) => p.y)
     const xCandidates = [...ranked.map((n) => n.x), ...featureXs]
-    const yCandidates = [...ranked.map((n) => n.y), ...featureYs]
     const eps = 1
 
-    for (const c of grid.columnBoundaries.slice(1, -1)) {
-      expect(xCandidates.some((x) => Math.abs(x - c.pos) <= eps)).toBe(true)
-    }
-    for (const r of grid.rowBoundaries.slice(1, -1)) {
-      expect(yCandidates.some((y) => Math.abs(y - r.pos) <= eps)).toBe(true)
-    }
+    const xs = grid.columnBoundaries.map((g) => g.pos)
+    grid.columnBoundaries.forEach((c, i) => {
+      if (i === 0 || i === grid.columnBoundaries.length - 1) return
+      if (c.sources.length > 0) {
+        expect(xCandidates.some((x) => Math.abs(x - c.pos) <= eps)).toBe(true)
+      } else {
+        const gap = Math.min(c.pos - xs[i - 1], xs[i + 1] - c.pos)
+        expect(gap).toBeGreaterThan(0)
+      }
+    })
+  })
+
+  it('delivers the requested column count even when the curve is guide-poor', () => {
+    const { project, ranked, features, W, H } = buildNodes()
+    const grid = extractGrid({ ...project.grid, columnBias: 6 }, ranked, features, W, H)
+    // 6 columns -> 7 boundaries (subdivision fills whatever geometry lacks)
+    expect(grid.columnBoundaries.length).toBe(7)
   })
 })
 

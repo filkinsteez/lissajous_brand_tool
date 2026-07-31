@@ -4,6 +4,7 @@ import { useStore } from '@/core/state/store'
 import { BackgroundLayer } from './BackgroundLayer'
 import { ClonesLayer } from './ClonesLayer'
 import { PatternLayer } from './PatternLayer'
+import { SheetLayer } from './SheetLayer'
 import { LissajousOverlay } from './LissajousOverlay'
 import { TypeLayer } from './TypeLayer'
 import { ImagesLayer } from './ImagesLayer'
@@ -22,6 +23,7 @@ export function Artboard() {
       <BackgroundLayer />
       <ClonesLayer />
       <PatternLayer />
+      <SheetLayer />
       <ImagesLayer />
       <TypeLayer />
       {mode === 'setup' || showGuides || dragging || systemAdjusting ? <LissajousOverlay /> : null}

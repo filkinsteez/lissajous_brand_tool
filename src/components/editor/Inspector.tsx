@@ -13,8 +13,8 @@ import { ExportPanel } from './panels/ExportPanel'
 type DesignTab = 'system' | 'field' | 'shapes' | 'type'
 
 const DESIGN_TABS: { id: DesignTab; label: string }[] = [
-  { id: 'system', label: 'SYSTEM' },
-  { id: 'field', label: 'FIELD' },
+  { id: 'system', label: 'CURVE' },
+  { id: 'field', label: 'COLOR' },
   { id: 'shapes', label: 'SHAPES' },
   { id: 'type', label: 'TYPE' },
 ]

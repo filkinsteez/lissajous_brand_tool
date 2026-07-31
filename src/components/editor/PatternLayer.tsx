@@ -47,7 +47,7 @@ export function PatternLayer() {
 
   return (
     <svg
-      className="artboard-layer"
+      className="artboard-layer shape-layer"
       viewBox={`0 0 ${project.artboard.width} ${project.artboard.height}`}
       preserveAspectRatio="none"
       aria-hidden

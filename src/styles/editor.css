@@ -289,8 +289,87 @@
   cursor: grabbing;
 }
 
+/* the shape registers are pictures, not controls — they must never eat
+   pointer events meant for the canvas editor */
+svg.shape-layer {
+  pointer-events: none;
+}
+
+/* expanded hit zone: tiny blocks stay selectable — the pseudo-element
+   enlarges the clickable area without changing the visual box */
+.type-block::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+
+.type-block:hover {
+  outline-color: rgba(20, 20, 18, 0.18);
+}
+
 .type-block.selected {
   outline-color: rgba(20, 20, 18, 0.25);
+}
+
+/* width handle: appears on the selected block's right edge; dragging it
+   snaps the block's span to grid columns */
+.type-block-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -8px;
+  width: 16px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.type-block-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 4px;
+  height: 30px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: rgba(22, 73, 255, 0.7);
+}
+
+/* on-canvas delete chip for the selected block */
+.type-block-delete {
+  position: absolute;
+  top: -13px;
+  right: -13px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(22, 73, 255, 0.9);
+  color: #f4f2ed;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.type-block-delete:hover {
+  background: rgba(13, 16, 16, 0.95);
+}
+
+/* inline editing: double-click a block, type, Enter or click away to
+   commit, Escape to cancel */
+.type-block.editing {
+  cursor: text;
+  user-select: text;
+  outline: 1.5px solid rgba(22, 73, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.type-block.editing:active {
+  cursor: text;
 }
 
 /* ---- panels & controls ------------------------------------------------- */

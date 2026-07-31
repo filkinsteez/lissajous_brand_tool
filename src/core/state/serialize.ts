@@ -18,9 +18,20 @@ export function deserializeProject(json: string | null | undefined): ProjectStat
     if (raw.version !== PROJECT_VERSION) return null
     const seed = typeof raw.seed === 'number' ? raw.seed : undefined
     const merged = mergeDeep(createDefaultProject(seed), raw)
-    return normalizeBackground(merged)
+    return normalizeBackground(normalizeTones(merged))
   } catch {
     return null
+  }
+}
+
+// the ink colorway was cut: the shape registers always draw in paper —
+// older saves carrying 'ink' would otherwise be stuck with no UI for it
+function normalizeTones(project: ProjectState): ProjectState {
+  return {
+    ...project,
+    cloner: { ...project.cloner, tone: 'paper' },
+    pattern: { ...project.pattern, tone: 'paper' },
+    sheet: { ...project.sheet, tone: 'paper' },
   }
 }
 

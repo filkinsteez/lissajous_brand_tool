@@ -124,3 +124,8 @@ export const useStore = create<StoreState>()((set, get) => ({
     if (next) set({ project: next })
   },
 }))
+
+// dev handle for the debugging loop (console + devshot verification)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  ;(window as unknown as { __lbsStore?: typeof useStore }).__lbsStore = useStore
+}

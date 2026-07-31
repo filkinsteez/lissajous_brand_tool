@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
+import { Toggle } from '@/components/controls/Toggle'
 import {
   BACKGROUND_EXPRESSIONS_STORAGE_KEY,
   CURATED_BACKGROUND_EXPRESSIONS,
@@ -200,7 +201,7 @@ export function FieldPanel() {
   return (
     <div className="panel">
       <div className="panel-section">
-        <div className="panel-heading">FIELD</div>
+        <div className="panel-heading">COLOR</div>
         <SegmentedControl<'flat' | 'field'>
           value={project.background.mode}
           options={[
@@ -345,6 +346,18 @@ export function FieldPanel() {
           onChange={(v) => background({ contrast: v })}
           onCommit={settle}
         />
+        <Toggle
+          label="TYPE CALM"
+          value={project.background.typeCalm}
+          onChange={(typeCalm) => {
+            apply({ background: { typeCalm } })
+          }}
+        />
+        <div className="panel-note">
+          TYPE CALM thins the field&apos;s color where text sits, so copy
+          stays readable — it couples the gradient to the text layout, so
+          moving blocks re-shapes the field while it&apos;s on.
+        </div>
         <button className="ctl-action" onClick={shuffleBackground}>
           SHUFFLE BACKGROUND
         </button>

@@ -217,11 +217,14 @@ export class BackgroundRenderer {
     setUniform1i(gl, programs.field, 'uKnotCount', curveTex.width)
     const sx = width / project.artboard.width
     const sy = height / project.artboard.height
-    const box = derived.grid.contentBox
-    setUniform4f(gl, programs.field, 'uCalmBox', box.x * sx, box.y * sy, box.w * sx, box.h * sy)
+    // TYPE CALM is opt-in: with it off, zero rects are passed and the
+    // field is fully independent of text layout — dragging copy around
+    // must never reshape the gradient
     const maxRects = 8
     const rectData = new Float32Array(maxRects * 4)
-    const rectCount = Math.min(maxRects, project.typeBlocks.length)
+    const rectCount = project.background.typeCalm
+      ? Math.min(maxRects, project.typeBlocks.length)
+      : 0
     for (let i = 0; i < rectCount; i++) {
       const blockRect = layoutTypeBlock(project.typeBlocks[i], derived.grid)
       const o = i * 4

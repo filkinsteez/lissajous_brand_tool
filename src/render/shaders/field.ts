@@ -39,10 +39,13 @@ uniform float uArcSpread;
 uniform float uContrast;
 uniform int uLayers;
 uniform int uKnotCount;
-uniform int uTypeRectCount;
-uniform vec4 uTypeRects[8];
 uniform int uMassCount;
 uniform vec4 uMasses[8];
+// TYPE CALM (optional, toggled): pigment thins where type sits. The
+// host passes zero rects when the feature is off, so the field is fully
+// independent of text layout by default.
+uniform int uTypeRectCount;
+uniform vec4 uTypeRects[8];
 
 #define MAX_KNOTS 256
 
@@ -255,7 +258,7 @@ void main() {
   }
   float insideFig = mod(float(crossings), 2.0);
 
-  // type calm: pigment thins where type will sit
+  // type calm (when rects are passed): color steps aside for the copy
   float typeCalm = 0.0;
   for (int i = 0; i < 8; i++) {
     if (i >= uTypeRectCount) break;

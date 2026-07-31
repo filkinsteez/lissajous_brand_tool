@@ -6,6 +6,7 @@ import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundG
 import { buildContourLevels } from '@/core/cloner/contours'
 import { cloneTransforms } from '@/core/cloner/effectors'
 import { buildLattice } from '@/core/pattern/lattice'
+import { buildSheetClones, metaUnitOutline, unitPolygon } from '@/core/sheet/sheet'
 import { INK, PAPER } from '@/core/state/defaults'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
@@ -111,6 +112,102 @@ function drawPattern(
     ctx.stroke(new Path2D(tiers.rings))
   }
   fillTier(tiers.squares, 1)
+  ctx.restore()
+}
+
+function drawSheet(
+  ctx: CanvasRenderingContext2D,
+  project: ProjectState,
+  derived: Derived,
+  scale: number,
+) {
+  const sheet = project.sheet
+  if (!sheet.enabled) return
+  // the CURVE effector reads the layout figure under the background's
+  // zoom + pan — identical to the live layer
+  let curvePts: { x: number; y: number }[] | undefined
+  if (sheet.curve > 0) {
+    const W = project.artboard.width
+    const H = project.artboard.height
+    const fScale = project.background.fieldScale ?? 1
+    const ox = (project.background.fieldOffsetX ?? 0) * W
+    const oy = (project.background.fieldOffsetY ?? 0) * H
+    const cx = W * 0.5
+    const cy = H * 0.5
+    curvePts = []
+    const stride = Math.max(1, Math.floor(derived.samples.length / 200))
+    for (let i = 0; i < derived.samples.length; i += stride) {
+      const s = derived.samples[i]
+      curvePts.push({ x: cx + (s.x - cx) * fScale + ox, y: cy + (s.y - cy) * fScale + oy })
+    }
+    if (curvePts.length > 1) curvePts.push(curvePts[0])
+  }
+  const clones = buildSheetClones(
+    sheet,
+    project.artboard.width,
+    project.artboard.height,
+    project.background.seed,
+    curvePts,
+  )
+  const tone = sheet.tone === 'ink' ? INK : PAPER
+  const strokeW = Math.max(
+    1.5,
+    Math.min(project.artboard.width, project.artboard.height) * 0.0035,
+  )
+  // shared unit meta glyph, transformed per clone
+  const metaPts = metaUnitOutline()
+  const metaPath = new Path2D()
+  metaPts.forEach((p, i) => (i === 0 ? metaPath.moveTo(p.x, p.y) : metaPath.lineTo(p.x, p.y)))
+  metaPath.closePath()
+
+  ctx.save()
+  ctx.scale(scale, scale)
+  ctx.fillStyle = tone
+  ctx.strokeStyle = tone
+  for (const c of clones) {
+    ctx.save()
+    ctx.globalAlpha = c.opacity
+    ctx.translate(c.x, c.y)
+    ctx.rotate(c.rotate)
+    const paint = (path?: Path2D) => {
+      if (c.stroked) {
+        ctx.lineWidth = strokeW
+        if (path) ctx.stroke(path)
+        else ctx.stroke()
+      } else if (path) ctx.fill(path, 'evenodd')
+      else ctx.fill()
+    }
+    if (c.shape === 'circle') {
+      ctx.beginPath()
+      ctx.arc(0, 0, c.r, 0, Math.PI * 2)
+      paint()
+    } else if (c.shape === 'half') {
+      ctx.beginPath()
+      ctx.arc(0, 0, c.r, Math.PI, Math.PI * 2)
+      ctx.closePath()
+      paint()
+    } else if (c.shape === 'quarter') {
+      // quarter disc anchored in the local corner (-r, -r), radius 2r
+      ctx.beginPath()
+      ctx.moveTo(-c.r, -c.r)
+      ctx.arc(-c.r, -c.r, c.r * 2, 0, Math.PI / 2)
+      ctx.closePath()
+      paint()
+    } else if (c.shape === 'meta') {
+      ctx.scale(c.r, c.r)
+      if (c.stroked) ctx.lineWidth = strokeW / Math.max(c.r, 0.5)
+      paint(metaPath)
+    } else {
+      const pts = unitPolygon(c.shape)
+      ctx.beginPath()
+      pts.forEach((p, i) =>
+        i === 0 ? ctx.moveTo(p.x * c.r, p.y * c.r) : ctx.lineTo(p.x * c.r, p.y * c.r),
+      )
+      ctx.closePath()
+      paint()
+    }
+    ctx.restore()
+  }
   ctx.restore()
 }
 
@@ -221,9 +318,10 @@ export async function exportPNG(
 
   const derived = getDerived(project)
 
-  // layer order matches the artboard: field -> clones -> pattern -> images -> type
+  // layer order matches the artboard: field -> clones -> pattern -> sheet -> images -> type
   drawClones(ctx, project, derived, scale)
   drawPattern(ctx, project, derived, scale)
+  drawSheet(ctx, project, derived, scale)
 
   const bg = project.images.find((im) => im.id === project.bgImageId)
   if (bg) drawCover(ctx, await loadImage(bg.src), 0, 0, outW, outH)

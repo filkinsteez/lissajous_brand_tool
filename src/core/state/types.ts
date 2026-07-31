@@ -122,6 +122,7 @@ export type BackgroundState = {
   fieldScale: number // 0.5..4 — zooms the whole figure event (fields + geometry)
   fieldOffsetX: number // -1..1 — pans the figure, fraction of artboard width
   fieldOffsetY: number // -1..1 — fraction of artboard height
+  typeCalm: boolean // pigment thins where type sits (couples field to text layout)
   form: number // 0..1 — how legibly the figure reads: 0 = abstract field,
   // 1 = the curve's lobes as filled shapes with a rim fringe
   softness: number
@@ -148,6 +149,40 @@ export type ClonerState = {
   step: number // 0..1 — progressive fade + thinning across the family
   random: number // 0..1 — seeded per-clone position/rotation jitter
   depth: number // 0..1 — 2.5D parallax: per-clone scale + drift, far fades
+}
+
+// The sheet register: a C4D/Cavalry-style GRID CLONER. A real shape
+// vocabulary (incl. truchet-style halves and quarters, and the meta
+// mark) cloned on a uniform or recursively PACKED grid, stacked in Z as
+// 2.5D depth layers. Variation comes from two distinct sources:
+//   RANDOM — per-clone white jitter (position, tilt, size)
+//   NOISE  — a smooth field over the sheet: size, stroke/fill choice and
+//            shape selection vary in coherent PATCHES, not salt
+export type SheetShape =
+  | 'circle'
+  | 'square'
+  | 'triangle'
+  | 'half'
+  | 'quarter'
+  | 'cross'
+  | 'meta'
+  | 'mixed'
+
+export type SheetState = {
+  enabled: boolean
+  shape: SheetShape
+  layout: 'grid' | 'packed' // packed = recursive subdivision, mixed cell sizes
+  countX: number // 2..64 — columns (packed: base columns before subdivision)
+  countY: number // 2..80
+  countZ: number // 1..3 — depth layers (2.5D stack)
+  size: number // 0.1..0.9 of a cell
+  depth: number // 0..1 — layer separation: scale + drift + fade per layer
+  random: number // 0..1 — seeded per-clone white jitter
+  noise: number // 0..1 — smooth-field modulation strength
+  strokeMix: number // 0..1 — fraction of the population drawn as outlines
+  curve: number // 0..1 — CURVE effector: clones swell near the figure and
+  // flip to filled inside its lobes — the mark emerges through the sheet
+  tone: 'paper' | 'ink'
 }
 
 // The lattice register: a grid of primitive shapes whose STATE changes
@@ -249,6 +284,7 @@ export type ProjectState = {
   background: BackgroundState
   cloner: ClonerState
   pattern: PatternState
+  sheet: SheetState
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]

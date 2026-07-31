@@ -27,8 +27,12 @@ function clusterAxis(
   return out
 }
 
-// Force interior boundary count to at most `target`: keep the strongest
-// clusters and enforce a minimum span, but never synthesize geometry.
+// Force interior boundary count toward `target`: keep the strongest
+// clusters, enforce a minimum span, and if the curve yields fewer
+// boundaries than requested, subdivide the widest spans evenly. The
+// primary structure still comes from real geometry — subdivision only
+// fills in so the COLUMNS/ROWS counts actually deliver, and text blocks
+// get usable width granularity.
 function fitBoundaries(
   clusters: Cluster[],
   lo: number,
@@ -53,6 +57,28 @@ function fitBoundaries(
         break
       }
     }
+  }
+
+  // subdivide toward the requested count: split the widest span at its
+  // midpoint until we reach the target or spans get too tight
+  let guard = 64
+  while (interior.length < targetInterior && guard-- > 0) {
+    const edges = [lo, ...interior.map((c) => c.pos), hi]
+    let widest = 0
+    let at = -1
+    for (let i = 0; i < edges.length - 1; i++) {
+      const span = edges[i + 1] - edges[i]
+      if (span > widest) {
+        widest = span
+        at = i
+      }
+    }
+    if (at < 0 || widest < minSpan * 2) break
+    const mid = edges[at] + widest / 2
+    const insert = interior.findIndex((c) => c.pos > mid)
+    const cluster = { pos: mid, weight: 0, sources: [] as number[] }
+    if (insert < 0) interior.push(cluster)
+    else interior.splice(insert, 0, cluster)
   }
 
   return interior
