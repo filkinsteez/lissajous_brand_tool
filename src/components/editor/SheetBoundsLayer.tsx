@@ -31,7 +31,8 @@ export function SheetBoundsLayer() {
   const ref = useRef<HTMLDivElement>(null)
   const gRef = useRef<Gesture | null>(null)
 
-  const layer = layers.find((l) => l.id === selectedLayerId) ?? layers[layers.length - 1]
+  // the bounds frame belongs to the EXPLICITLY selected cloner only
+  const layer = layers.find((l) => l.id === selectedLayerId)
   if (!panelOpen || designTab !== 'layers' || !layer) return null
   if (layer.type !== 'cloner' || layer.params.mode !== 'grid') return null
   const p = layer.params

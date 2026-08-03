@@ -127,29 +127,21 @@ export function extractGrid(
   artW: number,
   artH: number,
 ): EditorialGrid {
-  const margin = 0
+  // THE PAGE IS THE FRAME. The content box is the artboard inset by a
+  // symmetric margin, so the grid always fills the canvas and is always
+  // centered; the curve supplies the INTERIOR guides (its crossings),
+  // which is where the figure actually belongs. Deriving the box from
+  // the curve's bounding box instead left the grid off-centre and
+  // running off-canvas whenever the figure was scaled or panned, and
+  // made MARGIN a dead control (it was pinned to 0).
   const allFeatures = [...features.xExtrema, ...features.yExtrema]
-  const geom = [
-    ...nodes.map((n) => ({ x: n.x, y: n.y })),
-    ...allFeatures.map((p) => ({ x: p.x, y: p.y })),
-  ]
-  let box: { x: number; y: number; w: number; h: number }
-  if (geom.length >= 2) {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    for (const p of geom) {
-      if (p.x < minX) minX = p.x
-      if (p.x > maxX) maxX = p.x
-      if (p.y < minY) minY = p.y
-      if (p.y > maxY) maxY = p.y
-    }
-    const x0 = Math.max(0, minX - margin)
-    const y0 = Math.max(0, minY - margin)
-    const x1 = Math.min(artW, maxX + margin)
-    const y1 = Math.min(artH, maxY + margin)
-    box = { x: x0, y: y0, w: Math.max(8, x1 - x0), h: Math.max(8, y1 - y0) }
-  } else {
-    const fallback = Math.round(Math.min(artW, artH) * 0.08)
-    box = { x: fallback, y: fallback, w: artW - fallback * 2, h: artH - fallback * 2 }
+  const restraint = Math.max(0, Math.min(1, gridState.marginRestraint))
+  const margin = Math.round(Math.min(artW, artH) * 0.11 * restraint)
+  const box = {
+    x: margin,
+    y: margin,
+    w: Math.max(8, artW - margin * 2),
+    h: Math.max(8, artH - margin * 2),
   }
   const gutter = Math.max(2, gridState.gutterScale * box.w * 0.015)
 

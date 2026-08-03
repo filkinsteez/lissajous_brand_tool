@@ -43,7 +43,8 @@ export function ShapesPanel() {
   const setUi = useStore((s) => s.setUi)
 
   const layers = project.layers
-  const selected = layers.find((l) => l.id === ui.selectedLayerId) ?? layers[layers.length - 1]
+  // explicit selection only — the rail is the picker (see LayersRail)
+  const selected = layers.find((l) => l.id === ui.selectedLayerId)
 
   const patchLayer = (id: string, patch: Partial<ShapeLayer>) => {
     apply({ layers: layers.map((l) => (l.id === id ? ({ ...l, ...patch } as ShapeLayer) : l)) })

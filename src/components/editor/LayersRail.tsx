@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { createShapeLayer, LAYER_TYPE_LABELS } from '@/core/state/defaults'
+import { niceLabel } from '@/components/controls/label'
 import { consumedShapeIds } from '@/core/canvas/shapeProtos'
 import type { ShapeLayer, ShapeLayerType } from '@/core/state/types'
 
@@ -21,7 +22,10 @@ export function LayersRail() {
   const setUi = useStore((s) => s.setUi)
 
   const layers = project.layers
-  const selected = layers.find((l) => l.id === ui.selectedLayerId) ?? layers[layers.length - 1]
+  // selection is EXPLICIT: falling back to the last layer made a row
+  // look permanently active, so clicking it appeared to do nothing and
+  // nothing could be deselected
+  const selected = layers.find((l) => l.id === ui.selectedLayerId)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const selectedObjectIds = [...ui.selectedShapeIds, ...ui.selectedBlockIds, ...ui.selectedImageIds]
 
@@ -180,10 +184,12 @@ export function LayersRail() {
               if (t) addLayer(t)
             }}
           >
-            <option value="">+ ADD EFFECTOR</option>
+            {/* a select cannot take ::first-letter, so its casing lives
+                in the strings themselves */}
+            <option value="">+ Add effector</option>
             {ADD_ORDER.map((t) => (
               <option key={t} value={t}>
-                {LAYER_TYPE_LABELS[t]}
+                {niceLabel(LAYER_TYPE_LABELS[t])}
               </option>
             ))}
           </select>
@@ -222,10 +228,7 @@ export function LayersRail() {
             setDropTarget={setDropTarget}
             dropTargetId={dropTarget}
           />
-        ) : treeObjects.length ? null : (
-          // a quiet empty layer panel, not a manual
-          <div className="panel-empty">Empty — draw on the canvas or add an effector.</div>
-        )}
+        ) : null}
         {/* the ground truth at the bottom of the stack, Figma's canvas row */}
         <div
           className="object-row background-row"
