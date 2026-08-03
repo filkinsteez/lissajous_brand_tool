@@ -3,7 +3,6 @@
 import {
   Circle,
   Image as ImageIcon,
-  Layers,
   Magnet,
   MousePointer2,
   Pentagon,
@@ -133,14 +132,15 @@ export function CanvasDock() {
 
   // The dock is ONE radio group: exactly one chip is lit, answering
   // "where am I" — an armed drawing tool, the text tool, the open
-  // section, or (only when no section is open) the cursor. No dots, no
-  // second indicator of any kind.
+  // section, or the cursor. No dots, no second indicator of any kind.
+  // 'layers' is not a dock chip (the rail is permanent), so selection
+  // properties leave the cursor lit — which is the truth.
   const lit: 'cursor' | 'shapes' | DesignTab =
     isShapeTool || shapesFlyout
       ? 'shapes'
       : tool === 'text'
         ? 'type'
-        : panelOpen
+        : panelOpen && designTab !== 'layers'
           ? designTab
           : 'cursor'
   const chip = (active: boolean) => (active ? 'dock-chip active' : 'dock-chip')
@@ -203,14 +203,6 @@ export function CanvasDock() {
           onClick={() => setUi({ tool: 'select', panelOpen: false, shapesFlyout: false })}
         >
           <MousePointer2 />
-        </button>
-        <button
-          className={chip(lit === 'layers')}
-          title="Layers — the document tree: objects, effectors, background"
-          aria-label="Layers"
-          onClick={() => openSection('layers')}
-        >
-          <Layers />
         </button>
         <button
           className={snap ? 'dock-chip toggled' : 'dock-chip'}

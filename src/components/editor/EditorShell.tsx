@@ -10,6 +10,7 @@ import { decodeShareHash, encodeShareHash } from '@/core/state/compress'
 import { deserializeProject, serializeProject } from '@/core/state/serialize'
 import { CanvasStage } from './CanvasStage'
 import { Inspector } from './Inspector'
+import { LayersRail } from './LayersRail'
 import { ModeSwitcher } from './ModeSwitcher'
 import { MotionLab } from '@/components/motion/MotionLab'
 import { PathLab } from '@/components/path/PathLab'
@@ -50,6 +51,24 @@ export function EditorShell() {
       }, 500)
     })
 
+    // Figma behavior: picking an object (canvas or rail) surfaces its
+    // properties on the right. Keyed on the selection so a later section
+    // switch is never fought — only a NEW selection moves the panel.
+    let selKey = (() => {
+      const u = useStore.getState().ui
+      return `${u.selectedShapeIds.join()}|${u.selectedBlockIds.join()}|${u.selectedLayerId ?? ''}`
+    })()
+    const unsubSel = useStore.subscribe((s) => {
+      const u = s.ui
+      const key = `${u.selectedShapeIds.join()}|${u.selectedBlockIds.join()}|${u.selectedLayerId ?? ''}`
+      if (key === selKey) return
+      selKey = key
+      if (key === '||') return // selection cleared — leave the panel alone
+      if (u.designTab !== 'layers' || !u.panelOpen) {
+        useStore.getState().setUi({ designTab: 'layers', panelOpen: true })
+      }
+    })
+
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return
       // while typing (rename inputs, on-canvas text editing) the browser's
@@ -73,6 +92,7 @@ export function EditorShell() {
       window.removeEventListener('keydown', onKey)
       clearTimeout(timer)
       unsub()
+      unsubSel()
       renderController.stop()
     }
   }, [])
@@ -116,6 +136,8 @@ export function EditorShell() {
         </div>
       </header>
       <div className="editor-body">
+        {/* the document, always on screen — Figma's left panel */}
+        {mode !== 'motion' && mode !== 'path' ? <LayersRail /> : null}
         <main className="stage-wrap">
           {mounted ? (
             mode === 'motion' ? <MotionLab /> : mode === 'path' ? <PathLab /> : <CanvasStage />

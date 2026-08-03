@@ -12,7 +12,7 @@ import { ExportPanel } from './panels/ExportPanel'
 const SECTION_TITLES: Record<DesignTab, string> = {
   system: 'CURVE',
   field: 'SHADER',
-  layers: 'LAYERS',
+  layers: 'PROPERTIES',
   type: 'TYPE',
 }
 

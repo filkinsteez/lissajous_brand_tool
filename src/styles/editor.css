@@ -99,6 +99,33 @@
   min-height: 0;
 }
 
+/* the document rail: permanent, left, above the canvas's stacking
+   context like the inspector on the right */
+.layers-rail {
+  width: 240px;
+  flex: none;
+  border-right: 1px solid var(--line);
+  background: var(--chrome-1);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.rail-title {
+  margin: 10px 12px 2px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text);
+}
+
+.rail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
 .stage-wrap {
   flex: 1;
   min-width: 0;
