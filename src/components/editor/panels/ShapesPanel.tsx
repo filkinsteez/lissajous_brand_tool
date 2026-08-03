@@ -6,6 +6,7 @@ import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
 import { ColorField } from '@/components/controls/ColorField'
+import { niceLabel } from '@/components/controls/label'
 import { importImageFile } from '@/core/images'
 import { TypePanel } from './TypePanel'
 import type {
@@ -93,7 +94,7 @@ export function ShapesPanel() {
         <>
           <div className="panel-section">
             <div className="panel-heading">
-              {ui.selectedBlockIds.length > 1 ? `${ui.selectedBlockIds.length} TEXT BLOCKS` : 'TEXT'}
+              {ui.selectedBlockIds.length > 1 ? `${ui.selectedBlockIds.length} text blocks` : 'Text'}
             </div>
           </div>
           <TypePanel embedded />
@@ -213,7 +214,7 @@ function ShapeProperties({
   return (
     <div className="panel-section">
       <div className="panel-heading">
-        {selectedIds.length > 1 ? `${selectedIds.length} SHAPES` : first.kind.toUpperCase()}
+        {selectedIds.length > 1 ? `${selectedIds.length} shapes` : niceLabel(first.kind)}
       </div>
       <ColorField
         label="Fill"
@@ -375,7 +376,7 @@ function SourceControls({
           title="Bind the objects selected on the canvas (shapes or text) as this effector's source"
           onClick={() => bind([...selectedIds])}
         >
-          USE SELECTED{selectedIds.length ? ` (${selectedIds.length})` : ''}
+          Use selected{selectedIds.length ? ` (${selectedIds.length})` : ''}
         </button>
         {live.length ? (
           <>
@@ -407,7 +408,7 @@ function SourceControls({
         <div className="panel-note">
           Nothing bound — built-in glyphs. Drag an object from CANVAS
           onto this effector in the stack, or select objects on the
-          canvas and USE SELECTED.
+          canvas and Use selected.
         </div>
       )}
     </div>
@@ -537,7 +538,7 @@ function OrganicControls({
         The procedural composition engine: a seeded distribution lays the
         points, fields (curve distance, focal falloff, coherent noise)
         shape density, size, color and orientation, and the raster finish
-        fuses it — GOO melts neighbors into one body, GRAIN prints it.
+        fuses it — Goo melts neighbors into one body, grain prints it.
         Every choice is deterministic per seed; RESEED deals again.
       </div>
     </>
@@ -619,9 +620,9 @@ function ClonerControls({
           <div className="panel-note">
             An exact grid by default — the dashed frame on the canvas is
             its bounds: drag to place, corner-resize to size, double-click
-            for full bleed. RANDOM adds jitter, NOISE varies the
-            population in patches, CURVE swells clones along the figure,
-            PACKED subdivides recursively.
+            for full bleed. Random adds jitter, noise varies the
+            population in patches, Curve swells clones along the figure,
+            Packed subdivides recursively.
           </div>
         </>
       ) : (
@@ -668,8 +669,8 @@ function ClonerControls({
           />
           <div className="panel-note">
             An accumulating echo: ROTATE, SCALE STEP and FADE sweep across
-            the copies. LINEAR cascades from the origin, RADIAL fans and
-            rosettes on their spokes, CURVE rides the figure itself —
+            the copies. Linear cascades from the origin, radial fans and
+            rosettes on their spokes, curve rides the figure itself —
             copies sit at equal distances along the mark, turned to its
             direction of travel.
           </div>
@@ -837,7 +838,7 @@ function TilesControls({
             key={o.value}
             className={`layer-swatch${(params.colorB ?? 'ink') === o.value ? ' active' : ''}`}
             style={{ background: o.hex }}
-            title={`${o.label} — the counter ink DUO deals to`}
+            title={`${o.label} — the counter ink Duo deals to`}
             onClick={() => setD({ colorB: o.value })}
           />
         ))}
@@ -872,10 +873,10 @@ function TilesControls({
         onChange={(v) => set({ duo: v })} onCommit={commit} />
       <div className="panel-note">
         Flush modular tiles — cells fill their bounds, so neighbors
-        connect. CHECKER deals solid and subdivided cells with the
-        lattice drawn over them; RINGS spins quarter-arc bands per cell
-        and the weave appears where arcs meet. CURVE clusters the fine
-        state along the figure; DUO deals the counter ink.
+        connect. Checker deals solid and subdivided cells with the
+        lattice drawn over them; Rings spins quarter-arc bands per cell
+        and the weave appears where arcs meet. Curve clusters the fine
+        state along the figure; Duo deals the counter ink.
       </div>
     </>
   )

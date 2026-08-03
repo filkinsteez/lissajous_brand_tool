@@ -42,7 +42,7 @@ type ColorDirection = {
   values: Pick<BackgroundState, 'roles' | 'ground' | 'lockedRoles'>
 }
 
-// one canonical direction: the moodboard. SHUFFLE re-deals the palette
+// one canonical direction: the moodboard. Shuffle re-deals the palette
 // order; this chip brings it home.
 const COLOR_DIRECTIONS: ColorDirection[] = [
   {
@@ -396,7 +396,7 @@ export function FieldPanel() {
                   className={isActive ? 'preset-chip active' : 'preset-chip'}
                   onClick={() => applyExpression(expression)}
                 >
-                  {expression.name.toUpperCase()}
+                  {expression.name}
                 </button>
                 {expression.id.startsWith('expr-') ? (
                   <button

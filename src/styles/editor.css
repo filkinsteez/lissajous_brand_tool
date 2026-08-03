@@ -2316,3 +2316,132 @@ canvas.shape-canvas {
   font-size: 11px;
   color: var(--dial-text-section);
 }
+
+/* ---------------------------------------------------------------------
+   ONE TYPEFACE. DialKit ships system-ui for its chrome and pulls Geist
+   Mono from Google for numeric readouts, which put three faces on one
+   panel. Optimistic is the product's typeface, so every descendant of
+   the editor — kit controls included — is forced onto it, and the kit's
+   own weights and sizes are normalized to match our rows. */
+.editor,
+.editor *,
+.dialkit-root,
+.dialkit-root * {
+  font-family: var(--font-optimistic), system-ui, sans-serif !important;
+}
+
+/* the kit mixes 500/600 across labels and values; one weight reads as
+   one system */
+.dialkit-slider-label,
+.dialkit-slider-value,
+.dialkit-slider-value-editable,
+.dialkit-toggle-label,
+.dialkit-select-label,
+.dialkit-select-value,
+.dialkit-color-label,
+.dialkit-text-label,
+.dial-row-label,
+.dial-segment,
+.dial-swatch,
+.dial-swatch-hex {
+  font-weight: 450;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+/* numeric readouts sit in the same face, just tabular so they do not
+   jitter while dragging */
+.dialkit-slider-value,
+.dialkit-slider-value-editable,
+.dial-swatch-hex,
+.dial-picker-hex,
+.dial-picker-pct,
+.zoom-chip {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+   THE TYPE SCALE. Three roles, no exceptions: a section title, a
+   control label/value, and a note. Everything below pins the kit's
+   classes and this app's older chrome onto those three, because the
+   audit found nine different size/weight combinations across one panel. */
+
+/* 1. control labels + values — the bulk of the UI */
+.dialkit-slider-label,
+.dialkit-slider-value,
+.dialkit-slider-value-editable,
+.dialkit-toggle-label,
+.dialkit-labeled-control-label,
+.dialkit-select-label,
+.dialkit-select-value,
+.dialkit-color-label,
+.dialkit-color-hex,
+.dialkit-color-hex-input,
+.dialkit-text-label,
+.dialkit-text-input,
+.dialkit-button,
+.dialkit-preset-name,
+.dial-row-label,
+.dial-segment,
+.dial-swatch,
+.dial-swatch-hex,
+.ctl-label,
+.ctl-value,
+.ctl-action,
+.layer-add-select,
+.layer-name,
+.layer-rename,
+.source-row-label,
+.object-row,
+.source-chip,
+.preset-chip,
+.segment,
+.mode-tab,
+.topbar-shuffle,
+.zoom-chip,
+.isolate-banner,
+.dial-picker-hex,
+.dial-picker-pct {
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0;
+}
+
+/* 2. section titles */
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider,
+.dialkit-folder-title,
+.wordmark {
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0;
+}
+
+/* 3. notes and hints */
+.panel-note,
+.panel-empty,
+.ctl-sub-label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--dial-text-tertiary);
+}
+
+/* decorative glyphs stay out of the text scale */
+.layer-grip,
+.source-row-glyph,
+.layer-type-glyph,
+.layer-row.modifier-row::before {
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+/* the kit's segmented buttons (toggle Off/On) sat at 13px/500 */
+.dialkit-segmented-button,
+.dialkit-segmented-option {
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0;
+}

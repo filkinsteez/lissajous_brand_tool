@@ -150,7 +150,7 @@ export function SystemPanel() {
           </button>
         ) : (
           <div className="panel-note">
-            CONSTRUCTION VIEW shows the curve and its crossings on the artboard;
+            Construction view shows the curve and its crossings on the artboard;
             click crossings to pin the grid to them.
           </div>
         )}
