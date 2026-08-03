@@ -103,7 +103,7 @@ export function EditorShell() {
     <div className="editor dialkit-root">
       <header className="topbar">
         <div className="wordmark">
-          LISSAJOUS<span className="wordmark-dim"> BRAND SYSTEM</span>
+          Lissajous<span className="wordmark-dim"> Brand System</span>
         </div>
         <ModeSwitcher />
         <div className="topbar-right">
@@ -115,7 +115,7 @@ export function EditorShell() {
               s.apply(shuffleProject(s.project, getDerived(s.project).grid, s.project.layoutSeed + 1))
             }}
           >
-            SHUFFLE
+            Shuffle
           </button>
           <button
             className="topbar-history"

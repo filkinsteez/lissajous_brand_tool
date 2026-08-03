@@ -221,7 +221,7 @@ export function MotionLab() {
   return (
     <div className="motion-lab" data-testid="motion-lab">
       <div className="lab-header">
-        <span className="lab-title">MOTION</span>
+        <span className="lab-title">Motion</span>
         <span className="lab-sub">
           {ml.ratioX}:{ml.ratioY} · phase {Math.round((ml.phase * 180) / Math.PI)}° · read as{' '}
           {ml.read}
@@ -232,14 +232,14 @@ export function MotionLab() {
           data-testid="motion-play"
           onClick={() => setUi({ motionPlaying: !playing })}
         >
-          {playing ? 'PAUSE' : 'PLAY'}
+          {playing ? 'Pause' : 'Play'}
         </button>
       </div>
 
       <div className="lane-row">
       <div className="lane lane-figure">
         <div className="lane-label">
-          THE FIGURE — {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} · PHASE{' '}
+          THE FIGURE — {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'Shaped ' : ''}{ml.ratioX}:{ml.ratioY} · PHASE{' '}
           {Math.round((ml.phase * 180) / Math.PI)}°
         </div>
         <svg viewBox={`0 0 ${FIG} ${FIG}`} className="lane-svg" data-testid="lane-figure">
@@ -280,7 +280,7 @@ export function MotionLab() {
       </div>
       <div className="lane lane-figure">
         <div className="lane-label">
-          SPEED GRAPH — THE ARC OF THE {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'SHAPED ' : ''}{ml.ratioX}:{ml.ratioY} FIGURE
+          SPEED GRAPH — THE ARC OF THE {ml.waist || ml.fullness || ml.bias || ml.lean || ml.cross || ml.morph ? 'Shaped ' : ''}{ml.ratioX}:{ml.ratioY} FIGURE
         </div>
         <svg viewBox={`0 0 ${W} ${viewH}`} className="lane-svg" data-testid="lane-plot">
           {/* speed graph — same square frame as the figure panel */}
@@ -317,7 +317,7 @@ export function MotionLab() {
       </div>
 
       <div className="lane">
-        <div className="lane-label">PRODUCT — THE SAME EASING ON REAL ELEMENTS</div>
+        <div className="lane-label">Product — the same easing on real elements</div>
         <div className="product-row" data-testid="product-row">
           <div className="vignette">
             <div className="v-stage">
@@ -338,7 +338,7 @@ export function MotionLab() {
                 />
               </div>
             </div>
-            <span className="v-label">MOVE</span>
+            <span className="v-label">Move</span>
           </div>
 
           <div className="vignette">
@@ -351,7 +351,7 @@ export function MotionLab() {
                 />
               </div>
             </div>
-            <span className="v-label">TOGGLE</span>
+            <span className="v-label">Toggle</span>
           </div>
 
           <div className="vignette">
@@ -364,7 +364,7 @@ export function MotionLab() {
                 <div className="v-sheet-handle" />
               </div>
             </div>
-            <span className="v-label">SHEET</span>
+            <span className="v-label">Sheet</span>
           </div>
 
           <div className="vignette">
@@ -386,7 +386,7 @@ export function MotionLab() {
                 )
               })}
             </div>
-            <span className="v-label">LIST STAGGER</span>
+            <span className="v-label">List stagger</span>
           </div>
         </div>
       </div>

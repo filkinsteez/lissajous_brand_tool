@@ -97,50 +97,50 @@ export function SystemPanel() {
   return (
     <div className="panel">
       <div className="panel-section">
-        <div className="panel-heading">CURVE</div>
-        <Slider label="FREQ X" value={liss.frequencyX} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyX}
+        <div className="panel-heading">Curve</div>
+        <Slider label="Freq X" value={liss.frequencyX} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyX}
           onChange={(v) => curve({ lissajous: { frequencyX: v, presetId: undefined } })} onCommit={settle} />
-        <Slider label="FREQ Y" value={liss.frequencyY} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyY}
+        <Slider label="Freq Y" value={liss.frequencyY} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyY}
           onChange={(v) => curve({ lissajous: { frequencyY: v, presetId: undefined } })} onCommit={settle} />
-        <Slider label="PHASE" value={liss.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg} defaultValue={DEF.lissajous.phase}
+        <Slider label="Phase" value={liss.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg} defaultValue={DEF.lissajous.phase}
           onChange={(v) => curve({ lissajous: { phase: v } })} onCommit={settle} />
         {/* past 100% the curve bleeds off-canvas — one lobe can fill the frame */}
-        <Slider label="AMP X" value={liss.amplitudeX} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeX}
+        <Slider label="Amp X" value={liss.amplitudeX} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeX}
           onChange={(v) => curve({ lissajous: { amplitudeX: v } })} onCommit={settle} />
-        <Slider label="AMP Y" value={liss.amplitudeY} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeY}
+        <Slider label="Amp Y" value={liss.amplitudeY} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeY}
           onChange={(v) => curve({ lissajous: { amplitudeY: v } })} onCommit={settle} />
-        <Slider label="ROTATION" value={liss.rotation} min={-Math.PI / 4} max={Math.PI / 4}
+        <Slider label="Rotation" value={liss.rotation} min={-Math.PI / 4} max={Math.PI / 4}
           step={Math.PI / 360} format={deg} defaultValue={DEF.lissajous.rotation}
           onChange={(v) => curve({ lissajous: { rotation: v } })} onCommit={settle} />
-        <Slider label="OFFSET X" value={liss.offsetX} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetX}
+        <Slider label="Offset X" value={liss.offsetX} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetX}
           onChange={(v) => curve({ lissajous: { offsetX: v } })} onCommit={settle} />
-        <Slider label="OFFSET Y" value={liss.offsetY} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetY}
+        <Slider label="Offset Y" value={liss.offsetY} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetY}
           onChange={(v) => curve({ lissajous: { offsetY: v } })} onCommit={settle} />
       </div>
       <div className="panel-section">
-        <div className="panel-heading">STRUCTURE</div>
+        <div className="panel-heading">Structure</div>
         <button className="ctl-action primary" onClick={shuffle}>
-          SHUFFLE LAYOUT
+          Shuffle layout
         </button>
         <div className="panel-note">
           Columns and rows are clustered from the curve&apos;s crossings, then
           evened out to the counts below.
         </div>
-        <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct} defaultValue={DEF.grid.marginRestraint}
+        <Slider label="Margin" value={grid.marginRestraint} min={0} max={1} format={pct} defaultValue={DEF.grid.marginRestraint}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />
-        <Slider label="COLUMNS" value={grid.columnBias} min={2} max={8} step={1} format={int} defaultValue={DEF.grid.columnBias}
+        <Slider label="Columns" value={grid.columnBias} min={2} max={8} step={1} format={int} defaultValue={DEF.grid.columnBias}
           onChange={(v) => curve({ grid: { columnBias: v } })} onCommit={settle} />
-        <Slider label="ROWS" value={grid.rowBias} min={2} max={12} step={1} format={int} defaultValue={DEF.grid.rowBias}
+        <Slider label="Rows" value={grid.rowBias} min={2} max={12} step={1} format={int} defaultValue={DEF.grid.rowBias}
           onChange={(v) => curve({ grid: { rowBias: v } })} onCommit={settle} />
-        <Slider label="GUTTER" value={grid.gutterScale} min={0} max={2} format={pct} defaultValue={DEF.grid.gutterScale}
+        <Slider label="Gutter" value={grid.gutterScale} min={0} max={2} format={pct} defaultValue={DEF.grid.gutterScale}
           onChange={(v) => curve({ grid: { gutterScale: v } })} onCommit={settle} />
-        <Slider label="BASELINE" value={grid.baselineRhythm} min={0.5} max={2} format={pct} defaultValue={DEF.grid.baselineRhythm}
+        <Slider label="Baseline" value={grid.baselineRhythm} min={0.5} max={2} format={pct} defaultValue={DEF.grid.baselineRhythm}
           onChange={(v) => curve({ grid: { baselineRhythm: v } })} onCommit={settle} />
-        <Slider label="SNAP" value={grid.snapStrength} min={0} max={1} format={pct} defaultValue={DEF.grid.snapStrength}
+        <Slider label="Snap" value={grid.snapStrength} min={0} max={1} format={pct} defaultValue={DEF.grid.snapStrength}
           onChange={(v) => curve({ grid: { snapStrength: v } })} onCommit={settle} />
-        <Toggle label="SHOW GUIDES" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
+        <Toggle label="Show guides" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
         <Toggle
-          label="CONSTRUCTION VIEW"
+          label="Construction view"
           value={mode === 'setup'}
           onChange={(v) => setUi({ mode: v ? 'setup' : 'compose' })}
         />

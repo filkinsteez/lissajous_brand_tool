@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import { TextControl } from 'dialkit'
 import { niceLabel } from './label'
+import { useCommitOnRelease } from './useCommitOnRelease'
 
 // DialKit's text control. It is single-line by design; the one
 // multiline consumer (the shader expression editor) keeps a textarea
@@ -22,19 +22,7 @@ export function TextField({
   multiline?: boolean
   placeholder?: string
 }) {
-  const dirty = useRef(false)
-  const commitRef = useRef(onCommit)
-  commitRef.current = onCommit
-
-  useEffect(() => {
-    const done = () => {
-      if (!dirty.current) return
-      dirty.current = false
-      commitRef.current?.()
-    }
-    window.addEventListener('pointerup', done)
-    return () => window.removeEventListener('pointerup', done)
-  }, [])
+  const { commitNow } = useCommitOnRelease(onCommit)
 
   if (multiline) {
     return (
@@ -59,10 +47,8 @@ export function TextField({
         value={value}
         placeholder={placeholder}
         onChange={(v) => {
-          dirty.current = true
           onChange(v)
-          commitRef.current?.()
-          dirty.current = false
+          commitNow()
         }}
       />
     </div>

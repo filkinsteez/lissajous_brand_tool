@@ -19,7 +19,7 @@ export function deserializeProject(json: string | null | undefined): ProjectStat
     migrateRegistersToLayers(raw)
     const seed = typeof raw.seed === 'number' ? raw.seed : undefined
     const merged = mergeDeep(createDefaultProject(seed), raw)
-    return normalizeBackground(normalizeLayers(merged))
+    return normalizeType(normalizeBackground(normalizeLayers(merged)))
   } catch {
     return null
   }
@@ -115,6 +115,21 @@ function asRoles(value: unknown): ColorRole[] {
   if (!Array.isArray(value)) return []
   const valid = new Set<ColorRole>(BRAND_ROLE_ORDER)
   return value.filter((role): role is ColorRole => typeof role === 'string' && valid.has(role as ColorRole))
+}
+
+// Optimistic replaced the three-family system, so saves carrying
+// 'flex' / 'fraunces' / 'mono' land on the one family, and weight and
+// width clamp into the axes it actually has.
+function normalizeType(project: ProjectState): ProjectState {
+  return {
+    ...project,
+    typeBlocks: project.typeBlocks.map((b) => ({
+      ...b,
+      fontFamily: 'optimistic' as const,
+      weight: Math.max(300, Math.min(800, b.weight)),
+      width: Math.max(80, Math.min(100, b.width)),
+    })),
+  }
 }
 
 function normalizeBackground(project: ProjectState): ProjectState {

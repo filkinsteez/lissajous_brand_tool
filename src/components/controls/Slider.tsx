@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import { Slider as DialSlider } from 'dialkit'
 import { niceLabel } from './label'
+import { useCommitOnRelease } from './useCommitOnRelease'
 
 export type SliderProps = {
   label: string
@@ -19,10 +19,12 @@ export type SliderProps = {
   onCommit?: () => void
 }
 
-// DialKit's slider wired to this app's history model. The kit emits a
-// continuous onChange; the store needs transient-while-dragging plus a
-// single commit on release, and the kit captures the pointer, so the
-// release is caught on the window instead of locally.
+// DialKit's slider wired to this app's history model.
+//
+// The kit renders the raw number, so a "display formatter" cannot work:
+// the UNIT has to be real. Percent-formatted params are scaled x100 and
+// radian params to degrees, then inverted on the way back — the panel
+// call sites keep passing their native units untouched.
 //
 // `defaultValue` keeps double-click-to-reset, which the kit does not
 // ship but this tool has relied on since the slider rewrite.
@@ -38,28 +40,8 @@ export function Slider({
   onChange,
   onCommit,
 }: SliderProps) {
-  const dirty = useRef(false)
-  const commitRef = useRef(onCommit)
-  commitRef.current = onCommit
+  const { touch, commitNow } = useCommitOnRelease(onCommit)
 
-  useEffect(() => {
-    const done = () => {
-      if (!dirty.current) return
-      dirty.current = false
-      commitRef.current?.()
-    }
-    window.addEventListener('pointerup', done)
-    window.addEventListener('keyup', done)
-    return () => {
-      window.removeEventListener('pointerup', done)
-      window.removeEventListener('keyup', done)
-    }
-  }, [])
-
-  // DialKit shows the raw number, so a "display formatter" cannot work:
-  // the UNIT has to be real. Percent-formatted params are scaled x100
-  // and radian params to degrees, then inverted on the way back — the
-  // panel call sites keep passing their native units untouched.
   const isPct = !!format && format(1) === '100'
   const isDeg = !!format && format(Math.PI).startsWith('180')
   const k = isPct ? 100 : isDeg ? 180 / Math.PI : 1
@@ -72,7 +54,7 @@ export function Slider({
       onDoubleClick={() => {
         if (defaultValue === undefined) return
         onChange(defaultValue)
-        commitRef.current?.()
+        commitNow()
       }}
     >
       <DialSlider
@@ -83,7 +65,7 @@ export function Slider({
         step={k === 1 ? step : (scaledStep ?? 1)}
         unit={suffix}
         onChange={(v) => {
-          dirty.current = true
+          touch()
           onChange(k === 1 ? v : v / k)
         }}
       />

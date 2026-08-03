@@ -550,8 +550,8 @@ export function TypeLayer() {
     const draft: TypeBlockState = {
       id,
       role: 'caption',
-      text: 'TEXT',
-      fontFamily: 'flex',
+      text: 'Text',
+      fontFamily: 'optimistic',
       size: 40,
       weight: 520,
       width: 100,
@@ -878,14 +878,11 @@ export function TypeLayer() {
             onPointerUp={(e) => onPointerUp(e, block)}
             onPointerCancel={(e) => onPointerUp(e, block)}
             style={{
-              // the box HUGS the text; the column span is the wrap limit
-              // and the alignment anchor, not the visible width — a short
-              // headline no longer drags a half-canvas outline behind it
-              ...(block.align === 'right'
-                ? { right: project.artboard.width - box.x - box.w }
-                : block.align === 'center'
-                  ? { left: box.x + box.w / 2, transform: 'translateX(-50%)' }
-                  : { left: box.x }),
+              // ALIGN is typographic, not positional: the block stays
+              // where it was placed and the alignment arranges the lines
+              // inside it. Re-anchoring the box on align made changing
+              // alignment jump the text across the canvas.
+              left: box.x,
               top: box.y,
               width: 'fit-content',
               maxWidth: box.w,

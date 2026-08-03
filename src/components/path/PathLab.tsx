@@ -290,7 +290,7 @@ export function PathLab() {
   return (
     <div className="path-lab" data-testid="path-lab">
       <div className="lab-header">
-        <span className="lab-title">PATH</span>
+        <span className="lab-title">Path</span>
         <span className="lab-sub">
           {pl.curve === 'meta' ? 'META ∞' : `${pl.ratioX}:${pl.ratioY}`} · phase {Math.round((pl.phase * 180) / Math.PI)}° ·{' '}
           {pl.scene === 'flow'

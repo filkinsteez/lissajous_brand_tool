@@ -9,9 +9,7 @@ import { INK, PAPER } from '@/core/state/defaults'
 // embedded as data URIs so the drawn canvas is never tainted.
 
 const EXPORT_FAMILIES: Record<string, { match: RegExp; exportName: string }> = {
-  flex: { match: /Roboto Flex/i, exportName: 'LBS Flex' },
-  fraunces: { match: /Fraunces/i, exportName: 'LBS Fraunces' },
-  mono: { match: /IBM Plex Mono/i, exportName: 'LBS Mono' },
+  optimistic: { match: /optimistic/i, exportName: 'LBS Optimistic' },
 }
 
 let fontFacesCache: string | null = null
@@ -39,7 +37,7 @@ async function collectFontFaces(): Promise<string> {
       if (!def) continue
       // src urls are relative to the stylesheet, not the page
       const url = new URL(urlMatch[1], sheet.href ?? location.href).href
-      const weight = rule.style.getPropertyValue('font-weight') || '100 1000'
+      const weight = rule.style.getPropertyValue('font-weight') || '300 800'
       // subset faces carry unicode-range; without it the last face wins
       const range = rule.style.getPropertyValue('unicode-range')
       jobs.push(
@@ -51,7 +49,8 @@ async function collectFontFaces(): Promise<string> {
             for (let i = 0; i < bytes.length; i += 0x8000) {
               bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
             }
-            return `@font-face{font-family:'${def.exportName}';src:url(data:font/woff2;base64,${btoa(bin)}) format('woff2');font-weight:${weight};font-stretch:25% 151%;${range ? `unicode-range:${range};` : ''}}`
+            // Optimistic ships as a variable TTF, not a woff2 subset
+            return `@font-face{font-family:'${def.exportName}';src:url(data:font/ttf;base64,${btoa(bin)}) format('truetype');font-weight:${weight};font-stretch:80% 100%;${range ? `unicode-range:${range};` : ''}}`
           })
           .catch(() => ''),
       )
@@ -82,18 +81,12 @@ export async function renderTypeToCanvas(
     .filter((b) => b.text)
     .map((b) => {
       const box = layoutTypeBlock(b, grid)
-      const family = EXPORT_FAMILIES[b.fontFamily]?.exportName ?? 'LBS Flex'
-      // mirror the live layer: the box hugs the text, the span is the
-      // wrap limit and the alignment anchor
-      const anchor =
-        b.align === 'right'
-          ? [`right:${W - box.x - box.w}px`]
-          : b.align === 'center'
-            ? [`left:${box.x + box.w / 2}px`, `transform:translateX(-50%)`]
-            : [`left:${box.x}px`]
+      const family = EXPORT_FAMILIES[b.fontFamily]?.exportName ?? 'LBS Optimistic'
+      // mirror the live layer: the box hugs the text and stays where it
+      // was placed — ALIGN arranges the lines inside it, never moves it
       const style = [
         `position:absolute`,
-        ...anchor,
+        `left:${box.x}px`,
         `top:${box.y}px`,
         `width:fit-content`,
         `max-width:${box.w}px`,

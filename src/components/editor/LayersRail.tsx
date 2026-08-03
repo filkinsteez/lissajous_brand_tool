@@ -32,7 +32,8 @@ export function LayersRail() {
   // the object tree: unbound canvas objects in reverse paint order
   // (text paints above drawn shapes), plus each effector's bound sources
   const consumed = consumedShapeIds(layers)
-  const label = (t: string) => (t.trim() || 'TEXT').slice(0, 18).toUpperCase()
+  // the user's own words, verbatim — never re-cased
+  const label = (t: string) => t.trim().slice(0, 18) || 'Text'
   // paint order, top first: text, drawn shapes, then images. Array
   // assets (arr- prefix) belong to their effector, not the canvas.
   const treeObjects: TreeObject[] = [
@@ -43,7 +44,7 @@ export function LayersRail() {
     ...[...project.shapes]
       .reverse()
       .filter((s) => !consumed.has(s.id))
-      .map((s) => ({ id: s.id, kind: 'shape' as const, label: s.kind, fill: s.fill })),
+      .map((s) => ({ id: s.id, kind: 'shape' as const, label: niceLabel(s.kind), fill: s.fill })),
     ...[...project.images]
       .reverse()
       .filter((im) => !im.id.startsWith('arr-') && im.id !== project.bgImageId)
@@ -53,7 +54,7 @@ export function LayersRail() {
   for (const b of project.typeBlocks)
     objById.set(b.id, { id: b.id, kind: 'text', label: label(b.text), fill: b.color })
   for (const s of project.shapes)
-    objById.set(s.id, { id: s.id, kind: 'shape', label: s.kind.toUpperCase(), fill: s.fill })
+    objById.set(s.id, { id: s.id, kind: 'shape', label: niceLabel(s.kind), fill: s.fill })
 
   const patchParams = (id: string, params: Record<string, unknown>) => {
     apply({
@@ -165,14 +166,14 @@ export function LayersRail() {
   }
 
   const renameLayer = (id: string, name: string) => {
-    const clean = name.trim().toUpperCase().slice(0, 24)
+    const clean = name.trim().slice(0, 24)
     if (!clean) return
     apply({ layers: layers.map((l) => (l.id === id ? ({ ...l, name: clean } as ShapeLayer) : l)) })
   }
 
   return (
     <div className="layers-rail">
-      <div className="rail-title">LAYERS</div>
+      <div className="rail-title">Layers</div>
       <div className="rail-body">
         <div className="layer-add-row">
           <select
@@ -238,7 +239,7 @@ export function LayersRail() {
           <span className="source-row-glyph" aria-hidden>
             &#9640;
           </span>
-          <span className="source-row-label">BACKGROUND — SHADER</span>
+          <span className="source-row-label">Background — shader</span>
         </div>
       </div>
     </div>
@@ -557,7 +558,6 @@ function ObjectRows({
   if (!objects.length) return null
   return (
     <div className="object-rows">
-      <div className="ctl-sub-label">CANVAS — drag onto an effector to bind</div>
       {objects.map((o) => (
         <div
           key={o.id}

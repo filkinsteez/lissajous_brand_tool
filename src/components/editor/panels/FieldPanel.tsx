@@ -5,6 +5,7 @@ import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
+import { ColorField } from '@/components/controls/ColorField'
 import {
   BACKGROUND_EXPRESSIONS_STORAGE_KEY,
   CURATED_BACKGROUND_EXPRESSIONS,
@@ -46,7 +47,7 @@ type ColorDirection = {
 const COLOR_DIRECTIONS: ColorDirection[] = [
   {
     id: 'mb-transform',
-    label: 'MB TRANSFORM',
+    label: 'MB transform',
     note: 'Dark optical field with cyan, magenta, green, and warm spectral bands.',
     values: {
       roles: ['blue', 'cyan', 'magenta', 'orange', 'yellow', 'green', 'violet', 'neutral', 'ink'],
@@ -174,19 +175,29 @@ export function FieldPanel() {
   return (
     <div className="panel">
       <div className="panel-section">
-        <div className="panel-heading">SHADER</div>
+        <div className="panel-heading">Shader</div>
         <SegmentedControl<'flat' | 'field'>
           value={project.background.mode}
           options={[
-            { value: 'flat', label: 'FLAT' },
-            { value: 'field', label: 'FIELD' },
+            { value: 'flat', label: 'Solid' },
+            { value: 'field', label: 'Field' },
           ]}
           onChange={(value) => {
             background({ mode: value })
             settle()
           }}
         />
-        <div className="ctl-sub-label">COLOR DIRECTION</div>
+        {/* SOLID paints the artboard colour straight through — so that
+            colour is the control */}
+        {project.background.mode === 'flat' ? (
+          <ColorField
+            label="Solid color"
+            value={project.artboard.background}
+            onChange={(v) => setT({ artboard: { background: v } })}
+            onCommit={commit}
+          />
+        ) : null}
+        <div className="ctl-sub-label">Color direction</div>
         <div className="preset-strip">
           {COLOR_DIRECTIONS.map((direction) => (
             <button
@@ -207,7 +218,7 @@ export function FieldPanel() {
           ))}
         </div>
         <Slider
-          label="WIDTH"
+          label="Width"
           defaultValue={BG.width}
           value={project.background.width}
           min={0.04}
@@ -217,7 +228,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="SCALE"
+          label="Scale"
           defaultValue={BG.fieldScale}
           value={project.background.fieldScale}
           min={0.5}
@@ -227,7 +238,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="FORM"
+          label="Form"
           defaultValue={BG.form}
           value={project.background.form}
           min={0}
@@ -237,7 +248,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="PAN X"
+          label="Pan X"
           value={project.background.fieldOffsetX}
           min={-1}
           max={1}
@@ -248,7 +259,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="PAN Y"
+          label="Pan Y"
           value={project.background.fieldOffsetY}
           min={-1}
           max={1}
@@ -259,7 +270,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="GLOW"
+          label="Glow"
           defaultValue={BG.softness}
           value={project.background.softness}
           min={0}
@@ -269,7 +280,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="DENSITY"
+          label="Density"
           defaultValue={BG.layers}
           value={project.background.layers}
           min={1}
@@ -280,7 +291,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="SPREAD"
+          label="Spread"
           defaultValue={BG.arcSpread}
           value={project.background.arcSpread}
           min={0.3}
@@ -290,7 +301,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="WARP"
+          label="Warp"
           defaultValue={BG.warp}
           value={project.background.warp}
           min={0}
@@ -300,7 +311,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="DRIFT"
+          label="Drift"
           defaultValue={BG.drift}
           value={project.background.drift}
           min={0}
@@ -310,7 +321,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="GRAIN"
+          label="Grain"
           defaultValue={BG.grain}
           value={project.background.grain}
           min={0}
@@ -320,7 +331,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Slider
-          label="CONTRAST"
+          label="Contrast"
           defaultValue={BG.contrast}
           value={project.background.contrast}
           min={0.5}
@@ -330,7 +341,7 @@ export function FieldPanel() {
           onCommit={settle}
         />
         <Toggle
-          label="TYPE CALM"
+          label="Type calm"
           value={project.background.typeCalm}
           onChange={(typeCalm) => {
             apply({ background: { typeCalm } })
@@ -342,10 +353,10 @@ export function FieldPanel() {
           moving blocks re-shapes the field while it&apos;s on.
         </div>
         <button className="ctl-action" onClick={shuffleBackground}>
-          SHUFFLE BACKGROUND
+          Shuffle background
         </button>
         <button className="ctl-action" onClick={() => void generateVariations()} disabled={variationBusy}>
-          {variationBusy ? 'BUILDING VARIATIONS...' : 'EXPLORE VARIATIONS'}
+          {variationBusy ? 'BUILDING VARIATIONS...' : 'Explore variations'}
         </button>
         {variations.length ? (
           <div className="thumb-strip">
@@ -364,7 +375,7 @@ export function FieldPanel() {
             ))}
           </div>
         ) : null}
-        <div className="ctl-sub-label">BACKGROUND EXPRESSIONS</div>
+        <div className="ctl-sub-label">Background expressions</div>
         <div className="ctl-col">
           <input
             className="text-field"
@@ -373,7 +384,7 @@ export function FieldPanel() {
             onChange={(e) => setExpressionName(e.target.value)}
           />
           <button className="ctl-action" onClick={saveExpression} disabled={!expressionName.trim()}>
-            SAVE EXPRESSION
+            Save expression
           </button>
         </div>
         <div className="preset-strip">

@@ -42,7 +42,8 @@ export type GridState = {
 }
 
 export type TypeRole = 'headline' | 'caption' | 'metadata'
-export type FontFamilyId = 'flex' | 'fraunces' | 'mono'
+// one typeface: Optimistic
+export type FontFamilyId = 'optimistic'
 export type TypeCase = 'none' | 'upper' | 'lower'
 export type TypeAlign = 'left' | 'center' | 'right'
 

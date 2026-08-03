@@ -39,7 +39,7 @@ body {
 body {
   background: var(--chrome-0);
   color: var(--text);
-  font-family: var(--font-mono), 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: var(--font-optimistic), system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;

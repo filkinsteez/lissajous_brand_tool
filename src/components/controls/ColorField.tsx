@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { niceLabel } from './label'
+import { useCommitOnRelease } from './useCommitOnRelease'
 
 // DialKit's ColorControl opens the browser's native picker — a white OS
 // sheet in the middle of a dark tool. This is the same control built to
@@ -61,33 +62,42 @@ const parseColor = (v: string) => ({
 const composeColor = (hex: string, alpha: number) =>
   alpha >= 0.995 ? hex : `${hex}${toHex(alpha)}`
 
-// a pointer-drag surface: reports normalized x/y on down and every move
-function useDragSurface(onPos: (x: number, y: number) => void) {
-  const ref = useRef<HTMLDivElement>(null)
-  const dragging = useRef(false)
-  const report = (e: PointerEvent | React.PointerEvent) => {
-    const el = ref.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    onPos(clamp01((e.clientX - r.left) / r.width), clamp01((e.clientY - r.top) / r.height))
+// A press-and-drag surface reporting a normalized position. The element
+// is held through a callback ref, and every ref read happens inside an
+// event handler — never during render.
+function useDragSurface(onPos: (x: number, y: number) => void, onRelease: () => void) {
+  const el = useRef<HTMLDivElement | null>(null)
+  const held = useRef(false)
+  const setEl = useCallback((node: HTMLDivElement | null) => {
+    el.current = node
+  }, [])
+  const at = (clientX: number, clientY: number) => {
+    const node = el.current
+    if (!node) return
+    const rect = node.getBoundingClientRect()
+    onPos(clamp01((clientX - rect.left) / rect.width), clamp01((clientY - rect.top) / rect.height))
   }
-  useEffect(() => {
-    const move = (e: PointerEvent) => dragging.current && report(e)
-    const up = () => (dragging.current = false)
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-    return () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-    }
-  })
-  return {
-    ref,
-    onPointerDown: (e: React.PointerEvent) => {
-      dragging.current = true
-      report(e)
+  // a tuple, not an object: the lint rule treats property reads off a
+  // ref-carrying object as a render-time ref access
+  return [
+    setEl,
+    (e: React.PointerEvent) => {
+      held.current = true
+      try {
+        ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+      } catch {
+        // synthetic pointers have nothing to capture
+      }
+      at(e.clientX, e.clientY)
     },
-  }
+    (e: React.PointerEvent) => {
+      if (held.current) at(e.clientX, e.clientY)
+    },
+    () => {
+      held.current = false
+      onRelease()
+    },
+  ] as const
 }
 
 export function ColorField({
@@ -101,43 +111,27 @@ export function ColorField({
   onChange: (v: string) => void
   onCommit?: () => void
 }) {
+  const { touch, commitNow } = useCommitOnRelease(onCommit)
   const { hex, alpha } = parseColor(value)
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(hex)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const commitRef = useRef(onCommit)
-  commitRef.current = onCommit
+  // null = show the live hex; a string = the user is mid-edit
+  const [draft, setDraft] = useState<string | null>(null)
 
   const [r, g, b] = hexToRgb(hex)
   const [h, s, v] = rgbToHsv(r / 255, g / 255, b / 255)
 
-  useEffect(() => setDraft(hex), [hex])
-
-  useEffect(() => {
-    if (!open) return
-    const away = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    window.addEventListener('mousedown', away)
-    window.addEventListener('keydown', esc)
-    return () => {
-      window.removeEventListener('mousedown', away)
-      window.removeEventListener('keydown', esc)
-    }
-  }, [open])
-
   const emit = (hh: number, ss: number, vv: number, aa: number = alpha) => {
     const [nr, ng, nb] = hsvToRgb(hh, ss, vv)
+    touch()
     onChange(composeColor(`#${toHex(nr)}${toHex(ng)}${toHex(nb)}`, aa))
   }
 
-  const sv = useDragSurface((x, y) => emit(h, x, 1 - y))
-  const hue = useDragSurface((x) => emit(x * 360, s, v))
-  const alphaBar = useDragSurface((x) => emit(h, s, v, x))
+  const [svRef, svDown, svMove, svUp] = useDragSurface((x, y) => emit(h, x, 1 - y), commitNow)
+  const [hueRef, hueDown, hueMove, hueUp] = useDragSurface((x) => emit(x * 360, s, v), commitNow)
+  const [alphaRef, alphaDown, alphaMove, alphaUp] = useDragSurface((x) => emit(h, s, v, x), commitNow)
 
   return (
-    <div className="ctl-dial" ref={wrapRef}>
+    <div className="ctl-dial">
       <div className="dial-row">
         <span className="dial-row-label">{niceLabel(label)}</span>
         <button
@@ -154,9 +148,10 @@ export function ColorField({
         <div className="dial-picker">
           <div
             className="dial-picker-sv"
-            ref={sv.ref}
-            onPointerDown={sv.onPointerDown}
-            onPointerUp={() => commitRef.current?.()}
+            ref={svRef}
+            onPointerDown={svDown}
+            onPointerMove={svMove}
+            onPointerUp={svUp}
             style={{ background: `hsl(${h} 100% 50%)` }}
           >
             <div className="dial-picker-sv-white" />
@@ -169,18 +164,20 @@ export function ColorField({
 
           <div
             className="dial-picker-strip dial-picker-hue"
-            ref={hue.ref}
-            onPointerDown={hue.onPointerDown}
-            onPointerUp={() => commitRef.current?.()}
+            ref={hueRef}
+            onPointerDown={hueDown}
+            onPointerMove={hueMove}
+            onPointerUp={hueUp}
           >
             <span className="dial-picker-thumb" style={{ left: `${(h / 360) * 100}%` }} />
           </div>
 
           <div
             className="dial-picker-strip dial-picker-alpha"
-            ref={alphaBar.ref}
-            onPointerDown={alphaBar.onPointerDown}
-            onPointerUp={() => commitRef.current?.()}
+            ref={alphaRef}
+            onPointerDown={alphaDown}
+            onPointerMove={alphaMove}
+            onPointerUp={alphaUp}
             style={{ ['--stop' as string]: hex }}
           >
             <span className="dial-picker-thumb" style={{ left: `${alpha * 100}%` }} />
@@ -189,17 +186,19 @@ export function ColorField({
           <div className="dial-picker-foot">
             <input
               className="dial-picker-hex"
-              value={draft}
+              value={draft ?? hex}
               spellCheck={false}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={() => {
-                if (/^#[0-9a-f]{6}$/i.test(draft)) {
+                if (draft && /^#[0-9a-f]{6}$/i.test(draft)) {
                   onChange(composeColor(draft, alpha))
-                  commitRef.current?.()
-                } else setDraft(hex)
+                  commitNow()
+                }
+                setDraft(null)
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                if (e.key === 'Escape') setDraft(null)
               }}
             />
             <span className="dial-picker-pct">{Math.round(alpha * 100)}%</span>

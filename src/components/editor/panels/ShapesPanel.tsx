@@ -216,15 +216,15 @@ function ShapeProperties({
         {selectedIds.length > 1 ? `${selectedIds.length} SHAPES` : first.kind.toUpperCase()}
       </div>
       <ColorField
-        label="FILL"
+        label="Fill"
         value={first.fill}
         onChange={(fill) => set({ fill })}
         onCommit={commit}
       />
-      <Slider label="OPACITY" value={first.opacity} min={0.05} max={1} format={pct} defaultValue={1}
+      <Slider label="Opacity" value={first.opacity} min={0.05} max={1} format={pct} defaultValue={1}
         onChange={(opacity) => set({ opacity })} onCommit={commit} />
       <Toggle
-        label="STROKE"
+        label="Stroke"
         value={stroked}
         onChange={(on) =>
           setD(on ? { stroke: first.stroke ?? INK, strokeWidth: first.strokeWidth || 3 } : { stroke: undefined, strokeWidth: undefined })
@@ -232,11 +232,11 @@ function ShapeProperties({
       />
       {stroked ? (
         <>
-          <Slider label="WIDTH" value={first.strokeWidth ?? 3} min={1} max={24} step={0.5}
+          <Slider label="Width" value={first.strokeWidth ?? 3} min={1} max={24} step={0.5}
             format={(v) => v.toFixed(1)} defaultValue={3}
             onChange={(strokeWidth) => set({ strokeWidth })} onCommit={commit} />
           <ColorField
-            label="STROKE"
+            label="Stroke"
             value={first.stroke ?? INK}
             onChange={(stroke) => set({ stroke })}
             onCommit={commit}
@@ -270,8 +270,8 @@ function LayerControls({
     return role ? BRAND_PALETTE.roles[role].base : PAPER
   }
   const colorOptions: { value: LayerColor; hex: string; label: string }[] = [
-    { value: 'paper', hex: PAPER, label: 'PAPER' },
-    { value: 'ink', hex: INK, label: 'INK' },
+    { value: 'paper', hex: PAPER, label: 'Paper' },
+    { value: 'ink', hex: INK, label: 'Ink' },
     { value: 'r0', hex: roleHex(0), label: 'R1' },
     { value: 'r1', hex: roleHex(1), label: 'R2' },
     { value: 'r2', hex: roleHex(2), label: 'R3' },
@@ -281,23 +281,23 @@ function LayerControls({
 
   return (
     <div className="panel-section">
-      <div className="panel-heading">LAYER</div>
-      <Slider label="OPACITY" value={layer.opacity} min={0.05} max={1} format={pct} defaultValue={1}
+      <div className="panel-heading">Layer</div>
+      <Slider label="Opacity" value={layer.opacity} min={0.05} max={1} format={pct} defaultValue={1}
         onChange={setOpacityT} onCommit={commit} />
       <SegmentedControl<LayerBlend>
-        label="BLEND"
+        label="Blend"
         value={layer.blend}
         options={[
-          { value: 'normal', label: 'NORMAL' },
-          { value: 'multiply', label: 'MULT' },
-          { value: 'screen', label: 'SCREEN' },
-          { value: 'overlay', label: 'OVERLAY' },
+          { value: 'normal', label: 'Normal' },
+          { value: 'multiply', label: 'Mult' },
+          { value: 'screen', label: 'Screen' },
+          { value: 'overlay', label: 'Overlay' },
         ]}
         onChange={(blend) => patchLayer(layer.id, { blend })}
       />
       {layer.type !== 'array' && layer.type !== 'organic' ? (
         <div className="layer-color-row">
-          <span className="ctl-sub-label">COLOR</span>
+          <span className="ctl-sub-label">Color</span>
           {colorOptions.map((o) => (
             <button
               key={o.value}
@@ -321,18 +321,18 @@ function LayerControls({
       {canTexture ? (
         <>
           <SegmentedControl<LayerTexture>
-            label="TEXTURE"
+            label="Texture"
             value={layer.texture}
             options={[
-              { value: 'solid', label: 'SOLID' },
-              { value: 'dither', label: 'DITHER' },
-              { value: 'hatch', label: 'HATCH' },
-              { value: 'dots', label: 'DOTS' },
+              { value: 'solid', label: 'Solid' },
+              { value: 'dither', label: 'Dither' },
+              { value: 'hatch', label: 'Hatch' },
+              { value: 'dots', label: 'Dots' },
             ]}
             onChange={(texture) => patchLayer(layer.id, { texture })}
           />
           {layer.texture !== 'solid' ? (
-            <Slider label="WEAVE" value={layer.texDensity} min={0} max={1} format={pct} defaultValue={0.5}
+            <Slider label="Weave" value={layer.texDensity} min={0} max={1} format={pct} defaultValue={0.5}
               onChange={setDensityT} onCommit={commit} />
           ) : null}
         </>
@@ -367,7 +367,7 @@ function SourceControls({
   const live = bound.filter((id) => liveIds.has(id))
   return (
     <div className="panel-section">
-      <div className="panel-heading">SOURCE</div>
+      <div className="panel-heading">Source</div>
       <div className="layer-add-row">
         <button
           className="ctl-action"
@@ -384,14 +384,14 @@ function SourceControls({
               title="Edit the masters in isolation — the canvas dims, the effector follows live (Esc exits)"
               onClick={onIsolate}
             >
-              {isolating ? 'DONE' : 'EDIT SOURCES'}
+              {isolating ? 'Done' : 'Edit sources'}
             </button>
             <button
               className="ctl-action"
               title="Back to the built-in glyph vocabulary"
               onClick={() => bind([])}
             >
-              CLEAR
+              Clear
             </button>
           </>
         ) : null}
@@ -419,13 +419,13 @@ function SourceControls({
 // discrete (segmented/toggles) — one history entry per change.
 
 const ORGANIC_PROTOS: { value: OrganicProto; label: string }[] = [
-  { value: 'blob', label: 'BLOB' },
-  { value: 'super', label: 'SUPER' },
-  { value: 'capsule', label: 'CAPSULE' },
-  { value: 'star', label: 'STAR' },
-  { value: 'ribbon', label: 'RIBBON' },
-  { value: 'circle', label: 'CIRCLE' },
-  { value: 'meta', label: 'META' },
+  { value: 'blob', label: 'Blob' },
+  { value: 'super', label: 'Super' },
+  { value: 'capsule', label: 'Capsule' },
+  { value: 'star', label: 'Star' },
+  { value: 'ribbon', label: 'Ribbon' },
+  { value: 'circle', label: 'Circle' },
+  { value: 'meta', label: 'Meta' },
 ]
 
 function OrganicControls({
@@ -450,23 +450,23 @@ function OrganicControls({
         className="ctl-action primary"
         onClick={() => setD({ seed: (params.seed * 16807 + 11) % 2147483646 })}
       >
-        RESEED
+        Reseed
       </button>
       <SegmentedControl<OrganicState['distribution']>
-        label="SPREAD"
+        label="Spread"
         value={params.distribution}
         options={[
-          { value: 'poisson', label: 'POISSON' },
-          { value: 'phyllo', label: 'PHYLLO' },
-          { value: 'hex', label: 'HEX' },
-          { value: 'curve', label: 'CURVE' },
-          { value: 'cluster', label: 'CLUSTER' },
+          { value: 'poisson', label: 'Poisson' },
+          { value: 'phyllo', label: 'Phyllo' },
+          { value: 'hex', label: 'Hex' },
+          { value: 'curve', label: 'Curve' },
+          { value: 'cluster', label: 'Cluster' },
         ]}
         onChange={(distribution) => setD({ distribution })}
       />
-      <Slider label="COUNT" value={params.count} min={40} max={2400} step={20} format={int} defaultValue={900}
+      <Slider label="Count" value={params.count} min={40} max={2400} step={20} format={int} defaultValue={900}
         onChange={(v) => set({ count: v })} onCommit={commit} />
-      <Slider label="SPACING" value={params.spacing} min={0.01} max={0.09} step={0.002} format={pct} defaultValue={0.022}
+      <Slider label="Spacing" value={params.spacing} min={0.01} max={0.09} step={0.002} format={pct} defaultValue={0.022}
         onChange={(v) => set({ spacing: v })} onCommit={commit} />
       {params.sourceShapeIds.length ? (
         <div className="panel-note">
@@ -475,7 +475,7 @@ function OrganicControls({
         </div>
       ) : (
         <>
-          <div className="ctl-sub-label">FORM</div>
+          <div className="ctl-sub-label">Form</div>
           <div className="preset-strip">
             {ORGANIC_PROTOS.map((o) => (
               <button
@@ -489,49 +489,49 @@ function OrganicControls({
           </div>
         </>
       )}
-      <Slider label="SIZE" value={params.size} min={0.008} max={0.1} step={0.002} format={pct} defaultValue={0.02}
+      <Slider label="Size" value={params.size} min={0.008} max={0.1} step={0.002} format={pct} defaultValue={0.02}
         onChange={(v) => set({ size: v })} onCommit={commit} />
-      <Slider label="SIZE VAR" value={params.sizeRange} min={0} max={1} format={pct} defaultValue={0.6}
+      <Slider label="Size var" value={params.sizeRange} min={0} max={1} format={pct} defaultValue={0.6}
         onChange={(v) => set({ sizeRange: v })} onCommit={commit} />
-      <Slider label="FIELD SIZE" value={params.sizeField} min={-1} max={1} format={pct} defaultValue={0.6}
+      <Slider label="Field size" value={params.sizeField} min={-1} max={1} format={pct} defaultValue={0.6}
         onChange={(v) => set({ sizeField: v })} onCommit={commit} />
-      <div className="ctl-sub-label">INFLUENCE</div>
-      <Slider label="CURVE PULL" value={params.curvePull} min={0} max={1} format={pct} defaultValue={0.7}
+      <div className="ctl-sub-label">Influence</div>
+      <Slider label="Curve pull" value={params.curvePull} min={0} max={1} format={pct} defaultValue={0.7}
         onChange={(v) => set({ curvePull: v })} onCommit={commit} />
-      <Slider label="FOCAL" value={params.focalStrength} min={0} max={1} format={pct} defaultValue={0}
+      <Slider label="Focal" value={params.focalStrength} min={0} max={1} format={pct} defaultValue={0}
         onChange={(v) => set({ focalStrength: v })} onCommit={commit} />
-      <Slider label="FOCAL X" value={params.focalX} min={0} max={1} format={pct} defaultValue={0.5}
+      <Slider label="Focal X" value={params.focalX} min={0} max={1} format={pct} defaultValue={0.5}
         onChange={(v) => set({ focalX: v })} onCommit={commit} />
-      <Slider label="FOCAL Y" value={params.focalY} min={0} max={1} format={pct} defaultValue={0.5}
+      <Slider label="Focal Y" value={params.focalY} min={0} max={1} format={pct} defaultValue={0.5}
         onChange={(v) => set({ focalY: v })} onCommit={commit} />
-      <Slider label="NOISE" value={params.noiseAmount} min={0} max={1} format={pct} defaultValue={0.5}
+      <Slider label="Noise" value={params.noiseAmount} min={0} max={1} format={pct} defaultValue={0.5}
         onChange={(v) => set({ noiseAmount: v })} onCommit={commit} />
-      <Slider label="NOISE SCALE" value={params.noiseScale} min={0.5} max={6} step={0.1} format={(v) => v.toFixed(1)} defaultValue={2.2}
+      <Slider label="Noise scale" value={params.noiseScale} min={0.5} max={6} step={0.1} format={(v) => v.toFixed(1)} defaultValue={2.2}
         onChange={(v) => set({ noiseScale: v })} onCommit={commit} />
-      <div className="ctl-sub-label">VARIATION</div>
+      <div className="ctl-sub-label">Variation</div>
       <SegmentedControl<OrganicState['rotation']>
-        label="TURN"
+        label="Turn"
         value={params.rotation}
         options={[
-          { value: 'flow', label: 'FLOW' },
-          { value: 'tangent', label: 'TANGENT' },
-          { value: 'random', label: 'RANDOM' },
-          { value: 'fixed', label: 'FIXED' },
+          { value: 'flow', label: 'Flow' },
+          { value: 'tangent', label: 'Tangent' },
+          { value: 'random', label: 'Random' },
+          { value: 'fixed', label: 'Fixed' },
         ]}
         onChange={(rotation) => setD({ rotation })}
       />
-      <Slider label="TURN JIT" value={params.rotationJitter} min={0} max={1} format={pct} defaultValue={0.3}
+      <Slider label="Turn jit" value={params.rotationJitter} min={0} max={1} format={pct} defaultValue={0.3}
         onChange={(v) => set({ rotationJitter: v })} onCommit={commit} />
-      <Slider label="FIELD COLOR" value={params.colorField} min={0} max={1} format={pct} defaultValue={0.5}
+      <Slider label="Field color" value={params.colorField} min={0} max={1} format={pct} defaultValue={0.5}
         onChange={(v) => set({ colorField: v })} onCommit={commit} />
-      <Slider label="OPACITY VAR" value={params.opacityRange} min={0} max={1} format={pct} defaultValue={0.25}
+      <Slider label="Opacity var" value={params.opacityRange} min={0} max={1} format={pct} defaultValue={0.25}
         onChange={(v) => set({ opacityRange: v })} onCommit={commit} />
-      <div className="ctl-sub-label">FINISH</div>
-      <Slider label="GOO" value={params.goo} min={0} max={1} format={pct} defaultValue={0.35}
+      <div className="ctl-sub-label">Finish</div>
+      <Slider label="Goo" value={params.goo} min={0} max={1} format={pct} defaultValue={0.35}
         onChange={(v) => set({ goo: v })} onCommit={commit} />
-      <Slider label="SOFT" value={params.soft} min={0} max={1} format={pct} defaultValue={0.25}
+      <Slider label="Soft" value={params.soft} min={0} max={1} format={pct} defaultValue={0.25}
         onChange={(v) => set({ soft: v })} onCommit={commit} />
-      <Slider label="GRAIN" value={params.grain} min={0} max={1} format={pct} defaultValue={0.2}
+      <Slider label="Grain" value={params.grain} min={0} max={1} format={pct} defaultValue={0.2}
         onChange={(v) => set({ grain: v })} onCommit={commit} />
       <div className="panel-note">
         The procedural composition engine: a seeded distribution lays the
@@ -545,14 +545,14 @@ function OrganicControls({
 }
 
 const SHAPE_OPTIONS: { value: SheetShape; label: string }[] = [
-  { value: 'circle', label: 'CIRCLE' },
-  { value: 'square', label: 'SQUARE' },
-  { value: 'triangle', label: 'TRI' },
-  { value: 'half', label: 'HALF' },
-  { value: 'quarter', label: 'QTR' },
-  { value: 'cross', label: 'CROSS' },
-  { value: 'meta', label: 'META' },
-  { value: 'mixed', label: 'MIX' },
+  { value: 'circle', label: 'Circle' },
+  { value: 'square', label: 'Square' },
+  { value: 'triangle', label: 'Tri' },
+  { value: 'half', label: 'Half' },
+  { value: 'quarter', label: 'Qtr' },
+  { value: 'cross', label: 'Cross' },
+  { value: 'meta', label: 'Meta' },
+  { value: 'mixed', label: 'Mix' },
 ]
 
 function ClonerControls({
@@ -573,19 +573,19 @@ function ClonerControls({
   return (
     <>
       <SegmentedControl<ClonerState['mode']>
-        label="MODE"
+        label="Mode"
         value={params.mode}
         options={[
-          { value: 'grid', label: 'GRID' },
-          { value: 'radial', label: 'RADIAL' },
-          { value: 'linear', label: 'LINEAR' },
-          { value: 'curve', label: 'CURVE' },
+          { value: 'grid', label: 'Grid' },
+          { value: 'radial', label: 'Radial' },
+          { value: 'linear', label: 'Linear' },
+          { value: 'curve', label: 'Curve' },
         ]}
         onChange={(mode) => setD({ mode })}
       />
       {params.sourceShapeIds.length ? null : (
         <SegmentedControl<SheetShape>
-          label="SHAPE"
+          label="Shape"
           value={params.shape}
           options={SHAPE_OPTIONS}
           onChange={(shape) => setD({ shape })}
@@ -594,27 +594,27 @@ function ClonerControls({
       {grid ? (
         <>
           <SegmentedControl<'grid' | 'packed'>
-            label="LAYOUT"
+            label="Layout"
             value={params.layout}
             options={[
-              { value: 'grid', label: 'UNIFORM' },
-              { value: 'packed', label: 'PACKED' },
+              { value: 'grid', label: 'Uniform' },
+              { value: 'packed', label: 'Packed' },
             ]}
             onChange={(layout) => setD({ layout })}
           />
-          <Slider label="COUNT X" value={params.countX} min={2} max={64} step={1} format={int} defaultValue={8}
+          <Slider label="Count X" value={params.countX} min={2} max={64} step={1} format={int} defaultValue={8}
             onChange={(v) => set({ countX: v })} onCommit={commit} />
-          <Slider label="COUNT Y" value={params.countY} min={2} max={80} step={1} format={int} defaultValue={10}
+          <Slider label="Count Y" value={params.countY} min={2} max={80} step={1} format={int} defaultValue={10}
             onChange={(v) => set({ countY: v })} onCommit={commit} />
-          <Slider label="SIZE" value={params.size} min={0.1} max={0.9} step={0.05} format={pct} defaultValue={0.5}
+          <Slider label="Size" value={params.size} min={0.1} max={0.9} step={0.05} format={pct} defaultValue={0.5}
             onChange={(v) => set({ size: v })} onCommit={commit} />
-          <Slider label="RANDOM" value={params.random} min={0} max={1} format={pct} defaultValue={0}
+          <Slider label="Random" value={params.random} min={0} max={1} format={pct} defaultValue={0}
             onChange={(v) => set({ random: v })} onCommit={commit} />
-          <Slider label="NOISE" value={params.noise} min={0} max={1} format={pct} defaultValue={0}
+          <Slider label="Noise" value={params.noise} min={0} max={1} format={pct} defaultValue={0}
             onChange={(v) => set({ noise: v })} onCommit={commit} />
-          <Slider label="STROKE MIX" value={params.strokeMix} min={0} max={1} format={pct} defaultValue={0}
+          <Slider label="Stroke mix" value={params.strokeMix} min={0} max={1} format={pct} defaultValue={0}
             onChange={(v) => set({ strokeMix: v })} onCommit={commit} />
-          <Slider label="CURVE" value={params.curve} min={0} max={1} format={pct} defaultValue={0}
+          <Slider label="Curve" value={params.curve} min={0} max={1} format={pct} defaultValue={0}
             onChange={(v) => set({ curve: v })} onCommit={commit} />
           <div className="panel-note">
             An exact grid by default — the dashed frame on the canvas is
@@ -626,43 +626,43 @@ function ClonerControls({
         </>
       ) : (
         <>
-          <Slider label="COUNT" value={params.count} min={2} max={48} step={1} format={int} defaultValue={12}
+          <Slider label="Count" value={params.count} min={2} max={48} step={1} format={int} defaultValue={12}
             onChange={(v) => set({ count: v })} onCommit={commit} />
-          <Slider label="SIZE" value={params.stampSize} min={0.02} max={0.3} step={0.005} format={pct} defaultValue={0.08}
+          <Slider label="Size" value={params.stampSize} min={0.02} max={0.3} step={0.005} format={pct} defaultValue={0.08}
             onChange={(v) => set({ stampSize: v })} onCommit={commit} />
           {curveMode ? null : (
             <>
-              <Slider label="ORIGIN X" value={params.originX} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
+              <Slider label="Origin X" value={params.originX} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
                 onChange={(v) => set({ originX: v })} onCommit={commit} />
-              <Slider label="ORIGIN Y" value={params.originY} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
+              <Slider label="Origin Y" value={params.originY} min={0} max={1} step={0.01} format={pct} defaultValue={0.5}
                 onChange={(v) => set({ originY: v })} onCommit={commit} />
             </>
           )}
           {linear ? (
             <>
-              <Slider label="STEP X" value={params.stepX} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.05}
+              <Slider label="Step X" value={params.stepX} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.05}
                 onChange={(v) => set({ stepX: v })} onCommit={commit} />
-              <Slider label="STEP Y" value={params.stepY} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.035}
+              <Slider label="Step Y" value={params.stepY} min={-0.2} max={0.2} step={0.005} format={pct} defaultValue={0.035}
                 onChange={(v) => set({ stepY: v })} onCommit={commit} />
             </>
           ) : null}
           {radial ? (
             <>
-              <Slider label="RADIUS" value={params.radius} min={0.05} max={0.6} step={0.01} format={pct} defaultValue={0.28}
+              <Slider label="Radius" value={params.radius} min={0.05} max={0.6} step={0.01} format={pct} defaultValue={0.28}
                 onChange={(v) => set({ radius: v })} onCommit={commit} />
-              <Slider label="SPAN" value={params.span} min={Math.PI / 6} max={Math.PI * 2} step={Math.PI / 36} format={deg} defaultValue={Math.PI * 2}
+              <Slider label="Span" value={params.span} min={Math.PI / 6} max={Math.PI * 2} step={Math.PI / 36} format={deg} defaultValue={Math.PI * 2}
                 onChange={(v) => set({ span: v })} onCommit={commit} />
             </>
           ) : null}
-          <Slider label="ROTATE" value={params.rotate} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
+          <Slider label="Rotate" value={params.rotate} min={-Math.PI / 4} max={Math.PI / 4} step={Math.PI / 180}
             format={deg} defaultValue={0}
             onChange={(v) => set({ rotate: v })} onCommit={commit} />
-          <Slider label="SCALE STEP" value={params.scaleStep} min={0.7} max={1.3} step={0.01} format={pct} defaultValue={1}
+          <Slider label="Scale step" value={params.scaleStep} min={0.7} max={1.3} step={0.01} format={pct} defaultValue={1}
             onChange={(v) => set({ scaleStep: v })} onCommit={commit} />
-          <Slider label="FADE" value={params.fade} min={0} max={1} format={pct} defaultValue={0}
+          <Slider label="Fade" value={params.fade} min={0} max={1} format={pct} defaultValue={0}
             onChange={(v) => set({ fade: v })} onCommit={commit} />
           <Toggle
-            label="STROKE"
+            label="Stroke"
             value={params.stroked}
             onChange={(stroked) => setD({ stroked })}
           />
@@ -741,7 +741,7 @@ function ArrayControls({
         }}
       >
         <button className="ctl-action" onClick={() => fileRef.current?.click()}>
-          ADD IMAGE — OR DROP ONE HERE
+          Add image — or drop one here
         </button>
         {project.images.length ? (
           <div className="thumb-strip">
@@ -775,16 +775,16 @@ function ArrayControls({
           </div>
         ) : null}
       </div>
-      <Slider label="CELLS" value={params.cells} min={16} max={96} step={1} format={int} defaultValue={48}
+      <Slider label="Cells" value={params.cells} min={16} max={96} step={1} format={int} defaultValue={48}
         onChange={(v) => set({ cells: v })} onCommit={commit} />
-      <Slider label="SIZE" value={params.size} min={0.2} max={1} step={0.05} format={pct} defaultValue={0.7}
+      <Slider label="Size" value={params.size} min={0.2} max={1} step={0.05} format={pct} defaultValue={0.7}
         onChange={(v) => set({ size: v })} onCommit={commit} />
-      <Slider label="THRESHOLD" value={params.threshold} min={0.1} max={1} step={0.02} format={pct} defaultValue={0.72}
+      <Slider label="Threshold" value={params.threshold} min={0.1} max={1} step={0.02} format={pct} defaultValue={0.72}
         onChange={(v) => set({ threshold: v })} onCommit={commit} />
-      <Slider label="BLEND" value={params.blend} min={0} max={1} format={pct} defaultValue={0}
+      <Slider label="Blend" value={params.blend} min={0} max={1} format={pct} defaultValue={0}
         onChange={(v) => set({ blend: v })} onCommit={commit} />
       <Toggle
-        label="INVERT"
+        label="Invert"
         value={params.invert}
         onChange={(invert) => setD({ invert })}
       />
@@ -816,8 +816,8 @@ function TilesControls({
     return role ? BRAND_PALETTE.roles[role].base : PAPER
   }
   const inkOptions: { value: LayerColor; hex: string; label: string }[] = [
-    { value: 'paper', hex: PAPER, label: 'PAPER' },
-    { value: 'ink', hex: INK, label: 'INK' },
+    { value: 'paper', hex: PAPER, label: 'Paper' },
+    { value: 'ink', hex: INK, label: 'Ink' },
     { value: 'r0', hex: roleHex(0), label: 'R1' },
     { value: 'r1', hex: roleHex(1), label: 'R2' },
     { value: 'r2', hex: roleHex(2), label: 'R3' },
@@ -828,10 +828,10 @@ function TilesControls({
         className="ctl-action primary"
         onClick={() => setD({ seed: (params.seed * 16807 + 11) % 2147483646 })}
       >
-        RESEED
+        Reseed
       </button>
       <div className="layer-color-row">
-        <span className="ctl-sub-label">INK B</span>
+        <span className="ctl-sub-label">Ink B</span>
         {inkOptions.map((o) => (
           <button
             key={o.value}
@@ -843,32 +843,32 @@ function TilesControls({
         ))}
       </div>
       <SegmentedControl<TilesState['style']>
-        label="STYLE"
+        label="Style"
         value={params.style}
         options={[
-          { value: 'checker', label: 'CHECKER' },
-          { value: 'rings', label: 'RINGS' },
+          { value: 'checker', label: 'Checker' },
+          { value: 'rings', label: 'Rings' },
         ]}
         onChange={(style) => setD({ style })}
       />
-      <Slider label="COLS" value={params.cols} min={4} max={32} step={1} format={int} defaultValue={14}
+      <Slider label="Cols" value={params.cols} min={4} max={32} step={1} format={int} defaultValue={14}
         onChange={(v) => set({ cols: v })} onCommit={commit} />
-      <Slider label="DENSITY" value={params.density} min={0} max={1} format={pct} defaultValue={0.55}
+      <Slider label="Density" value={params.density} min={0} max={1} format={pct} defaultValue={0.55}
         onChange={(v) => set({ density: v })} onCommit={commit} />
       {params.style === 'checker' ? (
         <>
-          <Slider label="LEVELS" value={params.levels} min={1} max={3} step={1} format={int} defaultValue={3}
+          <Slider label="Levels" value={params.levels} min={1} max={3} step={1} format={int} defaultValue={3}
             onChange={(v) => set({ levels: v })} onCommit={commit} />
-          <Slider label="WEIGHT" value={params.weight} min={0} max={1} format={pct} defaultValue={0.35}
+          <Slider label="Weight" value={params.weight} min={0} max={1} format={pct} defaultValue={0.35}
             onChange={(v) => set({ weight: v })} onCommit={commit} />
         </>
       ) : (
-        <Slider label="RINGS" value={params.rings} min={2} max={10} step={1} format={int} defaultValue={6}
+        <Slider label="Rings" value={params.rings} min={2} max={10} step={1} format={int} defaultValue={6}
           onChange={(v) => set({ rings: v })} onCommit={commit} />
       )}
-      <Slider label="CURVE" value={params.curve} min={0} max={1} format={pct} defaultValue={0.6}
+      <Slider label="Curve" value={params.curve} min={0} max={1} format={pct} defaultValue={0.6}
         onChange={(v) => set({ curve: v })} onCommit={commit} />
-      <Slider label="DUO" value={params.duo} min={0} max={1} format={pct} defaultValue={0.35}
+      <Slider label="Duo" value={params.duo} min={0} max={1} format={pct} defaultValue={0.35}
         onChange={(v) => set({ duo: v })} onCommit={commit} />
       <div className="panel-note">
         Flush modular tiles — cells fill their bounds, so neighbors
@@ -892,21 +892,21 @@ function ClonesControls({
 }) {
   return (
     <>
-      <Slider label="COUNT" value={params.count} min={1} max={14} step={1} format={int} defaultValue={7}
+      <Slider label="Count" value={params.count} min={1} max={14} step={1} format={int} defaultValue={7}
         onChange={(v) => set({ count: v })} onCommit={commit} />
-      <Slider label="SPACING" value={params.spacing} min={0.01} max={0.16} step={0.005} format={pct} defaultValue={0.045}
+      <Slider label="Spacing" value={params.spacing} min={0.01} max={0.16} step={0.005} format={pct} defaultValue={0.045}
         onChange={(v) => set({ spacing: v })} onCommit={commit} />
-      <Slider label="GROWTH" value={params.growth} min={1} max={2.2} step={0.05} format={pct} defaultValue={1.35}
+      <Slider label="Growth" value={params.growth} min={1} max={2.2} step={0.05} format={pct} defaultValue={1.35}
         onChange={(v) => set({ growth: v })} onCommit={commit} />
-      <Slider label="WEIGHT" value={params.weight} min={0.5} max={4} step={0.25}
+      <Slider label="Weight" value={params.weight} min={0.5} max={4} step={0.25}
         format={(v) => `${v.toFixed(2)}px`} defaultValue={1.5}
         onChange={(v) => set({ weight: v })} onCommit={commit} />
-      <div className="ctl-sub-label">EFFECTORS</div>
-      <Slider label="STEP" value={params.step} min={0} max={1} format={pct} defaultValue={0}
+      <div className="ctl-sub-label">Effectors</div>
+      <Slider label="Step" value={params.step} min={0} max={1} format={pct} defaultValue={0}
         onChange={(v) => set({ step: v })} onCommit={commit} />
-      <Slider label="RANDOM" value={params.random} min={0} max={1} format={pct} defaultValue={0}
+      <Slider label="Random" value={params.random} min={0} max={1} format={pct} defaultValue={0}
         onChange={(v) => set({ random: v })} onCommit={commit} />
-      <Slider label="DEPTH" value={params.depth} min={0} max={1} format={pct} defaultValue={0}
+      <Slider label="Depth" value={params.depth} min={0} max={1} format={pct} defaultValue={0}
         onChange={(v) => set({ depth: v })} onCommit={commit} />
       <div className="panel-note">
         The curve echoed as nested contour offsets — field lines around
@@ -931,19 +931,19 @@ function PatternControls({
   return (
     <>
       <SegmentedControl<'lattice' | 'trace'>
-        label="MODE"
+        label="Mode"
         value={params.mode}
         options={[
-          { value: 'lattice', label: 'LATTICE' },
-          { value: 'trace', label: 'TRACE' },
+          { value: 'lattice', label: 'Lattice' },
+          { value: 'trace', label: 'Trace' },
         ]}
         onChange={(mode) => setD({ mode })}
       />
-      <Slider label="CELLS" value={params.cells} min={12} max={64} step={1} format={int} defaultValue={32}
+      <Slider label="Cells" value={params.cells} min={12} max={64} step={1} format={int} defaultValue={32}
         onChange={(v) => set({ cells: v })} onCommit={commit} />
-      <Slider label="SIZE" value={params.size} min={0.2} max={1} step={0.05} format={pct} defaultValue={0.55}
+      <Slider label="Size" value={params.size} min={0.2} max={1} step={0.05} format={pct} defaultValue={0.55}
         onChange={(v) => set({ size: v })} onCommit={commit} />
-      <Slider label="RANGE" value={params.range} min={0.5} max={4} step={0.1} format={(v) => v.toFixed(1)} defaultValue={1.6}
+      <Slider label="Range" value={params.range} min={0.5} max={4} step={0.1} format={(v) => v.toFixed(1)} defaultValue={1.6}
         onChange={(v) => set({ range: v })} onCommit={commit} />
       <div className="panel-note">
         A lattice of primitives whose state flips where the curve passes —

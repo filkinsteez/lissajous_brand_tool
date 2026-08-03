@@ -10,10 +10,10 @@ import { PathPanel } from './panels/PathPanel'
 import { ExportPanel } from './panels/ExportPanel'
 
 const SECTION_TITLES: Record<DesignTab, string> = {
-  system: 'CURVE',
-  field: 'SHADER',
-  layers: 'PROPERTIES',
-  type: 'TYPE',
+  system: 'Curve',
+  field: 'Shader',
+  layers: 'Properties',
+  type: 'Type',
 }
 
 // The inspector shows ONE section, chosen from the dock under the
@@ -38,7 +38,7 @@ export function Inspector() {
                 className={mode === 'motion' ? 'mode-tab active' : 'mode-tab'}
                 onClick={() => setUi({ mode: 'motion', activePanel: 'motion' })}
               >
-                EASING
+                Easing
               </button>
               <button
                 role="tab"
@@ -46,11 +46,11 @@ export function Inspector() {
                 className={mode === 'path' ? 'mode-tab active' : 'mode-tab'}
                 onClick={() => setUi({ mode: 'path', activePanel: 'path' })}
               >
-                PATH
+                Path
               </button>
             </div>
             {mode === 'motion' ? <MotionPanel /> : <PathPanel />}
-            <div className="panel-divider">EXPORT</div>
+            <div className="panel-divider">Export</div>
             <ExportPanel variant="motion" />
           </>
         ) : panelOpen ? (
@@ -67,7 +67,7 @@ export function Inspector() {
             ) : (
               <TypePanel />
             )}
-            <div className="panel-divider">EXPORT</div>
+            <div className="panel-divider">Export</div>
             <ExportPanel />
           </>
         ) : (
@@ -75,7 +75,7 @@ export function Inspector() {
           // the canvas never reflows
           <>
             <div className="inspector-title">
-              <span>EXPORT</span>
+              <span>Export</span>
             </div>
             <ExportPanel />
           </>

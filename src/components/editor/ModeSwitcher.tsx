@@ -18,7 +18,7 @@ export function ModeSwitcher() {
         className={designActive ? 'mode-tab active' : 'mode-tab'}
         onClick={() => setUi({ mode: 'compose', activePanel: 'compose' })}
       >
-        DESIGN
+        Design
       </button>
       <button
         role="tab"
@@ -26,7 +26,7 @@ export function ModeSwitcher() {
         className={motionActive ? 'mode-tab active' : 'mode-tab'}
         onClick={() => setUi({ mode: 'motion', activePanel: 'motion' })}
       >
-        MOTION
+        Motion
       </button>
     </div>
   )

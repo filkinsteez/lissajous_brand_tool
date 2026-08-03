@@ -40,7 +40,7 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
       {variant === 'compose' ? (
       <div className="panel-section">
         <SegmentedControl
-          label="EXPORT SCALE"
+          label="Export scale"
           value={String(project.export.scale)}
           options={[
             { value: '1', label: '1×' },
@@ -58,15 +58,15 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
               await downloadPNG(project, project.export.scale, {
                 includeConstruction: mode === 'setup',
               })
-              flash('PNG EXPORTED')
+              flash('PNG exported')
             } catch {
-              flash('EXPORT FAILED')
+              flash('Export failed')
             } finally {
               setBusy(false)
             }
           }}
         >
-          {busy ? 'RENDERING…' : 'EXPORT PNG'}
+          {busy ? 'Rendering…' : 'Export PNG'}
         </button>
       </div>
       ) : null}
@@ -84,10 +84,10 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
               selectedBlockId: 'headline',
               selectedBlockIds: ['headline'],
             })
-            flash('RESET — UNDO RESTORES')
+            flash('Reset — undo restores')
           }}
         >
-          RESET
+          Reset
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
       </div>

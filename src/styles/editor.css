@@ -764,21 +764,9 @@ canvas.shape-canvas {
 .ctl-action,
 .layer-name,
 .source-row-label,
-.layer-add-select {
-  text-transform: lowercase;
+.layer-add-select {
   font-size: 11px;
-}
-
-.panel-heading::first-letter,
-.rail-title::first-letter,
-.inspector-title::first-letter,
-.panel-divider::first-letter,
-.ctl-sub-label::first-letter,
-.ctl-action::first-letter,
-.layer-name::first-letter,
-.source-row-label::first-letter {
-  text-transform: uppercase;
-}
+}
 
 /* acronyms and proper nouns opt out */
 .keep-case {

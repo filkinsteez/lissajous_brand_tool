@@ -23,12 +23,12 @@ export const PAPER = '#f4f2ed'
 // minted from these by createShapeLayer (panel ADD, autosave migration).
 
 export const LAYER_TYPE_LABELS: Record<ShapeLayerType, string> = {
-  organic: 'ORGANIC',
-  cloner: 'CLONER',
-  tiles: 'TILES',
-  array: 'ARRAY',
-  clones: 'CONTOUR',
-  pattern: 'PATTERN',
+  organic: 'Organic',
+  cloner: 'Cloner',
+  tiles: 'Tiles',
+  array: 'Array',
+  clones: 'Contour',
+  pattern: 'Pattern',
 }
 
 export const DEFAULT_LAYER_PARAMS = {
@@ -232,12 +232,12 @@ export function createDefaultProject(seed?: number): ProjectState {
       {
         id: 'headline',
         role: 'headline',
-        text: 'META',
-        fontFamily: 'flex',
+        text: 'Meta',
+        fontFamily: 'optimistic',
         // sized for the 1920-wide default artboard
         size: 190,
         weight: 640,
-        width: 118,
+        width: 100,
         opticalSize: 144,
         lineHeight: 0.98,
         tracking: -0.015,
@@ -250,7 +250,7 @@ export function createDefaultProject(seed?: number): ProjectState {
         id: 'caption',
         role: 'caption',
         text: 'The color, layout, and design are built from the same mathematical formula that creates the Meta symbol – creating an infinitely scalable and modular brand system.',
-        fontFamily: 'flex',
+        fontFamily: 'optimistic',
         size: 27,
         weight: 460,
         width: 100,
@@ -266,7 +266,7 @@ export function createDefaultProject(seed?: number): ProjectState {
         id: 'metadata',
         role: 'metadata',
         text: 'LBS 001 — META ∞ — PHASE 109°',
-        fontFamily: 'mono',
+        fontFamily: 'optimistic',
         size: 18,
         weight: 400,
         width: 100,
@@ -281,7 +281,7 @@ export function createDefaultProject(seed?: number): ProjectState {
     ],
     glyphField: {
       enabled: false,
-      sourceText: 'LISSAJOUS',
+      sourceText: 'Lissajous',
       charset: '',
       mode: 'dense',
       density: 0.55,
