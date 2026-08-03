@@ -11,6 +11,7 @@ import {
   type BackgroundExpression,
 } from '@/core/background/expressions'
 import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
+import { DEFAULT_BACKGROUND_STATE as BG } from '@/core/state/defaults'
 import type { BackgroundState } from '@/core/state/types'
 
 const pct = (v: number) => `${Math.round(v * 100)}`
@@ -40,6 +41,8 @@ type ColorDirection = {
   values: Pick<BackgroundState, 'roles' | 'ground' | 'lockedRoles'>
 }
 
+// one canonical direction: the moodboard. SHUFFLE re-deals the palette
+// order; this chip brings it home.
 const COLOR_DIRECTIONS: ColorDirection[] = [
   {
     id: 'mb-transform',
@@ -47,36 +50,6 @@ const COLOR_DIRECTIONS: ColorDirection[] = [
     note: 'Dark optical field with cyan, magenta, green, and warm spectral bands.',
     values: {
       roles: ['blue', 'cyan', 'magenta', 'orange', 'yellow', 'green', 'violet', 'neutral', 'ink'],
-      ground: 'blue',
-      lockedRoles: [],
-    },
-  },
-  {
-    id: 'paper-halo',
-    label: 'PAPER HALO',
-    note: 'Neutral Fangor-style halo with green, violet, and warm center light.',
-    values: {
-      roles: ['neutral', 'green', 'violet', 'orange', 'yellow', 'cyan', 'magenta', 'blue', 'ink'],
-      ground: 'blue',
-      lockedRoles: [],
-    },
-  },
-  {
-    id: 'warm-smear',
-    label: 'WARM SMEAR',
-    note: 'Saturated orange/magenta/yellow smear over a deep blue optical base.',
-    values: {
-      roles: ['magenta', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'neutral', 'ink'],
-      ground: 'blue',
-      lockedRoles: [],
-    },
-  },
-  {
-    id: 'deep-halo',
-    label: 'DEEP HALO',
-    note: 'High-contrast dark halo with blue, cyan, violet, and warm edge bloom.',
-    values: {
-      roles: ['blue', 'cyan', 'violet', 'magenta', 'orange', 'yellow', 'green', 'neutral', 'ink'],
       ground: 'blue',
       lockedRoles: [],
     },
@@ -235,6 +208,7 @@ export function FieldPanel() {
         </div>
         <Slider
           label="WIDTH"
+          defaultValue={BG.width}
           value={project.background.width}
           min={0.04}
           max={0.5}
@@ -244,6 +218,7 @@ export function FieldPanel() {
         />
         <Slider
           label="SCALE"
+          defaultValue={BG.fieldScale}
           value={project.background.fieldScale}
           min={0.5}
           max={4}
@@ -253,6 +228,7 @@ export function FieldPanel() {
         />
         <Slider
           label="FORM"
+          defaultValue={BG.form}
           value={project.background.form}
           min={0}
           max={1}
@@ -284,6 +260,7 @@ export function FieldPanel() {
         />
         <Slider
           label="GLOW"
+          defaultValue={BG.softness}
           value={project.background.softness}
           min={0}
           max={1}
@@ -293,6 +270,7 @@ export function FieldPanel() {
         />
         <Slider
           label="DENSITY"
+          defaultValue={BG.layers}
           value={project.background.layers}
           min={1}
           max={10}
@@ -303,6 +281,7 @@ export function FieldPanel() {
         />
         <Slider
           label="SPREAD"
+          defaultValue={BG.arcSpread}
           value={project.background.arcSpread}
           min={0.3}
           max={2.5}
@@ -312,6 +291,7 @@ export function FieldPanel() {
         />
         <Slider
           label="WARP"
+          defaultValue={BG.warp}
           value={project.background.warp}
           min={0}
           max={1}
@@ -321,6 +301,7 @@ export function FieldPanel() {
         />
         <Slider
           label="DRIFT"
+          defaultValue={BG.drift}
           value={project.background.drift}
           min={0}
           max={1}
@@ -330,6 +311,7 @@ export function FieldPanel() {
         />
         <Slider
           label="GRAIN"
+          defaultValue={BG.grain}
           value={project.background.grain}
           min={0}
           max={0.4}
@@ -339,6 +321,7 @@ export function FieldPanel() {
         />
         <Slider
           label="CONTRAST"
+          defaultValue={BG.contrast}
           value={project.background.contrast}
           min={0.5}
           max={1.6}

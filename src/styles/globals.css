@@ -1,4 +1,9 @@
 :root {
+  /* The app IS dark — declaring it makes every piece of remaining
+     native chrome (scrollbars, select popup sheets, resize grips)
+     render dark instead of the browser's light defaults. */
+  color-scheme: dark;
+
   /* Instrument chrome — near-monochrome, no gradients, no glass. */
   --chrome-0: #101012;
   --chrome-1: #161618;

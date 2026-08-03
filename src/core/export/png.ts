@@ -3,15 +3,28 @@ import { getDerived } from '@/core/pipeline'
 import { columnSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
 import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
-import { buildContourLevels } from '@/core/cloner/contours'
+import { buildContourLevels, dealProtoIndex, stampsAlongContours } from '@/core/cloner/contours'
 import { cloneTransforms } from '@/core/cloner/effectors'
 import { buildLattice } from '@/core/pattern/lattice'
 import { buildSheetClones, metaUnitOutline, unitPolygon, type SheetClone } from '@/core/sheet/sheet'
-import { buildRepeats } from '@/core/repeater/repeater'
+import { buildCurveClones, buildRepeats } from '@/core/repeater/repeater'
 import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
+import { buildOrganic } from '@/core/organic/engine'
+import { paintOrganic } from '@/core/organic/paint'
+import { INK, PAPER } from '@/core/state/defaults'
+import { buildTiles } from '@/core/tiles/tiles'
 import { BRAND_PALETTE } from '@/core/color/palette'
 import { layerBaseColor, fieldSampler, type FieldSampler } from '@/core/layers/paint'
 import { textureTile, paintTextureTile, type TextureKind } from '@/core/texture/textures'
+import { transformedCurve } from '@/core/lissajous/figureTransform'
+import { shapePathD } from '@/core/canvas/shapeItems'
+import {
+  consumedShapeIds,
+  paintTextProto,
+  PROTO_SIZE,
+  resolveProjectProtos,
+  type ShapeProto,
+} from '@/core/canvas/shapeProtos'
 import { renderTypeToCanvas } from './svgText'
 import type { Derived } from '@/core/pipeline'
 
@@ -99,6 +112,7 @@ function drawClones(
   )
   const transforms = cloneTransforms(cloner, levels.length, Math.min(W, H), project.background.seed)
   const stroke = layerBaseColor(layer.color, project)
+  const protos = resolveProjectProtos(project, cloner.sourceShapeIds)
   for (let i = 0; i < levels.length; i++) {
     const t = transforms[i]
     ctx.save()
@@ -109,10 +123,31 @@ function drawClones(
     ctx.scale(t.scale, t.scale)
     ctx.translate(-W / 2, -H / 2)
     ctx.globalAlpha = t.opacity
-    ctx.strokeStyle = stroke
-    ctx.lineWidth = t.weight
-    ctx.lineCap = 'round'
-    ctx.stroke(new Path2D(levels[i].d))
+    if (protos.length) {
+      // bound drawn shapes: stamp along the ring instead of stroking it,
+      // inside the same per-level effector transform as the strokes
+      const s = Math.min(Math.max(t.weight * 5, 6), Math.min(W, H) * 0.05)
+      const k = s / PROTO_SIZE
+      const stamps = stampsAlongContours([levels[i]], s * 2.6)
+      for (let j = 0; j < stamps.length; j++) {
+        const st = stamps[j]
+        const proto = protos[dealProtoIndex(i, j, protos.length)]
+        ctx.save()
+        ctx.translate(st.x, st.y)
+        ctx.rotate(st.angle)
+        ctx.scale(k, k)
+        ctx.globalAlpha = t.opacity * proto.opacity
+        ctx.fillStyle = proto.fill
+        if (proto.kind === 'text') paintTextProto(ctx, proto)
+        else ctx.fill(protoPath(proto.d), 'evenodd')
+        ctx.restore()
+      }
+    } else {
+      ctx.strokeStyle = stroke
+      ctx.lineWidth = t.weight
+      ctx.lineCap = 'round'
+      ctx.stroke(new Path2D(levels[i].d))
+    }
     ctx.restore()
   }
 }
@@ -125,6 +160,7 @@ function drawPattern(
   scale: number,
 ) {
   const pattern = layer.params
+  const protos = resolveProjectProtos(project, pattern.sourceShapeIds)
   const tiers = buildLattice(
     derived.samples,
     project.artboard.width,
@@ -135,10 +171,27 @@ function drawPattern(
       offsetX: project.background.fieldOffsetX ?? 0,
       offsetY: project.background.fieldOffsetY ?? 0,
     },
+    protos.length,
   )
   const tone = layerBaseColor(layer.color, project)
   ctx.save()
   ctx.scale(scale, scale)
+  if (tiers.stamps.length) {
+    for (const s of tiers.stamps) {
+      const proto = protos[s.protoIndex]
+      const k = (s.r * 2) / PROTO_SIZE
+      ctx.save()
+      ctx.translate(s.x, s.y)
+      ctx.scale(k, k)
+      ctx.globalAlpha = proto.opacity
+      ctx.fillStyle = proto.fill
+      if (proto.kind === 'text') paintTextProto(ctx, proto)
+      else ctx.fill(protoPath(proto.d), 'evenodd')
+      ctx.restore()
+    }
+    ctx.restore()
+    return
+  }
   const fillTier = (d: string, alpha: number) => {
     if (!d) return
     ctx.globalAlpha = alpha
@@ -157,6 +210,20 @@ function drawPattern(
   ctx.restore()
 }
 
+// drawn-proto Path2D cache shared by every effector's export painter,
+// keyed by the full d string — source shapes change geometry when
+// resized, so an id alone can never key it. Cleared past 128 entries.
+const protoPathCache = new Map<string, Path2D>()
+function protoPath(d: string): Path2D {
+  let p = protoPathCache.get(d)
+  if (!p) {
+    if (protoPathCache.size >= 128) protoPathCache.clear()
+    p = new Path2D(d)
+    protoPathCache.set(d, p)
+  }
+  return p
+}
+
 // one painter for every clone-based register (sheet + repeater), so the
 // export is the live drawing at target resolution
 function paintShapeClones(
@@ -165,6 +232,7 @@ function paintShapeClones(
   project: ProjectState,
   scale: number,
   paint: LayerPaint,
+  protos?: ShapeProto[],
 ) {
   const strokeW = Math.max(
     1.5,
@@ -185,6 +253,19 @@ function paintShapeClones(
     ctx.strokeStyle = sampledHex ?? paint.stroke
     ctx.translate(c.x, c.y)
     ctx.rotate(c.rotate)
+    // drawn protos stamp with their OWN fill and skip the layer paint —
+    // proto box is PROTO_SIZE, so scale = diameter/box
+    if (c.drawnIndex !== undefined && protos && protos.length > 0) {
+      const p = protos[Math.min(c.drawnIndex, protos.length - 1)]
+      const k = (c.r * 2) / PROTO_SIZE
+      ctx.scale(k, k)
+      ctx.globalAlpha = c.opacity * p.opacity
+      ctx.fillStyle = p.fill
+      if (p.kind === 'text') paintTextProto(ctx, p)
+      else ctx.fill(protoPath(p.d), 'evenodd')
+      ctx.restore()
+      continue
+    }
     const draw = (path?: Path2D, lw = strokeW) => {
       if (c.stroked) {
         ctx.lineWidth = lw
@@ -229,12 +310,26 @@ function paintShapeClones(
 
 function drawRepeater(
   ctx: CanvasRenderingContext2D,
-  layer: Extract<ShapeLayer, { type: 'repeater' }>,
+  layer: Extract<ShapeLayer, { type: 'cloner' }>,
   project: ProjectState,
+  derived: Derived,
   scale: number,
 ) {
-  const clones = buildRepeats(layer.params, project.artboard.width, project.artboard.height)
-  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale))
+  const p = layer.params
+  // the repeat engine's view of the merged params (see RepeaterLayer)
+  const rep = { ...p, mode: p.mode === 'linear' ? ('linear' as const) : ('radial' as const), size: p.stampSize }
+  const protos = resolveProjectProtos(project, p.sourceShapeIds)
+  const clones =
+    p.mode === 'curve'
+      ? buildCurveClones(
+          rep,
+          project.artboard.width,
+          project.artboard.height,
+          transformedCurve(project, derived),
+          protos.length,
+        )
+      : buildRepeats(rep, project.artboard.width, project.artboard.height, protos.length)
+  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale), protos)
 }
 
 async function drawImageArray(
@@ -255,48 +350,113 @@ async function drawImageArray(
   if (!pixels) return
   const roles = project.background.roles.slice(0, 3)
   const palette = roles.map((r) => BRAND_PALETTE.roles[r].base)
-  const cells = buildImageCells(state, W, H, pixels, palette)
+  const protos = resolveProjectProtos(project, state.sourceShapeIds)
+  const cells = buildImageCells(state, W, H, pixels, palette, protos.map((p) => p.fill))
   ctx.save()
   ctx.scale(scale, scale)
-  paintImageCells(ctx, cells)
+  paintImageCells(ctx, cells, protos)
   ctx.restore()
 }
 
 function drawSheet(
   ctx: CanvasRenderingContext2D,
-  layer: Extract<ShapeLayer, { type: 'sheet' }>,
+  layer: Extract<ShapeLayer, { type: 'cloner' }>,
   project: ProjectState,
   derived: Derived,
   scale: number,
 ) {
   const sheet = layer.params
-  // the CURVE effector reads the layout figure under the background's
-  // zoom + pan — identical to the live layer
-  let curvePts: { x: number; y: number }[] | undefined
-  if (sheet.curve > 0) {
-    const W = project.artboard.width
-    const H = project.artboard.height
-    const fScale = project.background.fieldScale ?? 1
-    const ox = (project.background.fieldOffsetX ?? 0) * W
-    const oy = (project.background.fieldOffsetY ?? 0) * H
-    const cx = W * 0.5
-    const cy = H * 0.5
-    curvePts = []
-    const stride = Math.max(1, Math.floor(derived.samples.length / 200))
-    for (let i = 0; i < derived.samples.length; i += stride) {
-      const s = derived.samples[i]
-      curvePts.push({ x: cx + (s.x - cx) * fScale + ox, y: cy + (s.y - cy) * fScale + oy })
-    }
-    if (curvePts.length > 1) curvePts.push(curvePts[0])
-  }
+  const protos = resolveProjectProtos(project, sheet.sourceShapeIds)
+  const curvePts = sheet.curve > 0 ? transformedCurve(project, derived) : undefined
   const clones = buildSheetClones(
     sheet,
     project.artboard.width,
     project.artboard.height,
     project.background.seed,
     curvePts,
+    protos.length,
   )
-  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale))
+  paintShapeClones(ctx, clones, project, scale, resolveLayerPaint(ctx, layer, project, scale), protos)
+}
+
+function drawTiles(
+  ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'tiles' }>,
+  project: ProjectState,
+  derived: Derived,
+  scale: number,
+) {
+  const t = layer.params
+  const protos = resolveProjectProtos(project, t.sourceShapeIds)
+  const built = buildTiles(
+    t,
+    project.artboard.width,
+    project.artboard.height,
+    t.curve > 0 ? transformedCurve(project, derived) : null,
+    protos.length,
+  )
+  const colorA = layerBaseColor(layer.color, project)
+  const colorB = layerBaseColor(t.colorB ?? 'ink', project)
+  ctx.save()
+  ctx.scale(scale, scale)
+  if (built.fillB) {
+    ctx.fillStyle = colorB
+    ctx.fill(new Path2D(built.fillB))
+  }
+  if (built.fillA) {
+    ctx.fillStyle = colorA
+    ctx.fill(new Path2D(built.fillA))
+  }
+  for (const s of built.stamps) {
+    const p = protos[s.proto]
+    if (!p) continue
+    const k = Math.min(s.w, s.h) / PROTO_SIZE
+    ctx.save()
+    ctx.translate(s.x + s.w / 2, s.y + s.h / 2)
+    ctx.scale(k, k)
+    ctx.globalAlpha = p.opacity
+    ctx.fillStyle = s.color === 1 ? colorB : p.fill
+    if (p.kind === 'text') paintTextProto(ctx, p)
+    else ctx.fill(protoPath(p.d), 'evenodd')
+    ctx.restore()
+  }
+  ctx.globalAlpha = 1
+  if (built.stroke) {
+    ctx.strokeStyle = colorA
+    ctx.lineWidth = built.strokeWidth
+    ctx.stroke(new Path2D(built.stroke))
+  }
+  ctx.restore()
+}
+
+function drawOrganic(
+  ctx: CanvasRenderingContext2D,
+  layer: Extract<ShapeLayer, { type: 'organic' }>,
+  project: ProjectState,
+  derived: Derived,
+  scale: number,
+) {
+  const p = layer.params
+  const needsCurve =
+    p.curvePull > 0 || p.distribution === 'curve' || p.rotation === 'tangent' || p.rotation === 'flow'
+  const curve = needsCurve ? transformedCurve(project, derived) : null
+  const roles = project.background.roles.slice(0, 4)
+  const palette = [PAPER, ...roles.map((r) => BRAND_PALETTE.roles[r].base)]
+  const drawnProtos = resolveProjectProtos(project, p.sourceShapeIds)
+  const build = buildOrganic(
+    p,
+    project.artboard.width,
+    project.artboard.height,
+    curve,
+    palette.length,
+    drawnProtos.map((d) => d.id),
+  )
+  paintOrganic(ctx, build, project.artboard.width, project.artboard.height, {
+    scale,
+    palette,
+    full: true,
+    drawnProtos: drawnProtos.length ? drawnProtos : undefined,
+  })
 }
 
 // Compositor: background → images (bg + grid blocks) → SVG type, all
@@ -422,9 +582,11 @@ export async function exportPNG(
       sctx.clearRect(0, 0, outW, outH)
       if (layer.type === 'clones') drawClones(sctx, layer, project, derived, scale)
       else if (layer.type === 'pattern') drawPattern(sctx, layer, project, derived, scale)
-      else if (layer.type === 'sheet') drawSheet(sctx, layer, project, derived, scale)
       else if (layer.type === 'array') await drawImageArray(sctx, layer, project, scale)
-      else drawRepeater(sctx, layer, project, scale)
+      else if (layer.type === 'organic') drawOrganic(sctx, layer, project, derived, scale)
+      else if (layer.type === 'tiles') drawTiles(sctx, layer, project, derived, scale)
+      else if (layer.params.mode === 'grid') drawSheet(sctx, layer, project, derived, scale)
+      else drawRepeater(sctx, layer, project, derived, scale)
       ctx.save()
       ctx.globalAlpha = layer.opacity
       ctx.globalCompositeOperation = layer.blend === 'normal' ? 'source-over' : layer.blend
@@ -449,7 +611,33 @@ export async function exportPNG(
     drawCover(ctx, await loadImage(im.src), x * scale, y * scale, w * scale, h * scale)
   }
 
-  await renderTypeToCanvas(ctx, project, derived.grid, scale)
+  // drawn primitives sit above the images, below the type — the same
+  // order the artboard renders them; the SAME path generator feeds both.
+  // Consumed masters are skipped: their effectors already render them.
+  const consumed = consumedShapeIds(project.layers)
+  ctx.save()
+  ctx.scale(scale, scale)
+  for (const s of project.shapes) {
+    if (consumed.has(s.id)) continue
+    ctx.globalAlpha = s.opacity
+    ctx.fillStyle = s.fill
+    const path = new Path2D(shapePathD(s))
+    ctx.fill(path, 'evenodd')
+    if (s.stroke && s.strokeWidth) {
+      ctx.strokeStyle = s.stroke
+      ctx.lineWidth = s.strokeWidth
+      ctx.stroke(path)
+    }
+  }
+  ctx.restore()
+
+  // consumed text masters render through their effectors, not as type
+  await renderTypeToCanvas(
+    ctx,
+    { ...project, typeBlocks: project.typeBlocks.filter((b) => !consumed.has(b.id)) },
+    derived.grid,
+    scale,
+  )
   if (opts?.includeConstruction) {
     drawConstructionOverlay(ctx, derived, scale)
   }

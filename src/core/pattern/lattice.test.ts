@@ -50,3 +50,50 @@ describe('pattern lattice', () => {
     expect(shifted.squares).not.toEqual(a.squares)
   })
 })
+
+describe('drawn proto stamps', () => {
+  const opts = { cells: 20, size: 0.6, range: 1.5, mode: 'lattice' as const }
+
+  it('no drawn protos: stamps stay empty and the tiers are untouched', () => {
+    const samples = lineSamples(500, 1000)
+    const bare = buildLattice(samples, 1000, 1000, opts)
+    expect(bare.stamps).toEqual([])
+    expect(bare.squares.length).toBeGreaterThan(0)
+    // drawnCount 0 must be byte-identical to the argument being absent
+    expect(buildLattice(samples, 1000, 1000, opts, undefined, 0)).toEqual(bare)
+  })
+
+  it('the deal is deterministic and every index is in range', () => {
+    const samples = lineSamples(500, 1000)
+    const a = buildLattice(samples, 1000, 1000, opts, undefined, 3)
+    const b = buildLattice(samples, 1000, 1000, opts, undefined, 3)
+    expect(a.stamps).toEqual(b.stamps)
+    expect(a.stamps.length).toBeGreaterThan(0)
+    for (const s of a.stamps) {
+      expect(s.protoIndex).toBeGreaterThanOrEqual(0)
+      expect(s.protoIndex).toBeLessThan(3)
+    }
+    // substitution replaces the tiers, never doubles them
+    expect(a.dots + a.circles + a.rings + a.squares).toBe('')
+  })
+
+  it('stamps keep the lattice: every cell stamped, sizes on the band ladder', () => {
+    const samples = lineSamples(500, 1000)
+    const a = buildLattice(samples, 1000, 1000, opts, undefined, 3)
+    // cells:20 on a square artboard -> 20x20 grid, r = 0.6*50/2
+    expect(a.stamps.length).toBe(400)
+    const r = (0.6 * 50) / 2
+    const ladder = new Set([r * 0.9, r * 0.85, r * 0.55, r * 0.2])
+    for (const s of a.stamps) expect(ladder.has(s.r)).toBe(true)
+    // trace mode drops the far cells, same as the dots tier
+    const trace = buildLattice(samples, 1000, 1000, { ...opts, mode: 'trace' }, undefined, 3)
+    expect(trace.stamps.length).toBeLessThan(400)
+    expect(trace.stamps.every((s) => s.r !== r * 0.2)).toBe(true)
+    // the deal rides the cell, not the count: positions and sizes are
+    // identical under a different proto count
+    const five = buildLattice(samples, 1000, 1000, opts, undefined, 5)
+    expect(five.stamps.map(({ x, y, r: rr }) => ({ x, y, rr }))).toEqual(
+      a.stamps.map(({ x, y, r: rr }) => ({ x, y, rr })),
+    )
+  })
+})

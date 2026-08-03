@@ -134,12 +134,15 @@ export type BackgroundState = {
   presetId?: string
 }
 
-// The cloner register: the curve duplicated as nested hairline contour
+// The contour register: the curve duplicated as nested hairline contour
 // offsets — field lines around the mark, drawn over the background.
 // STEP / RANDOM / DEPTH are C4D-style effectors: per-clone modulation by
 // index (step), by seeded jitter (random), and by a 2.5D stacked-plane
-// parallax (depth).
-export type ClonerState = {
+// parallax (depth). With bound shapes it stamps them along the rings.
+export type ContourState = {
+  // Every effector can bind drawn shapes (project.shapes ids): bound
+  // shapes become the geometry it distributes; empty = built-in glyphs.
+  sourceShapeIds: string[]
   count: number // 1..14 contour levels
   spacing: number // 0.01..0.16 of the artboard's short edge — first offset
   growth: number // 1..2.2 — offset progression exponent (1 = even rings)
@@ -167,6 +170,14 @@ export type SheetShape =
   | 'mixed'
 
 export type SheetState = {
+  sourceShapeIds: string[] // bound drawn shapes; empty = built-in vocabulary
+  // BOUNDS: the sheet lays its grid inside this fractional rect of the
+  // artboard. Absent (old saves) = full bleed. Edited as the on-canvas
+  // dashed frame while the sheet is the selected effector.
+  boxX?: number
+  boxY?: number
+  boxW?: number
+  boxH?: number
   shape: SheetShape
   layout: 'grid' | 'packed' // packed = recursive subdivision, mixed cell sizes
   countX: number // 2..64 — columns (packed: base columns before subdivision)
@@ -187,7 +198,50 @@ export type SheetState = {
 // RADIAL places copies on an arc around the origin (fans, rosettes),
 // each oriented along its spoke; GRID lays countX×countY copies around
 // the origin with the accumulation sweeping in reading order.
+// The merged CLONER: one instrument, four layouts. GRID runs the sheet
+// engine (bounds box, packing, noise fields); RADIAL and LINEAR run the
+// accumulating repeat engine; CURVE stamps along the figure itself at
+// equal arc spacing. SheetState/RepeaterState remain the engine-facing
+// shapes — ClonerState is structurally a superset of SheetState, and
+// the repeat engine gets an adapted view at the call site.
+export type ClonerMode = 'grid' | 'radial' | 'linear' | 'curve'
+
+export type ClonerState = {
+  sourceShapeIds: string[]
+  mode: ClonerMode
+  shape: SheetShape
+  // GRID — the sheet machinery
+  layout: 'grid' | 'packed'
+  countX: number
+  countY: number
+  countZ: number
+  size: number // grid: fraction of a cell
+  depth: number
+  random: number
+  noise: number
+  strokeMix: number
+  curve: number
+  boxX?: number
+  boxY?: number
+  boxW?: number
+  boxH?: number
+  // RADIAL / LINEAR / CURVE — the repeat machinery
+  count: number
+  stampSize: number // fraction of the short edge
+  originX: number
+  originY: number
+  stepX: number
+  stepY: number
+  radius: number
+  span: number
+  rotate: number
+  scaleStep: number
+  fade: number
+  stroked: boolean
+}
+
 export type RepeaterState = {
+  sourceShapeIds: string[] // bound drawn shapes; empty = built-in vocabulary
   shape: SheetShape
   mode: 'linear' | 'radial' | 'grid'
   count: number // linear/radial: 2..48 copies
@@ -212,6 +266,7 @@ export type RepeaterState = {
 // pulls each glyph toward the image's own sampled color, from pure
 // graphic array to image mosaic.
 export type ImageArrayState = {
+  sourceShapeIds: string[] // bound drawn shapes; empty = built-in glyph tiers
   imageId: string | null // which upload drives the array
   cells: number // 16..96 — columns; rows follow the artboard ratio
   size: number // 0.2..1 — glyph size relative to the cell
@@ -224,10 +279,66 @@ export type ImageArrayState = {
 // where the curve passes — the Provencher plates / Das Fest read. The
 // lattice runs edge to edge; the figure appears by substitution.
 export type PatternState = {
+  sourceShapeIds: string[] // bound drawn shapes; empty = built-in tiers
   cells: number // 12..64 — columns; rows follow the artboard ratio
   size: number // 0.2..1 — primitive size relative to the cell
   range: number // 0.5..4 — how far (in cells) the curve's influence reaches
   mode: 'lattice' | 'trace' // full grid with highlights vs curve cells only
+}
+
+// The tiles register: flush, edge-to-edge modular tile systems — the
+// coded-poster language (Sagmeister pixel checkers, quarter-ring
+// truchet windows). Cells fill their bounds completely, so adjacent
+// tiles CONNECT; the composition is per-cell STATE, not floating
+// glyphs. The curve drives where cells subdivide or cohere.
+export type TileStyle = 'checker' | 'rings'
+
+export type TilesState = {
+  sourceShapeIds: string[] // present for the shared tree machinery; tiles use their own vocabulary
+  style: TileStyle
+  seed: number
+  cols: number // 4..32 — columns; rows follow the artboard ratio
+  density: number // 0..1 — fraction of cells that carry a tile at all
+  levels: number // checker: max subdivision depth (1 = solid blocks only)
+  rings: number // rings: concentric quarter-arcs per tile
+  curve: number // 0..1 — the figure's influence: subdivision depth / rotation coherence
+  duo: number // 0..1 — how much of the population deals to the second color
+  weight: number // 0..1 — lattice stroke weight (checker draws its own grid)
+  colorB?: LayerColor // the counter ink (absent = INK) — 'sampled' not offered
+}
+
+// The organic register: the raster-first procedural composition engine.
+// One recipe = distribution -> fields -> per-point attribute mapping ->
+// prototype stamping -> raster finish. Deterministic per seed; every
+// random choice reads its own channel keyed by stable point id, so one
+// dial never reshuffles unrelated points.
+export type OrganicDistribution = 'poisson' | 'phyllo' | 'hex' | 'curve' | 'cluster'
+export type OrganicProto = 'blob' | 'super' | 'capsule' | 'star' | 'ribbon' | 'circle' | 'meta'
+export type OrganicRotationMode = 'flow' | 'tangent' | 'random' | 'fixed'
+
+export type OrganicState = {
+  sourceShapeIds: string[] // bound drawn shapes; empty = protos vocabulary
+  seed: number
+  distribution: OrganicDistribution
+  count: number // 40..2400 target points (pre-cull)
+  spacing: number // 0.01..0.09 of the short edge — poisson radius / lattice pitch
+  protos: OrganicProto[] // the enabled shape vocabulary
+  size: number // 0.008..0.1 of the short edge — base half-size
+  sizeRange: number // 0..1 — per-point size spread
+  sizeField: number // -1..1 — density field drives size (sign flips direction)
+  curvePull: number // 0..1 — density gathers toward the Lissajous figure
+  focalStrength: number // 0..1 — radial focal density
+  focalX: number // 0..1 of width
+  focalY: number // 0..1 of height
+  noiseScale: number // 0.5..6 — field noise frequency
+  noiseAmount: number // 0..1 — noise contribution to density
+  rotation: OrganicRotationMode
+  rotationJitter: number // 0..1
+  colorField: number // 0..1 — palette pick follows the field vs the deal
+  opacityRange: number // 0..1 — per-point opacity spread
+  goo: number // 0..1 — blur-threshold merge (metaball finish)
+  soft: number // 0..1 — edge feather width
+  grain: number // 0..1 — raster grain in the finish
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +348,7 @@ export type PatternState = {
 // color and fill texture. Live rendering uses CSS mix-blend-mode; the
 // PNG export replicates it with globalCompositeOperation — the mode
 // names are shared by both.
-export type ShapeLayerType = 'clones' | 'pattern' | 'sheet' | 'repeater' | 'array'
+export type ShapeLayerType = 'clones' | 'pattern' | 'cloner' | 'array' | 'organic' | 'tiles'
 export type LayerBlend = 'normal' | 'multiply' | 'screen' | 'overlay'
 // r0..r2 are the palette's three leading roles; 'sampled' reads the
 // gradient field's color underneath each clone (sheet/repeater only)
@@ -258,12 +369,33 @@ export type ShapeLayerBase = {
 
 export type ShapeLayer = ShapeLayerBase &
   (
-    | { type: 'clones'; params: ClonerState }
+    | { type: 'clones'; params: ContourState }
     | { type: 'pattern'; params: PatternState }
-    | { type: 'sheet'; params: SheetState }
-    | { type: 'repeater'; params: RepeaterState }
+    | { type: 'cloner'; params: ClonerState }
     | { type: 'array'; params: ImageArrayState }
+    | { type: 'organic'; params: OrganicState }
+    | { type: 'tiles'; params: TilesState }
   )
+
+// Drawn primitives — Cavalry-style direct drawing on the canvas. Free
+// positioned (artboard px), one flat list painted above the procedural
+// layers and images, below type. Array order is paint order.
+export type ShapeItemKind = 'rect' | 'ellipse' | 'poly' | 'star' | 'line' | 'blob'
+
+export type ShapeItem = {
+  id: string
+  kind: ShapeItemKind
+  x: number // top-left, artboard px
+  y: number
+  w: number
+  h: number
+  fill: string // hex
+  opacity: number // 0..1
+  seed: number // star irregularity / blob harmonics
+  flip?: boolean // line: which diagonal of the box
+  stroke?: string // hex; absent = no stroke
+  strokeWidth?: number // artboard px
+}
 
 // Post-MVP; reserved so recipes stay forward-compatible.
 export type ImageState = {
@@ -354,6 +486,7 @@ export type ProjectState = {
   motionLab: MotionLabState
   pathLab: PathLabState
   images: ImageItem[]
+  shapes: ShapeItem[]
   bgImageId: string | null
   image?: ImageState
   export: ExportState

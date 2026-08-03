@@ -111,11 +111,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* a panned/zoomed artboard must clip at the stage edge, never slide
+     under (or over) the side panel */
+  overflow: hidden;
 }
 
 .artboard-scaler {
   position: relative;
   flex: none;
+  /* room for the dock pinned under the canvas — the fit calc reserves
+     the same amount so the pair centers as one unit */
+  margin-bottom: 56px;
+}
+
+.artboard-viewport {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
 }
 
 .artboard-origin {
@@ -123,6 +135,36 @@
   top: 0;
   left: 0;
   transform-origin: 0 0;
+}
+
+/* space-drag pan: the hand takes the whole stage while space is down */
+.stage-pan-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  cursor: grab;
+}
+
+.stage-pan-overlay:active {
+  cursor: grabbing;
+}
+
+.zoom-chip {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 10;
+  padding: 4px 8px;
+  background: rgba(10, 10, 10, 0.85);
+  border: 1px solid var(--line-strong);
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.zoom-chip:hover {
+  color: var(--text);
 }
 
 .artboard {
@@ -154,6 +196,10 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* the transformed canvas creates a stacking context; the panel must
+     sit above it regardless */
+  position: relative;
+  z-index: 20;
 }
 
 .inspector {
@@ -214,9 +260,68 @@
   object-fit: cover;
 }
 
+/* interactive image blocks: the wrap owns the pointer, the img fills it */
+.image-block-wrap {
+  position: absolute;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  outline: 1.5px solid transparent;
+}
+
+.image-block-wrap:hover {
+  outline-color: rgba(20, 20, 18, 0.18);
+}
+
+.image-block-wrap.selected {
+  outline-color: rgba(22, 73, 255, 0.65);
+}
+
+.image-block-wrap:active {
+  cursor: grabbing;
+}
+
 .image-block {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  pointer-events: none;
+}
+
+.image-resize-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(22, 73, 255, 0.9);
+  touch-action: none;
+}
+
+.image-resize-handle.corner-nw {
+  left: -7px;
+  top: -7px;
+  cursor: nwse-resize;
+}
+
+.image-resize-handle.corner-ne {
+  right: -7px;
+  top: -7px;
+  cursor: nesw-resize;
+}
+
+.image-resize-handle.corner-sw {
+  left: -7px;
+  bottom: -7px;
+  cursor: nesw-resize;
+}
+
+.image-resize-handle.corner-se {
+  right: -7px;
+  bottom: -7px;
+  cursor: nwse-resize;
 }
 
 .ctl-sub-label {
@@ -387,6 +492,493 @@ canvas.shape-canvas {
   background: rgba(22, 73, 255, 0.7);
 }
 
+/* the dock — one floating bar under the canvas, tldraw-style: tools AND
+   navigation, with a flyout row for the shape instruments */
+.canvas-dock {
+  /* pinned to the artboard's bottom edge: lives inside .artboard-scaler,
+     the static fit box, so zoom/pan of the inner viewport never moves it */
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: none;
+}
+
+.dock-bar,
+.dock-flyout {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(10, 10, 10, 0.92);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.dock-flyout {
+  padding: 3px;
+  /* sub-menus slide up out of the bar */
+  animation: dock-flyout-in 150ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes dock-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dock-chip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-dim);
+  line-height: 1;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.dock-chip svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.dock-flyout .dock-chip {
+  width: 30px;
+  height: 30px;
+}
+
+.dock-flyout .dock-chip svg {
+  width: 15px;
+  height: 15px;
+}
+
+.dock-chip:hover {
+  color: var(--text);
+}
+
+/* focus never masquerades as selection: pointer focus is blurred by the
+   dock, and keyboard focus gets a quiet ring of our own */
+.dock-chip:focus {
+  outline: none;
+}
+
+.dock-chip:focus-visible {
+  outline: 1px solid rgba(244, 242, 237, 0.6);
+  outline-offset: 1px;
+}
+
+/* the armed tool — exactly one chip carries this at any moment */
+.dock-chip.active {
+  color: #0a0a0a;
+  background: var(--paper, #f4f2ed);
+}
+
+/* a held toggle (snap) — pressed slate, deliberately NOT the tool fill */
+.dock-chip.toggled {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+/* NO dot, NO secondary indicator — the bar is one radio group and the
+   single filled chip is the only selection mark it ever shows */
+
+.dock-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.toolbar-swatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-left: 1px solid var(--line);
+  margin-left: 4px;
+}
+
+/* smart guides: the grid line a snap just landed on, magenta so it
+   reads against both the blue selection chrome and the field */
+.snap-guide {
+  position: absolute;
+  pointer-events: none;
+  background: #ff2aa3;
+  z-index: 5;
+}
+
+.snap-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.snap-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* isolation: everything except the masters dims and goes inert — the
+   effectors stay faintly visible so edits read live */
+.artboard[data-isolating] > *:not(.shape-items-layer) {
+  opacity: 0.3;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.isolate-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 42, 163, 0.5);
+  border-radius: 6px;
+  background: rgba(10, 10, 10, 0.92);
+  color: var(--text);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.isolate-banner:hover {
+  border-color: #ff2aa3;
+}
+
+/* the sheet effector's bounds: dashed frame, border-only pointer zone */
+.sheet-bounds-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.sheet-bounds-frame {
+  position: absolute;
+  pointer-events: none;
+  outline: 1.5px dashed rgba(22, 73, 255, 0.7);
+  outline-offset: 1px;
+}
+
+.sheet-bounds-edge {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  touch-action: none;
+}
+
+.sheet-bounds-edge.top { left: 0; right: 0; top: -5px; height: 10px; }
+.sheet-bounds-edge.bottom { left: 0; right: 0; bottom: -5px; height: 10px; }
+.sheet-bounds-edge.left { top: 0; bottom: 0; left: -5px; width: 10px; }
+.sheet-bounds-edge.right { top: 0; bottom: 0; right: -5px; width: 10px; }
+
+.sheet-bounds-frame .image-resize-handle {
+  pointer-events: auto;
+}
+
+.panel-empty {
+  margin: 10px 12px;
+  color: var(--text-faint);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+/* the ground truth row at the bottom of the tree */
+.background-row {
+  margin: 6px 12px 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.layer-add-select {
+  width: 100%;
+}
+
+/* native select popups paint on the OS sheet — options must declare
+   their own colors or they inherit the app's dim ink and read as
+   disabled on the popup's white */
+.ctl-select option {
+  color: #f4f2ed;
+  background: #141412;
+}
+
+/* the object tree: unbound canvas objects above the effector stack,
+   nested source rows under the effector that consumed them */
+.object-rows {
+  margin: 6px 12px 8px;
+}
+
+.object-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.object-row:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+/* bound objects sit at parent level; the effector indents beneath them
+   as the modifier applied to them */
+.source-rows {
+  margin: 2px 0 0;
+}
+
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.source-row .layer-tool {
+  margin-left: auto;
+}
+
+.layer-row.modifier-row {
+  margin-left: 16px;
+}
+
+.layer-row.modifier-row::before {
+  content: '↳';
+  color: var(--text-faint);
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+.source-row-glyph {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.source-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-row.drop-target {
+  outline: 1px solid #ff2aa3;
+  outline-offset: -1px;
+}
+
+/* effector SOURCE chips: one per bound drawn shape, click unbinds */
+.source-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 12px 2px;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.source-chip:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+}
+
+.source-chip-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.source-chip-x {
+  margin-left: 2px;
+  padding: 0 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.source-chip-x:hover {
+  color: #ff2aa3;
+}
+
+/* inspector header: the section name the dock chose, plus close */
+.inspector-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 12px 2px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text);
+}
+
+.inspector-close {
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.inspector-close:hover {
+  color: var(--text);
+}
+
+/* DialKit-pattern parameter rows: scrubbable labels, type-in values */
+.ctl-scrub {
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.ctl-value-editable {
+  cursor: text;
+}
+
+.ctl-value-editable:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+.ctl-value-input {
+  width: 100%;
+  min-width: 0;
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  text-align: right;
+  padding: 1px 3px;
+}
+
+.ctl-select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+.ctl-select:hover {
+  border-color: var(--text-dim);
+}
+
+/* the armed text tool reads as a text cursor over the whole canvas */
+.artboard[data-tool='text'],
+.artboard[data-tool='text'] .type-block {
+  cursor: text;
+}
+
+/* drawn primitives: the SVG owns hits per-path, handles float above */
+.shape-items-layer {
+  pointer-events: none;
+}
+
+.shape-items-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.draw-shape {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.draw-shape:active {
+  cursor: grabbing;
+}
+
+.draw-shape.selected {
+  stroke: rgba(22, 73, 255, 0.75);
+  stroke-width: 1.5px;
+}
+
+.artboard[data-tool='rect'],
+.artboard[data-tool='ellipse'],
+.artboard[data-tool='poly'],
+.artboard[data-tool='star'],
+.artboard[data-tool='line'],
+.artboard[data-tool='blob'] {
+  cursor: crosshair;
+}
+
+.shape-select-frame {
+  position: absolute;
+  pointer-events: none;
+  outline: 1.5px solid rgba(22, 73, 255, 0.5);
+}
+
+.shape-select-frame .image-resize-handle {
+  pointer-events: auto;
+}
+
+/* marquee: the rubber-band selection rectangle */
+.marquee-rect {
+  position: absolute;
+  border: 1px solid rgba(22, 73, 255, 0.8);
+  background: rgba(22, 73, 255, 0.08);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* on-canvas delete chip for the selected block */
 .type-block-delete {
   position: absolute;
@@ -532,12 +1124,18 @@ canvas.shape-canvas {
   padding: 6px 4px;
   font-size: 9px;
   letter-spacing: 0.08em;
-  color: var(--text-faint);
+  /* dim, not faint — faint is the non-interactive ink, and unselected
+     options painted with it read as disabled */
+  color: var(--text-dim);
   border-right: 1px solid var(--line);
 }
 
 .segment:last-child {
   border-right: none;
+}
+
+.segment:hover:not(.active) {
+  color: var(--text);
 }
 
 .segment.active {
@@ -585,9 +1183,16 @@ canvas.shape-canvas {
   text-align: center;
 }
 
-.ctl-action:hover {
+.ctl-action:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-dim);
+}
+
+/* a dead button must LOOK dead — :hover matches disabled buttons and
+   the pointer cursor lies without these */
+.ctl-action:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .ctl-action.primary {

@@ -4,17 +4,27 @@ import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { buildLattice } from '@/core/pattern/lattice'
+import { PROTO_SIZE, resolveProjectProtos } from '@/core/canvas/shapeProtos'
 import type { ShapeLayer } from '@/core/state/types'
 import { layerBaseColor } from '@/core/layers/paint'
+import { ProtoDefs } from './ProtoDefs'
 import { layerStyle } from './layerPaint'
 
 type PatternLayerT = Extract<ShapeLayer, { type: 'pattern' }>
 
 // The lattice register: primitives on a grid, state swapped where the
 // curve passes. Rides the background's zoom + pan like every register.
+// Bound drawn shapes replace the primitive tiers: same cells, same
+// distance bands, but stamped as <use> instances with a size ladder.
 export function PatternLayer({ layer }: { layer: PatternLayerT }) {
   const project = useStore((s) => s.project)
+  const shapes = useStore((s) => s.project.shapes)
   const pattern = layer.params
+
+  const protos = useMemo(
+    () => resolveProjectProtos(project, pattern.sourceShapeIds),
+    [project, pattern.sourceShapeIds],
+  )
 
   const tiers = useMemo(() => {
     const derived = getDerived(project)
@@ -28,6 +38,7 @@ export function PatternLayer({ layer }: { layer: PatternLayerT }) {
         offsetX: project.background.fieldOffsetX ?? 0,
         offsetY: project.background.fieldOffsetY ?? 0,
       },
+      protos.length,
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -41,6 +52,7 @@ export function PatternLayer({ layer }: { layer: PatternLayerT }) {
     project.background.fieldScale,
     project.background.fieldOffsetX,
     project.background.fieldOffsetY,
+    protos.length,
   ])
 
   if (!tiers) return null
@@ -55,12 +67,32 @@ export function PatternLayer({ layer }: { layer: PatternLayerT }) {
       aria-hidden
       style={layerStyle(layer)}
     >
-      {tiers.dots ? <path d={tiers.dots} fill={tone} opacity={0.45} /> : null}
-      {tiers.circles ? <path d={tiers.circles} fill={tone} opacity={0.8} /> : null}
-      {tiers.rings ? (
-        <path d={tiers.rings} fill="none" stroke={tone} strokeWidth={2} opacity={0.95} />
-      ) : null}
-      {tiers.squares ? <path d={tiers.squares} fill={tone} /> : null}
+      {tiers.stamps.length ? (
+        <>
+          <defs>
+            <ProtoDefs protos={protos} layerId={layer.id} />
+          </defs>
+          {tiers.stamps.map((s, i) => (
+            <use
+              key={i}
+              href={`#dp-${layer.id}-${s.protoIndex}`}
+              fill={protos[s.protoIndex].fill}
+              fillRule="evenodd"
+              opacity={protos[s.protoIndex].opacity}
+              transform={`translate(${s.x.toFixed(1)} ${s.y.toFixed(1)}) scale(${((s.r * 2) / PROTO_SIZE).toFixed(3)})`}
+            />
+          ))}
+        </>
+      ) : (
+        <>
+          {tiers.dots ? <path d={tiers.dots} fill={tone} opacity={0.45} /> : null}
+          {tiers.circles ? <path d={tiers.circles} fill={tone} opacity={0.8} /> : null}
+          {tiers.rings ? (
+            <path d={tiers.rings} fill="none" stroke={tone} strokeWidth={2} opacity={0.95} />
+          ) : null}
+          {tiers.squares ? <path d={tiers.squares} fill={tone} /> : null}
+        </>
+      )}
     </svg>
   )
 }

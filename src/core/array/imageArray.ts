@@ -1,4 +1,5 @@
 import type { ImageArrayState } from '@/core/state/types'
+import { PROTO_SIZE, paintTextProto, type ShapeProto } from '@/core/canvas/shapeProtos'
 
 // The array register's engine: an image re-drawn as a glyph array, the
 // Nexus-style move. Per cell:
@@ -9,6 +10,9 @@ import type { ImageArrayState } from '@/core/state/types'
 //     hexes) by deterministic hash — the reference's "slots"
 //   - BLEND pulls the dealt color toward the image's own sampled color:
 //     0 = pure graphic array, 1 = the image mosaicked through the glyphs
+//   - a bound drawn vocabulary (protoFills/protos) replaces the glyph
+//     tiers: each cell deals a proto whose own fill is the color base;
+//     luminance still drives size/alpha so the image reads through
 // Pure data + a canvas painter shared by the live layer and the export.
 
 export type ArrayGlyph = 'square' | 'cross' | 'circle' | 'ring' | 'dot' | 'lattice'
@@ -20,6 +24,7 @@ export type ArrayCell = {
   glyph: ArrayGlyph
   color: string
   alpha: number
+  protoIndex?: number // deal into the drawn vocabulary; when set the painter ignores glyph
 }
 
 export type PixelGrid = {
@@ -69,12 +74,14 @@ export function buildImageCells(
   height: number,
   pixels: PixelGrid,
   palette: string[],
+  protoFills?: string[],
 ): ArrayCell[] {
   const cols = Math.max(4, Math.round(state.cells))
   const cellW = width / cols
   const rows = Math.max(4, Math.round(height / cellW))
   const cellH = height / rows
   const r = (Math.min(cellW, cellH) * state.size) / 2
+  const drawn = !!protoFills?.length
   const out: ArrayCell[] = []
 
   for (let iy = 0; iy < rows; iy++) {
@@ -95,14 +102,39 @@ export function buildImageCells(
       const x = (ix + 0.5) * cellW
       const y = (iy + 0.5) * cellH
 
+      // drawn vocabulary: proto deal on its own hash channel so the
+      // built-in glyph/color deals stay untouched when a binding toggles
+      const pi = drawn ? Math.floor(hash(ix, iy, 3) * protoFills!.length) % protoFills!.length : 0
+
       if (lum >= state.threshold) {
         // outside the image body: the faint base lattice keeps running
-        out.push({ x, y, r: r * 0.16, glyph: 'lattice', color: palette[0], alpha: 0.35 })
+        if (drawn) {
+          out.push({ x, y, r: r * 0.16, glyph: 'lattice', color: protoFills![pi], alpha: 0.35, protoIndex: pi })
+        } else {
+          out.push({ x, y, r: r * 0.16, glyph: 'lattice', color: palette[0], alpha: 0.35 })
+        }
         continue
       }
 
       // tier by darkness within the threshold window
       const t = lum / Math.max(state.threshold, 1e-6) // 0 = darkest
+
+      if (drawn) {
+        // the tier pick collapses to its size read — only the dot tier
+        // shrinks, so darks stay heavy and lights stay small
+        const base = protoFills![pi]
+        out.push({
+          x,
+          y,
+          r: t < 0.72 ? r : r * 0.45,
+          glyph: 'dot',
+          color: state.blend > 0 ? mixHex(base, [rr, gg, bb], state.blend) : base,
+          alpha: 1,
+          protoIndex: pi,
+        })
+        continue
+      }
+
       const deal = hash(ix, iy, 1)
       let glyph: ArrayGlyph
       if (t < 0.38) glyph = deal < 0.6 ? 'square' : 'cross'
@@ -123,9 +155,42 @@ export function buildImageCells(
   return out
 }
 
+// Path2D per proto path — keyed by the full d string, not the proto id:
+// resizing a source shape regenerates its geometry under the same id.
+// Capped so churning source edits can't grow it unbounded.
+const protoPathCache = new Map<string, Path2D>()
+
+function protoPath(d: string): Path2D {
+  let p = protoPathCache.get(d)
+  if (!p) {
+    if (protoPathCache.size >= 128) protoPathCache.clear()
+    p = new Path2D(d)
+    protoPathCache.set(d, p)
+  }
+  return p
+}
+
 // canvas painter — coordinates in artboard units; caller sets the scale
-export function paintImageCells(ctx: CanvasRenderingContext2D, cells: ArrayCell[]): void {
+export function paintImageCells(
+  ctx: CanvasRenderingContext2D,
+  cells: ArrayCell[],
+  protos?: ShapeProto[],
+): void {
   for (const c of cells) {
+    const proto =
+      protos?.length && c.protoIndex !== undefined ? protos[c.protoIndex % protos.length] : undefined
+    if (proto) {
+      ctx.save()
+      ctx.translate(c.x, c.y)
+      const k = (c.r * 2) / PROTO_SIZE
+      ctx.scale(k, k)
+      ctx.fillStyle = c.color
+      ctx.globalAlpha = c.alpha * proto.opacity
+      if (proto.kind === 'text') paintTextProto(ctx, proto)
+      else ctx.fill(protoPath(proto.d), 'evenodd')
+      ctx.restore()
+      continue
+    }
     ctx.globalAlpha = c.alpha
     ctx.fillStyle = c.color
     ctx.strokeStyle = c.color

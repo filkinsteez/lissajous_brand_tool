@@ -31,6 +31,7 @@ export function buildRepeats(
   rep: RepeaterState,
   width: number,
   height: number,
+  drawnCount?: number,
 ): SheetClone[] {
   const minDim = Math.min(width, height)
   const baseR = Math.max(1, rep.size * minDim)
@@ -45,6 +46,9 @@ export function buildRepeats(
     const scale = Math.pow(rep.scaleStep, i)
     const shape: Exclude<SheetShape, 'mixed'> =
       rep.shape === 'mixed' ? MIX[dealI % MIX.length] : (rep.shape as Exclude<SheetShape, 'mixed'>)
+    // bound drawn protos cycle the way MIX cycles (diagonal dealI in grid
+    // mode) and carry their own fill — never stroked
+    const drawnIndex = drawnCount && drawnCount > 0 ? dealI % drawnCount : undefined
     out.push({
       x,
       y,
@@ -52,7 +56,8 @@ export function buildRepeats(
       rotate: spoke + rep.rotate * i,
       opacity: Math.max(0.05, 1 - rep.fade * u * 0.95),
       shape,
-      stroked: shape === 'meta' ? true : rep.stroked,
+      stroked: drawnIndex !== undefined ? false : shape === 'meta' ? true : rep.stroked,
+      drawnIndex,
       z: 0,
     })
   }
@@ -86,6 +91,57 @@ export function buildRepeats(
     } else {
       place(i, n, ox + rep.stepX * width * i, oy + rep.stepY * height * i)
     }
+  }
+  return out
+}
+
+// CURVE mode: copies ride the figure itself at equal arc spacing, each
+// oriented along the local tangent, with the same accumulation rule
+// (rotate*i, scaleStep^i, fade ramp) sweeping around the loop. The
+// curve is closed, so i/n spacing never doubles the seam point.
+export function buildCurveClones(
+  rep: RepeaterState,
+  width: number,
+  height: number,
+  pts: { x: number; y: number }[],
+  drawnCount?: number,
+): SheetClone[] {
+  if (pts.length < 2) return []
+  const minDim = Math.min(width, height)
+  const baseR = Math.max(1, rep.size * minDim)
+  const loop = [...pts, pts[0]]
+  const cums: number[] = [0]
+  for (let i = 1; i < loop.length; i++) {
+    cums.push(cums[i - 1] + Math.hypot(loop[i].x - loop[i - 1].x, loop[i].y - loop[i - 1].y))
+  }
+  const total = cums[cums.length - 1]
+  if (total <= 0) return []
+
+  const out: SheetClone[] = []
+  const n = Math.max(2, Math.round(rep.count))
+  let seg = 0
+  for (let i = 0; i < n; i++) {
+    const s = (i / n) * total
+    while (seg < loop.length - 2 && cums[seg + 1] < s) seg++
+    const a = loop[seg]
+    const b = loop[seg + 1]
+    const segLen = cums[seg + 1] - cums[seg]
+    const t = segLen > 0 ? (s - cums[seg]) / segLen : 0
+    const u = n > 1 ? i / (n - 1) : 0
+    const shape: Exclude<SheetShape, 'mixed'> =
+      rep.shape === 'mixed' ? MIX[i % MIX.length] : (rep.shape as Exclude<SheetShape, 'mixed'>)
+    const drawnIndex = drawnCount && drawnCount > 0 ? i % drawnCount : undefined
+    out.push({
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      r: Math.max(0.5, baseR * Math.pow(rep.scaleStep, i)),
+      rotate: Math.atan2(b.y - a.y, b.x - a.x) + rep.rotate * i,
+      opacity: Math.max(0.05, 1 - rep.fade * u * 0.95),
+      shape,
+      stroked: drawnIndex !== undefined ? false : shape === 'meta' ? true : rep.stroked,
+      drawnIndex,
+      z: 0,
+    })
   }
   return out
 }

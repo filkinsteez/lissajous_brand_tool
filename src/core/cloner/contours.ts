@@ -110,6 +110,60 @@ export function contourAtLevel(grid: Grid, level: number): string {
   return parts.join('')
 }
 
+export type ContourStamp = {
+  x: number
+  y: number
+  angle: number // local segment tangent, radians
+  levelIndex: number
+}
+
+// Stamp centers for the clone-along-path read (bound drawn shapes): walk
+// each level's segments in emission order accumulating arc length and
+// drop a stamp every SPACING px. Parses the M/L data contourAtLevel
+// already emits, so placement can never drift from the drawn rings —
+// and stays exactly as deterministic as the contours themselves.
+export function stampsAlongContours(levels: ContourLevel[], spacing: number): ContourStamp[] {
+  const out: ContourStamp[] = []
+  if (!(spacing > 0)) return out
+  for (let li = 0; li < levels.length; li++) {
+    let next = spacing / 2 // center the run within the ring's total length
+    let acc = 0
+    for (const sub of levels[li].d.split('M')) {
+      if (!sub) continue
+      const pts = sub.split('L').map((p) => {
+        const sp = p.indexOf(' ')
+        return { x: parseFloat(p.slice(0, sp)), y: parseFloat(p.slice(sp + 1)) }
+      })
+      for (let i = 1; i < pts.length; i++) {
+        const dx = pts[i].x - pts[i - 1].x
+        const dy = pts[i].y - pts[i - 1].y
+        const len = Math.hypot(dx, dy)
+        while (next <= acc + len) {
+          const t = (next - acc) / (len || 1)
+          out.push({
+            x: pts[i - 1].x + dx * t,
+            y: pts[i - 1].y + dy * t,
+            angle: Math.atan2(dy, dx),
+            levelIndex: li,
+          })
+          next += spacing
+        }
+        acc += len
+      }
+    }
+  }
+  return out
+}
+
+// Per-stamp proto deal: an imul avalanche keyed on the stable
+// (level, stamp) address, so one dial never reshuffles unrelated stamps.
+export function dealProtoIndex(levelIndex: number, stampIndex: number, protoCount: number): number {
+  if (protoCount <= 1) return 0
+  let h = Math.imul(levelIndex + 1, 0x9e3779b1) ^ Math.imul(stampIndex + 1, 0x85ebca6b)
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+  return ((h ^ (h >>> 16)) >>> 0) % protoCount
+}
+
 // the clone family: COUNT offsets from the curve, SPACING apart, with
 // GROWTH bending the progression from even rings toward accelerating ones
 export function buildContourLevels(

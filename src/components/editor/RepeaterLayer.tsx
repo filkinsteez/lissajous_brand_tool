@@ -2,29 +2,54 @@
 
 import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
-import { buildRepeats } from '@/core/repeater/repeater'
+import { buildCurveClones, buildRepeats } from '@/core/repeater/repeater'
 import type { SheetClone } from '@/core/sheet/sheet'
-import type { ShapeLayer } from '@/core/state/types'
+import { resolveProjectProtos, PROTO_SIZE } from '@/core/canvas/shapeProtos'
+import type { RepeaterState, ShapeLayer } from '@/core/state/types'
+import { getDerived } from '@/core/pipeline'
+import { transformedCurve } from '@/core/lissajous/figureTransform'
 import { layerBaseColor, fieldSampler } from '@/core/layers/paint'
+import { ProtoDefs } from './ProtoDefs'
 import { layerStyle, fillPaint, TexturePatternDef } from './layerPaint'
 import { shapeD, metaGlyphD } from './SheetLayer'
 
-type RepeaterLayerT = Extract<ShapeLayer, { type: 'repeater' }>
+// renders the merged cloner's RADIAL / LINEAR / CURVE modes — the
+// accumulating repeat engine (GRID mode renders through SheetLayer)
+type RepeaterLayerT = Extract<ShapeLayer, { type: 'cloner' }>
 
-// The repeater drawn as SVG — same painters as the sheet, so the two
-// registers stay one drawing language. Meta glyphs instance a private
-// def per layer.
 export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
   const project = useStore((s) => s.project)
-  const rep = layer.params
+  const shapes = useStore((s) => s.project.shapes)
+  const p = layer.params
+  // the repeat engine's view of the merged params: stampSize is its
+  // size dial (grid's `size` is per-cell and stays out of reach)
+  const rep: RepeaterState = useMemo(
+    () => ({ ...p, mode: p.mode === 'linear' ? 'linear' : 'radial', size: p.stampSize }),
+    [p],
+  )
 
   const baseColor = layerBaseColor(layer.color, project)
   const sampler =
     layer.color === 'sampled' && layer.texture === 'solid' ? fieldSampler(project) : null
 
+  // bound drawn protos: non-empty switches the vocabulary to <use> stamps
+  const protos = useMemo(
+    () => resolveProjectProtos(project, p.sourceShapeIds),
+    [project, p.sourceShapeIds],
+  )
+
   const clones = useMemo(
-    () => buildRepeats(rep, project.artboard.width, project.artboard.height),
-    [rep, project.artboard.width, project.artboard.height],
+    () =>
+      p.mode === 'curve'
+        ? buildCurveClones(
+            rep,
+            project.artboard.width,
+            project.artboard.height,
+            transformedCurve(project, getDerived(project)),
+            protos.length,
+          )
+        : buildRepeats(rep, project.artboard.width, project.artboard.height, protos.length),
+    [p.mode, rep, project, protos],
   )
 
   const strokeW = Math.max(
@@ -32,9 +57,14 @@ export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
     Math.min(project.artboard.width, project.artboard.height) * 0.0035,
   )
   const metas: SheetClone[] = []
+  const drawn: SheetClone[] = []
   let filledD = ''
   let strokedD = ''
   for (const c of clones) {
+    if (c.drawnIndex !== undefined) {
+      drawn.push(c)
+      continue
+    }
     if (c.shape === 'meta') {
       metas.push(c)
       continue
@@ -56,6 +86,7 @@ export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
     >
       <defs>
         <path id={`repeater-meta-${layer.id}`} d={metaGlyphD()} />
+        <ProtoDefs protos={protos} layerId={layer.id} />
         <TexturePatternDef layer={layer} color={baseColor} />
       </defs>
       {batched ? (
@@ -69,7 +100,7 @@ export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
         </>
       ) : (
         clones
-          .filter((c) => c.shape !== 'meta')
+          .filter((c) => c.shape !== 'meta' && c.drawnIndex === undefined)
           .map((c, i) => {
             const color = sampler ? sampler(c.x, c.y) : baseColor
             return (
@@ -96,6 +127,23 @@ export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
           transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${((c.rotate * 180) / Math.PI).toFixed(1)}) scale(${c.r.toFixed(2)})`}
         />
       ))}
+      {drawn.map((c, i) => {
+        const di = c.drawnIndex ?? 0
+        const p = protos[di]
+        if (!p) return null
+        // drawn protos stamp with their OWN fill; layer color machinery
+        // does not apply. Proto box is PROTO_SIZE, so scale = diameter/box.
+        return (
+          <use
+            key={i}
+            href={`#dp-${layer.id}-${di}`}
+            fill={p.fill}
+            fillRule="evenodd"
+            opacity={c.opacity * p.opacity}
+            transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${((c.rotate * 180) / Math.PI).toFixed(1)}) scale(${((c.r * 2) / PROTO_SIZE).toFixed(3)})`}
+          />
+        )
+      })}
     </svg>
   )
 }

@@ -6,15 +6,44 @@ import { History } from './history'
 export type EditorMode = 'compose' | 'setup' | 'motion' | 'path'
 export type PanelId = 'compose' | 'motion' | 'path'
 export type Quality = 'live' | 'hq'
+// canvas tools: SELECT (the cursor) is the default; TEXT arms one
+// placement; the shape tools arm a drag-to-draw primitive. Every armed
+// tool returns to SELECT after one use.
+export type CanvasTool =
+  | 'select'
+  | 'text'
+  | 'rect'
+  | 'ellipse'
+  | 'poly'
+  | 'star'
+  | 'line'
+  | 'blob'
+export type DesignTab = 'system' | 'field' | 'layers' | 'type'
 
 export type UiState = {
   mode: EditorMode
   activePanel: PanelId
   quality: Quality
+  tool: CanvasTool
+  designTab: DesignTab // which DESIGN sub-panel the inspector shows
+  panelOpen: boolean // the dock toggles the inspector; closed = full-bleed canvas
+  shapesFlyout: boolean // the dock's drawing-tools flyout (SHAPES is a tool tray, not a panel)
+  // canvas viewport: zoom multiplies the fit scale (1 = fit to stage),
+  // pan offsets in screen px. View state only — never persisted.
+  zoom: number
+  panX: number
+  panY: number
   mounted: boolean
+  snap: boolean // grid magnetism for free objects (drawn shapes); type/images snap by model
   showGuides: boolean // optional construction guides while composing
-  selectedBlockId: string
+  selectedBlockId?: string // the ACTIVE block — the one the panel edits
+  selectedBlockIds: string[] // full selection (marquee / shift-click)
+  selectedImageIds: string[] // selected image blocks — full peers in the selection
+  selectedShapeIds: string[] // selected drawn primitives
   selectedLayerId?: string // the shape layer whose controls the panel shows
+  // isolation: edit THIS effector's master shapes — the rest of the
+  // canvas dims and only the masters render as objects. Esc exits.
+  isolateLayerId?: string
   dragging: boolean // a type block is being dragged — guides show while true
   systemAdjusting: boolean // a SYSTEM control is being worked — curve reveals itself
   motionPlaying: boolean
@@ -81,10 +110,24 @@ export const useStore = create<StoreState>()((set, get) => ({
   ui: {
     mode: 'compose',
     activePanel: 'compose',
-    quality: 'live',
+    // 'hq' at rest — 'live' exists only mid-drag. Starting on 'live'
+    // made freshly loaded organic layers render without their raster
+    // finish until the first slider commit.
+    quality: 'hq',
+    tool: 'select',
+    designTab: 'system',
+    panelOpen: true,
+    shapesFlyout: false,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
     mounted: false,
+    snap: true,
     showGuides: false,
     selectedBlockId: 'headline',
+    selectedBlockIds: ['headline'],
+    selectedImageIds: [],
+    selectedShapeIds: [],
     dragging: false,
     systemAdjusting: false,
     motionPlaying: true,

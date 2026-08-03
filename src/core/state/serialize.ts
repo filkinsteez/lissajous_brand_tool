@@ -25,16 +25,45 @@ export function deserializeProject(json: string | null | undefined): ProjectStat
   }
 }
 
+// The sheet and repeater types merged into ONE 'cloner' (modes grid /
+// radial / linear / curve). Old layers convert here: sheet params slot
+// straight into grid mode; repeater's `size` (fraction of the short
+// edge) becomes `stampSize` so it can't collide with grid's per-cell
+// size dial.
+function migrateClonerType(l: { type?: string; params?: Record<string, unknown> }): {
+  type?: string
+  params?: Record<string, unknown>
+} {
+  if (l.type === 'sheet') {
+    return { ...l, type: 'cloner', params: { ...(l.params ?? {}), mode: 'grid' } }
+  }
+  if (l.type === 'repeater') {
+    const { size, mode, ...rest } = l.params ?? {}
+    return {
+      ...l,
+      type: 'cloner',
+      params: {
+        ...rest,
+        mode: mode === 'linear' ? 'linear' : mode === 'grid' ? 'grid' : 'radial',
+        ...(typeof size === 'number' ? { stampSize: size } : {}),
+      },
+    }
+  }
+  return l
+}
+
 // Saves from before the layer stack carried five singleton registers
 // (cloner/pattern/sheet/repeater/imageArray), each with an `enabled`
 // flag. Enabled ones become layers in the old fixed z-order; the old
-// keys are dropped so they don't ghost through the merge.
-const LEGACY_ORDER: { key: string; type: ShapeLayerType }[] = [
-  { key: 'cloner', type: 'clones' },
-  { key: 'pattern', type: 'pattern' },
-  { key: 'sheet', type: 'sheet' },
-  { key: 'imageArray', type: 'array' },
-  { key: 'repeater', type: 'repeater' },
+// keys are dropped so they don't ghost through the merge. The historic
+// 'cloner' register key is the CONTOUR layer ('clones') — the merged
+// cloner type reuses the name, the register key predates it.
+const LEGACY_ORDER: { key: string; legacyType: string }[] = [
+  { key: 'cloner', legacyType: 'clones' },
+  { key: 'pattern', legacyType: 'pattern' },
+  { key: 'sheet', legacyType: 'sheet' },
+  { key: 'imageArray', legacyType: 'array' },
+  { key: 'repeater', legacyType: 'repeater' },
 ]
 
 function migrateRegistersToLayers(raw: Record<string, unknown>): void {
@@ -42,7 +71,7 @@ function migrateRegistersToLayers(raw: Record<string, unknown>): void {
   if (!hasLegacy) return
   if (raw.layers === undefined) {
     const layers: ShapeLayer[] = []
-    for (const { key, type } of LEGACY_ORDER) {
+    for (const { key, legacyType } of LEGACY_ORDER) {
       const reg = raw[key]
       if (!reg || typeof reg !== 'object') continue
       const { enabled, tone, ...params } = reg as Record<string, unknown> & {
@@ -51,10 +80,12 @@ function migrateRegistersToLayers(raw: Record<string, unknown>): void {
       }
       void tone
       if (!enabled) continue
+      const converted = migrateClonerType({ type: legacyType, params })
+      const type = converted.type as ShapeLayerType
       const layer = createShapeLayer(type, layers)
       layers.push({
         ...layer,
-        params: { ...DEFAULT_LAYER_PARAMS[type], ...params },
+        params: { ...DEFAULT_LAYER_PARAMS[type], ...(converted.params ?? {}) },
       } as ShapeLayer)
     }
     raw.layers = layers
@@ -65,9 +96,10 @@ function migrateRegistersToLayers(raw: Record<string, unknown>): void {
 // Layers arriving from saves may be partial or malformed — fill each
 // from a freshly minted layer of its type and drop unknown types.
 function normalizeLayers(project: ProjectState): ProjectState {
-  const valid = new Set<ShapeLayerType>(['clones', 'pattern', 'sheet', 'repeater', 'array'])
+  const valid = new Set<ShapeLayerType>(['clones', 'pattern', 'cloner', 'array', 'organic', 'tiles'])
   const layers = (Array.isArray(project.layers) ? project.layers : [])
-    .filter((l) => l && typeof l === 'object' && valid.has((l as ShapeLayer).type))
+    .map((l) => migrateClonerType(l as { type?: string; params?: Record<string, unknown> }))
+    .filter((l): l is ShapeLayer => !!l && typeof l === 'object' && valid.has((l as ShapeLayer).type))
     .map((l) => {
       const fresh = createShapeLayer(l.type, [])
       return {

@@ -3,14 +3,16 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
-import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
-import { ARTBOARD_PRESETS } from '@/core/state/defaults'
+import { createDefaultProject } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
 import { importImageFile } from '@/core/images'
 import { mulberry32, type Rng } from '@/core/math/random'
-import type { ArtboardPresetId, ImageItem } from '@/core/state/types'
+import type { ImageItem } from '@/core/state/types'
+
+// slider double-click resets read from the factory defaults
+const DEF = createDefaultProject()
 
 const deg = (rad: number) => `${Math.round((rad * 180) / Math.PI)}°`
 const pct = (v: number) => `${Math.round(v * 100)}`
@@ -23,7 +25,6 @@ export function SystemPanel() {
   const project = useStore((s) => s.project)
   const liss = useStore((s) => s.project.lissajous)
   const grid = useStore((s) => s.project.grid)
-  const artboardPreset = useStore((s) => s.project.artboard.preset)
   const showGuides = useStore((s) => s.ui.showGuides)
   const mode = useStore((s) => s.ui.mode)
   const setUi = useStore((s) => s.setUi)
@@ -96,25 +97,6 @@ export function SystemPanel() {
   return (
     <div className="panel">
       <div className="panel-section">
-        <SegmentedControl<ArtboardPresetId>
-          label="ARTBOARD"
-          value={artboardPreset}
-          options={(Object.keys(ARTBOARD_PRESETS) as ArtboardPresetId[]).map((id) => ({
-            value: id,
-            label: ARTBOARD_PRESETS[id].label.toUpperCase(),
-          }))}
-          onChange={(preset) =>
-            apply({
-              artboard: {
-                preset,
-                width: ARTBOARD_PRESETS[preset].width,
-                height: ARTBOARD_PRESETS[preset].height,
-              },
-            })
-          }
-        />
-      </div>
-      <div className="panel-section">
         <div className="panel-heading">IMAGES</div>
         <input
           ref={fileRef}
@@ -168,22 +150,23 @@ export function SystemPanel() {
       </div>
       <div className="panel-section">
         <div className="panel-heading">CURVE</div>
-        <Slider label="FREQ X" value={liss.frequencyX} min={1} max={12} step={1}
+        <Slider label="FREQ X" value={liss.frequencyX} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyX}
           onChange={(v) => curve({ lissajous: { frequencyX: v, presetId: undefined } })} onCommit={settle} />
-        <Slider label="FREQ Y" value={liss.frequencyY} min={1} max={12} step={1}
+        <Slider label="FREQ Y" value={liss.frequencyY} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyY}
           onChange={(v) => curve({ lissajous: { frequencyY: v, presetId: undefined } })} onCommit={settle} />
-        <Slider label="PHASE" value={liss.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg}
+        <Slider label="PHASE" value={liss.phase} min={0} max={Math.PI} step={Math.PI / 180} format={deg} defaultValue={DEF.lissajous.phase}
           onChange={(v) => curve({ lissajous: { phase: v } })} onCommit={settle} />
-        <Slider label="AMP X" value={liss.amplitudeX} min={0.2} max={1} format={pct}
+        {/* past 100% the curve bleeds off-canvas — one lobe can fill the frame */}
+        <Slider label="AMP X" value={liss.amplitudeX} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeX}
           onChange={(v) => curve({ lissajous: { amplitudeX: v } })} onCommit={settle} />
-        <Slider label="AMP Y" value={liss.amplitudeY} min={0.2} max={1} format={pct}
+        <Slider label="AMP Y" value={liss.amplitudeY} min={0.2} max={1.6} format={pct} defaultValue={DEF.lissajous.amplitudeY}
           onChange={(v) => curve({ lissajous: { amplitudeY: v } })} onCommit={settle} />
         <Slider label="ROTATION" value={liss.rotation} min={-Math.PI / 4} max={Math.PI / 4}
-          step={Math.PI / 360} format={deg}
+          step={Math.PI / 360} format={deg} defaultValue={DEF.lissajous.rotation}
           onChange={(v) => curve({ lissajous: { rotation: v } })} onCommit={settle} />
-        <Slider label="OFFSET X" value={liss.offsetX} min={-0.4} max={0.4} format={pct}
+        <Slider label="OFFSET X" value={liss.offsetX} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetX}
           onChange={(v) => curve({ lissajous: { offsetX: v } })} onCommit={settle} />
-        <Slider label="OFFSET Y" value={liss.offsetY} min={-0.4} max={0.4} format={pct}
+        <Slider label="OFFSET Y" value={liss.offsetY} min={-0.4} max={0.4} format={pct} defaultValue={DEF.lissajous.offsetY}
           onChange={(v) => curve({ lissajous: { offsetY: v } })} onCommit={settle} />
       </div>
       <div className="panel-section">
@@ -195,17 +178,17 @@ export function SystemPanel() {
           Columns and rows are clustered from the curve&apos;s crossings, then
           evened out to the counts below.
         </div>
-        <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct}
+        <Slider label="MARGIN" value={grid.marginRestraint} min={0} max={1} format={pct} defaultValue={DEF.grid.marginRestraint}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />
-        <Slider label="COLUMNS" value={grid.columnBias} min={2} max={8} step={1} format={int}
+        <Slider label="COLUMNS" value={grid.columnBias} min={2} max={8} step={1} format={int} defaultValue={DEF.grid.columnBias}
           onChange={(v) => curve({ grid: { columnBias: v } })} onCommit={settle} />
-        <Slider label="ROWS" value={grid.rowBias} min={2} max={12} step={1} format={int}
+        <Slider label="ROWS" value={grid.rowBias} min={2} max={12} step={1} format={int} defaultValue={DEF.grid.rowBias}
           onChange={(v) => curve({ grid: { rowBias: v } })} onCommit={settle} />
-        <Slider label="GUTTER" value={grid.gutterScale} min={0} max={2} format={pct}
+        <Slider label="GUTTER" value={grid.gutterScale} min={0} max={2} format={pct} defaultValue={DEF.grid.gutterScale}
           onChange={(v) => curve({ grid: { gutterScale: v } })} onCommit={settle} />
-        <Slider label="BASELINE" value={grid.baselineRhythm} min={0.5} max={2} format={pct}
+        <Slider label="BASELINE" value={grid.baselineRhythm} min={0.5} max={2} format={pct} defaultValue={DEF.grid.baselineRhythm}
           onChange={(v) => curve({ grid: { baselineRhythm: v } })} onCommit={settle} />
-        <Slider label="SNAP" value={grid.snapStrength} min={0} max={1} format={pct}
+        <Slider label="SNAP" value={grid.snapStrength} min={0} max={1} format={pct} defaultValue={DEF.grid.snapStrength}
           onChange={(v) => curve({ grid: { snapStrength: v } })} onCommit={settle} />
         <Toggle label="SHOW GUIDES" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
         <Toggle

@@ -107,71 +107,68 @@ vec2 screenToUv(vec2 p) {
   return vec2(p.x / uResolution.x, 1.0 - p.y / uResolution.y);
 }
 
+// taps that walk off the canvas fade out instead of piling up on the
+// border texels — clamping there smeared the edge row into hard streak
+// bands whenever the figure sat near a border
+float edgeFade(vec2 uv) {
+  vec2 m = smoothstep(vec2(-0.02), vec2(0.02), uv)
+         * smoothstep(vec2(-0.02), vec2(0.02), vec2(1.0) - uv);
+  return m.x * m.y;
+}
+
 void main() {
   // artboard pixel space, y down — matches the knots (see field.ts)
   vec2 px = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
   float minDim = max(min(uResolution.x, uResolution.y), 1.0);
 
   float smearPx = uDrift * minDim * 0.9;
-  if (smearPx < 1.0) {
+  // resolution-independent early-out: thresholding smearPx (device px)
+  // made near-zero drift a no-op live but active at 2x/4x export
+  if (uDrift < 0.002) {
     fragColor = vec4(texture(uSceneTex, vUv).rgb, 1.0);
     return;
   }
 
-  // nearest point on the curve: distance + ARC position. The tangent is
-  // NOT taken from the winning segment — per-segment constant directions
-  // tile the plane into equal-tangent cells and the smear turns those
-  // cells into visible blocks. Instead the tangent is interpolated along
-  // the arc through the (linearly filtered) knot texture, so it turns
-  // smoothly everywhere.
+  // The stroke direction is a smooth ORIENTATION FIELD: every curve
+  // segment contributes its direction weighted by distance, averaged in
+  // doubled-angle space (where a tangent and its negation are the same
+  // line). Nearest-branch schemes snap at equidistance loci — near the
+  // crossing that painted hard-edged streak wedges and fans; a weighted
+  // orientation average has no branches to snap between.
   float minD = 1e9;
-  float minArc = 0.0;
-  float minD2 = 1e9;
-  float minArc2 = 0.0;
+  vec2 orient = vec2(0.0);
+  float sigma = minDim * 0.07;
   vec4 firstKnot = readKnot(0);
   vec2 prev = firstKnot.xy;
-  float prevArc = firstKnot.z;
   for (int i = 1; i < MAX_KNOTS; i++) {
     if (i >= uKnotCount) break;
     vec4 knot = readKnot(i);
     float h = 0.0;
     float d = sdSegment(px, prev, knot.xy, h);
-    float arcCand = mix(prevArc, knot.z, h);
-    float sep = abs(arcCand - minArc);
-    sep = min(sep, 1.0 - sep);
-    if (d < minD) {
-      if (sep > 0.08) {
-        minD2 = minD;
-        minArc2 = minArc;
-      }
-      minD = d;
-      minArc = arcCand;
-    } else {
-      float sep2 = abs(arcCand - minArc);
-      sep2 = min(sep2, 1.0 - sep2);
-      if (d < minD2 && sep2 > 0.08) {
-        minD2 = d;
-        minArc2 = arcCand;
-      }
+    minD = min(minD, d);
+    vec2 seg = knot.xy - prev;
+    float len2 = dot(seg, seg);
+    if (len2 > 1e-6) {
+      vec2 tn = seg * inversesqrt(len2);
+      // doubled angle: (cos2a, sin2a) — sign-free line direction
+      float w = exp(-d / sigma);
+      orient += vec2(tn.x * tn.x - tn.y * tn.y, 2.0 * tn.x * tn.y) * w;
     }
     prev = knot.xy;
-    prevArc = knot.z;
   }
-  // knots are equal-arc, so texture-x IS arc position; the tangent is
-  // blended between the two nearest branches so the flow never snaps
-  // across the crossing's equidistance line
-  float dA = 1.5 / float(uKnotCount);
-  vec2 kA = texture(uCurveTex, vec2(fract(minArc + dA), 0.5)).xy * uCurveScale;
-  vec2 kB = texture(uCurveTex, vec2(fract(minArc - dA + 1.0), 0.5)).xy * uCurveScale;
-  vec2 tangent1 = safeDir(kA - kB, vec2(1.0, 0.0));
-  vec2 k2A = texture(uCurveTex, vec2(fract(minArc2 + dA), 0.5)).xy * uCurveScale;
-  vec2 k2B = texture(uCurveTex, vec2(fract(minArc2 - dA + 1.0), 0.5)).xy * uCurveScale;
-  vec2 tangent2 = safeDir(k2A - k2B, tangent1);
-  float branchBlend = 0.5 * exp(-max(minD2 - minD, 0.0) / (minDim * 0.06));
-  // sign-align before blending: a tangent and its negation are the same
-  // stroke direction for a smear
-  if (dot(tangent2, tangent1) < 0.0) tangent2 = -tangent2;
-  vec2 tangent = safeDir(mix(tangent1, tangent2, branchBlend), tangent1);
+  float ang = 0.5 * atan(orient.y, orient.x + 1e-6);
+  vec2 tangent = vec2(cos(ang), sin(ang));
+  // a whisper of per-pixel angular dither breaks streak bundles apart so
+  // long walks never band into combs (hash22 is already signed — no
+  // recentering, or every stroke picks up a systematic tilt)
+  vec2 dith = hash22(px * 0.73 + vec2(uSeed));
+  float jit = dith.x * 0.1;
+  float cj = cos(jit);
+  float sj = sin(jit);
+  tangent = vec2(tangent.x * cj - tangent.y * sj, tangent.x * sj + tangent.y * cj);
+  // the halved angle always lands in the +x hemisphere; flip half the
+  // pixels so the longer forward walk has no canvas-wide direction bias
+  if (dith.y > 0.0) tangent = -tangent;
 
   // near the curve the pull follows the stroke; away from it the flow
   // belongs to the curl field almost entirely
@@ -194,16 +191,18 @@ void main() {
     vec2 cF = curl(posF / minDim * curlScale + seedOff);
     dirF = safeDir(mix(safeDir(cF, dirF), dirF, obey), dirF);
     posF += dirF * stepLen;
-    float wF = exp(-float(i) * 0.11);
-    acc += texture(uSceneTex, clamp(screenToUv(posF), vec2(0.0), vec2(1.0))).rgb * wF;
+    vec2 uvF = screenToUv(posF);
+    float wF = exp(-float(i) * 0.11) * edgeFade(uvF);
+    acc += texture(uSceneTex, clamp(uvF, vec2(0.0), vec2(1.0))).rgb * wF;
     wsum += wF;
 
     vec2 cB = curl(posB / minDim * curlScale + seedOff);
     dirB = safeDir(mix(safeDir(cB, dirB), dirB, obey), dirB);
     posB += dirB * stepLen;
     // shorter memory backward: streaks get a direction
-    float wB = exp(-float(i) * 0.26);
-    acc += texture(uSceneTex, clamp(screenToUv(posB), vec2(0.0), vec2(1.0))).rgb * wB;
+    vec2 uvB = screenToUv(posB);
+    float wB = exp(-float(i) * 0.26) * edgeFade(uvB);
+    acc += texture(uSceneTex, clamp(uvB, vec2(0.0), vec2(1.0))).rgb * wB;
     wsum += wB;
   }
 

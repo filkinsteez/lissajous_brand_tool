@@ -121,6 +121,8 @@ export function EditorShell() {
             mode === 'motion' ? <MotionLab /> : mode === 'path' ? <PathLab /> : <CanvasStage />
           ) : null}
         </main>
+        {/* always present — toggling it away reflowed the whole canvas,
+            which read as jank. Deselecting a section shows EXPORT. */}
         <aside className="inspector-wrap">
           <Inspector />
         </aside>

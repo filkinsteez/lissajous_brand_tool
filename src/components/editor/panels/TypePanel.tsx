@@ -26,7 +26,14 @@ export function TypePanel() {
   const nCols = grid.columnBoundaries.length - 1
   const nRows = grid.rowBoundaries.length - 1
 
-  if (!block) return null
+  if (!block)
+    return (
+      <div className="panel">
+        <div className="panel-empty">
+          No text yet — the T tool in the dock places a block on the canvas.
+        </div>
+      </div>
+    )
 
   const patchBlock = (patch: Partial<TypeBlockState>) => {
     setT({ typeBlocks: blocks.map((b) => (b.id === block.id ? { ...b, ...patch } : b)) })
@@ -41,7 +48,7 @@ export function TypePanel() {
         <SegmentedControl
           value={block.id}
           options={blocks.map((b) => ({ value: b.id, label: b.role.toUpperCase() }))}
-          onChange={(id) => setUi({ selectedBlockId: id })}
+          onChange={(id) => setUi({ selectedBlockId: id, selectedBlockIds: [id] })}
         />
         <div className="panel-note">
           Text is edited on the canvas: double-click a block to type,

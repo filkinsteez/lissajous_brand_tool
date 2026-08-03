@@ -46,15 +46,19 @@ describe('recipe serialization', () => {
       }),
     )
     expect(loaded).not.toBeNull()
-    expect(loaded!.layers.map((l) => l.type)).toEqual(['sheet', 'repeater'])
+    // sheet and repeater both migrate into the merged cloner type,
+    // keeping their layout as the mode
+    expect(loaded!.layers.map((l) => l.type)).toEqual(['cloner', 'cloner'])
     const sheet = loaded!.layers[0]
-    expect(sheet.type === 'sheet' && sheet.params.countX).toBe(12)
+    expect(sheet.type === 'cloner' && sheet.params.mode).toBe('grid')
+    expect(sheet.type === 'cloner' && sheet.params.countX).toBe(12)
     expect(sheet.params).not.toHaveProperty('enabled')
     expect(sheet.params).not.toHaveProperty('tone')
     const rep = loaded!.layers[1]
-    expect(rep.type === 'repeater' && rep.params.count).toBe(9)
+    expect(rep.type === 'cloner' && rep.params.mode).toBe('linear')
+    expect(rep.type === 'cloner' && rep.params.count).toBe(9)
     // defaults fill the unspecified params
-    expect(rep.type === 'repeater' && rep.params.radius).toBe(0.28)
+    expect(rep.type === 'cloner' && rep.params.radius).toBe(0.28)
     // the old singleton keys do not ghost into the project
     expect(loaded).not.toHaveProperty('sheet')
     expect(loaded).not.toHaveProperty('repeater')

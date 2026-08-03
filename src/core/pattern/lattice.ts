@@ -9,11 +9,14 @@ import type { CurveSample } from '@/core/lissajous/sampler'
 // 64-column lattice renders as four <path> elements, not thousands of
 // nodes.
 
+export type LatticeStamp = { x: number; y: number; r: number; protoIndex: number }
+
 export type LatticeTiers = {
   dots: string // far cells: the baseline lattice
   circles: string // approaching cells
   rings: string // near cells
   squares: string // cells ON the curve
+  stamps: LatticeStamp[] // drawn-proto substitution; empty = built-in tiers
 }
 
 type Options = {
@@ -25,12 +28,21 @@ type Options = {
 
 type Transform = { scale: number; offsetX: number; offsetY: number }
 
+// the proto deal: sin-fold cell hash (the array register's), keyed on
+// grid indices alone so size/range dials never reshuffle which proto a
+// cell carries
+function cellHash(ix: number, iy: number): number {
+  const v = Math.sin(ix * 127.1 + iy * 311.7 + 269.5) * 43758.5453
+  return v - Math.floor(v)
+}
+
 export function buildLattice(
   samples: CurveSample[],
   width: number,
   height: number,
   opts: Options,
   transform?: Transform,
+  drawnCount?: number,
 ): LatticeTiers {
   const cols = Math.max(4, Math.round(opts.cells))
   const cellW = width / cols
@@ -72,6 +84,8 @@ export function buildLattice(
   const reach = opts.range * cellW
   const r = (opts.size * Math.min(cellW, cellH)) / 2
   const tiers = { dots: [] as string[], circles: [] as string[], rings: [] as string[], squares: [] as string[] }
+  const n = drawnCount ?? 0
+  const stamps: LatticeStamp[] = []
 
   const circleAt = (x: number, y: number, radius: number) =>
     `M${(x - radius).toFixed(1)} ${y.toFixed(1)}` +
@@ -88,7 +102,19 @@ export function buildLattice(
       const y = (row + 0.5) * cellH
       const d = distTo(x, y)
       const band = d / Math.max(reach, 1e-6)
-      if (band < 0.45) {
+      if (n > 0) {
+        // drawn protos substitute by SIZE: the primitive ladder becomes
+        // a size ladder, so hierarchy is carried by scale alone
+        const rr =
+          band < 0.45 ? r * 0.9
+          : band < 1 ? r * 0.85
+          : band < 1.9 ? r * 0.55
+          : opts.mode === 'lattice' ? r * 0.2
+          : 0
+        if (rr > 0) {
+          stamps.push({ x, y, r: rr, protoIndex: Math.min(n - 1, Math.floor(cellHash(col, row) * n)) })
+        }
+      } else if (band < 0.45) {
         tiers.squares.push(squareAt(x, y, r * 0.9))
       } else if (band < 1) {
         tiers.rings.push(circleAt(x, y, r * 0.85))
@@ -105,5 +131,6 @@ export function buildLattice(
     circles: tiers.circles.join(''),
     rings: tiers.rings.join(''),
     squares: tiers.squares.join(''),
+    stamps,
   }
 }

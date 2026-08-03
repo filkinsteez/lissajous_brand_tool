@@ -43,6 +43,17 @@ export function buildCurveKnotTextureData(samples: CurveSample[], knotCount = 25
     floatData[o + 2] = knot.arcNorm
     floatData[o + 3] = 1
   }
-  const halfData = packHalf(floatData)
-  return { width, height: 1, knots, floatData, halfData }
+  // half packing is only the fallback path (no OES_texture_float_linear)
+  // — computed lazily so the common float32 route never pays for it
+  let half: Uint16Array | null = null
+  return {
+    width,
+    height: 1,
+    knots,
+    floatData,
+    get halfData() {
+      if (!half) half = packHalf(floatData)
+      return half
+    },
+  }
 }

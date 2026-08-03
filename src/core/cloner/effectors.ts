@@ -1,4 +1,4 @@
-import type { ClonerState } from '@/core/state/types'
+import type { ContourState } from '@/core/state/types'
 
 // Per-clone modulation, shared by the live SVG layer and the PNG export
 // so the two renders are the same drawing.
@@ -20,7 +20,7 @@ function jitter(i: number, k: number, seed: number): number {
 }
 
 export function cloneTransforms(
-  cloner: ClonerState,
+  cloner: ContourState,
   n: number,
   minDim: number,
   seed: number,

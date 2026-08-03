@@ -3,6 +3,7 @@ import { buildSheetClones, metaUnitOutline, unitPolygon } from './sheet'
 import type { SheetState } from '@/core/state/types'
 
 const base: SheetState = {
+  sourceShapeIds: [],
   shape: 'circle',
   layout: 'grid',
   countX: 4,

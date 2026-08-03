@@ -83,11 +83,21 @@ export async function renderTypeToCanvas(
     .map((b) => {
       const box = layoutTypeBlock(b, grid)
       const family = EXPORT_FAMILIES[b.fontFamily]?.exportName ?? 'LBS Flex'
+      // mirror the live layer: the box hugs the text, the span is the
+      // wrap limit and the alignment anchor
+      const anchor =
+        b.align === 'right'
+          ? [`right:${W - box.x - box.w}px`]
+          : b.align === 'center'
+            ? [`left:${box.x + box.w / 2}px`, `transform:translateX(-50%)`]
+            : [`left:${box.x}px`]
       const style = [
         `position:absolute`,
-        `left:${box.x}px`,
+        ...anchor,
         `top:${box.y}px`,
-        `width:${box.w}px`,
+        `width:fit-content`,
+        `max-width:${box.w}px`,
+        `min-width:1ch`,
         `font-family:'${family}'`,
         `font-size:${b.size}px`,
         `font-weight:${Math.round(b.weight)}`,

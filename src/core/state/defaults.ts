@@ -23,15 +23,17 @@ export const PAPER = '#f4f2ed'
 // minted from these by createShapeLayer (panel ADD, autosave migration).
 
 export const LAYER_TYPE_LABELS: Record<ShapeLayerType, string> = {
-  sheet: 'SHEET',
-  repeater: 'REPEATER',
+  organic: 'ORGANIC',
+  cloner: 'CLONER',
+  tiles: 'TILES',
   array: 'ARRAY',
-  clones: 'CLONES',
+  clones: 'CONTOUR',
   pattern: 'PATTERN',
 }
 
 export const DEFAULT_LAYER_PARAMS = {
   clones: {
+    sourceShapeIds: [] as string[],
     count: 7,
     spacing: 0.045,
     growth: 1.35,
@@ -41,31 +43,34 @@ export const DEFAULT_LAYER_PARAMS = {
     depth: 0,
   },
   pattern: {
+    sourceShapeIds: [] as string[],
     cells: 32,
     size: 0.55,
     range: 1.6,
     mode: 'lattice' as const,
   },
-  sheet: {
-    shape: 'mixed' as const,
+  // the merged cloner opens as an EXACT grid: one shape, clean rows,
+  // zero jitter — randomness/noise/depth are dials, not the default
+  cloner: {
+    sourceShapeIds: [] as string[],
+    mode: 'grid' as const,
+    shape: 'circle' as const,
     layout: 'grid' as const,
     countX: 8,
     countY: 10,
     countZ: 1,
     size: 0.5,
-    depth: 0.35,
-    random: 0.15,
-    noise: 0.6,
-    strokeMix: 0.35,
+    depth: 0,
+    random: 0,
+    noise: 0,
+    strokeMix: 0,
     curve: 0,
-  },
-  repeater: {
-    shape: 'half' as const,
-    mode: 'radial' as const,
+    boxX: 0,
+    boxY: 0,
+    boxW: 1,
+    boxH: 1,
     count: 12,
-    countX: 5,
-    countY: 4,
-    size: 0.08,
+    stampSize: 0.08,
     originX: 0.5,
     originY: 0.5,
     stepX: 0.05,
@@ -74,16 +79,54 @@ export const DEFAULT_LAYER_PARAMS = {
     span: Math.PI * 2,
     rotate: 0,
     scaleStep: 1,
-    fade: 0.2,
+    fade: 0,
     stroked: false,
   },
+  // the coded-poster register: figure-driven out of the box
+  tiles: {
+    sourceShapeIds: [] as string[],
+    style: 'checker' as const,
+    seed: 7,
+    cols: 14,
+    density: 0.55,
+    levels: 3,
+    rings: 6,
+    curve: 0.6,
+    duo: 0.35,
+    weight: 0.35,
+  },
   array: {
+    sourceShapeIds: [] as string[],
     imageId: null,
     cells: 48,
     size: 0.7,
     threshold: 0.72,
     blend: 0,
     invert: false,
+  },
+  organic: {
+    sourceShapeIds: [] as string[],
+    seed: 4021,
+    distribution: 'poisson' as const,
+    count: 900,
+    spacing: 0.022,
+    protos: ['blob', 'circle'] as ('blob' | 'circle')[],
+    size: 0.02,
+    sizeRange: 0.6,
+    sizeField: 0.6,
+    curvePull: 0.7,
+    focalStrength: 0,
+    focalX: 0.5,
+    focalY: 0.5,
+    noiseScale: 2.2,
+    noiseAmount: 0.5,
+    rotation: 'flow' as const,
+    rotationJitter: 0.3,
+    colorField: 0.5,
+    opacityRange: 0.25,
+    goo: 0.35,
+    soft: 0.25,
+    grain: 0.2,
   },
 }
 
@@ -104,17 +147,29 @@ export function createShapeLayer(
     texture: 'solid' as const,
     texDensity: 0.5,
   }
+  // fresh sourceShapeIds per layer — the default array must never be a
+  // shared reference an accidental mutation could thread between layers
   switch (type) {
     case 'clones':
-      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.clones } }
+      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.clones, sourceShapeIds: [] } }
     case 'pattern':
-      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.pattern } }
-    case 'sheet':
-      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.sheet } }
-    case 'repeater':
-      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.repeater } }
+      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.pattern, sourceShapeIds: [] } }
+    case 'cloner':
+      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.cloner, sourceShapeIds: [] } }
+    case 'tiles':
+      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.tiles, sourceShapeIds: [] } }
     case 'array':
-      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.array } }
+      return { ...base, type, params: { ...DEFAULT_LAYER_PARAMS.array, sourceShapeIds: [] } }
+    case 'organic':
+      return {
+        ...base,
+        type,
+        params: {
+          ...DEFAULT_LAYER_PARAMS.organic,
+          protos: [...DEFAULT_LAYER_PARAMS.organic.protos],
+          sourceShapeIds: [],
+        },
+      }
   }
 }
 
@@ -300,6 +355,7 @@ export function createDefaultProject(seed?: number): ProjectState {
       durationMs: 2600,
     },
     images: [],
+    shapes: [],
     bgImageId: null,
     export: { scale: 2 },
   }

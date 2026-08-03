@@ -36,6 +36,7 @@ type RendererStatus = 'ready' | 'unavailable' | 'lost'
 
 const HALF_FLOAT = 0x140b
 const RGBA16F = 0x881a
+const RGBA32F = 0x8814
 const NOOP = () => {}
 
 function pickPalette(project: ProjectState) {
@@ -100,6 +101,7 @@ function deleteTarget(gl: WebGL2RenderingContext, target?: InternalTarget): void
 export class BackgroundRenderer {
   private gl: WebGL2RenderingContext | null = null
   private status: RendererStatus = 'unavailable'
+  private floatLinear = false
   private programs: Programs | null = null
   private quadVao: WebGLVertexArrayObject | null = null
   private curveTex: WebGLTexture | null = null
@@ -177,7 +179,7 @@ export class BackgroundRenderer {
     const derived = getDerived(project)
     const curveTex = buildCurveKnotTextureData(derived.samples, 256)
     const palette = buildPaletteLUT(project.background.roles, pickPalette(project), project.background.lockedRoles)
-    this.uploadCurveTexture(curveTex.width, curveTex.halfData)
+    this.uploadCurveTexture(curveTex.width, curveTex.floatData, curveTex.halfData)
     this.uploadPaletteTexture(palette.width, palette.data)
 
     const groundHex = pickPalette(project).roles[project.background.ground].base
@@ -316,6 +318,12 @@ export class BackgroundRenderer {
       this.status = 'unavailable'
       return
     }
+    // full-float knot texture wants linear filtering; without the
+    // extension the curve texture falls back to half floats. Half
+    // precision quantizes knot coords to ~1px past x=1024, which makes
+    // the fill's ray-parity test miscount in thin bands — the "sharp
+    // spikes" artifact.
+    this.floatLinear = !!gl.getExtension('OES_texture_float_linear')
 
     try {
       this.programs = {
@@ -388,15 +396,24 @@ export class BackgroundRenderer {
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex)
   }
 
-  private uploadCurveTexture(width: number, halfData: Uint16Array): void {
+  private uploadCurveTexture(width: number, floatData: Float32Array, halfData: Uint16Array): void {
     const gl = this.gl
     if (!gl || !this.curveTex) return
     gl.bindTexture(gl.TEXTURE_2D, this.curveTex)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    // the knots are a CLOSED loop parameterized by arc: sampling must
+    // wrap, or tangents read near the arc seam come back clamped and
+    // spray a fan of bad smear directions from the curve's start point
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texImage2D(gl.TEXTURE_2D, 0, RGBA16F, width, 1, 0, gl.RGBA, HALF_FLOAT, halfData)
+    // full float keeps the fill's ray test exact; half floats are the
+    // fallback where linear-filtered float textures are unsupported
+    if (this.floatLinear) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, RGBA32F, width, 1, 0, gl.RGBA, gl.FLOAT, floatData)
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D, 0, RGBA16F, width, 1, 0, gl.RGBA, HALF_FLOAT, halfData)
+    }
   }
 
   private uploadPaletteTexture(width: number, data: Uint8Array): void {

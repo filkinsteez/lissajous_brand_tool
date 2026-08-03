@@ -3,6 +3,7 @@ import { buildRepeats } from './repeater'
 import type { RepeaterState } from '@/core/state/types'
 
 const base: RepeaterState = {
+  sourceShapeIds: [],
   shape: 'circle',
   mode: 'linear',
   count: 6,

@@ -5,7 +5,6 @@ import { history, useStore } from '@/core/state/store'
 import { createDefaultProject } from '@/core/state/defaults'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { downloadPNG, exportPNG } from '@/core/export/png'
-import { encodeShareHash } from '@/core/state/compress'
 
 // variant 'motion' drops the poster-only PNG render; the share link
 // carries the whole project (motion system included), so it lives in both
@@ -74,31 +73,21 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
       <div className="panel-section">
         <button
           className="ctl-action"
-          onClick={async () => {
-            const url = `${location.origin}${location.pathname}#${encodeShareHash(project)}`
-            try {
-              await navigator.clipboard.writeText(url)
-              flash('LINK COPIED')
-            } catch {
-              flash('CLIPBOARD BLOCKED')
-            }
-          }}
-        >
-          COPY SHARE LINK
-        </button>
-        <button
-          className="ctl-action"
           onClick={() => {
             // non-destructive reset: the current composition goes onto the
             // undo stack, so Ctrl+Z brings it straight back
             const s = useStore.getState()
             history.push(s.project)
             s.replaceProject(createDefaultProject(), { keepHistory: true })
-            s.setUi({ selectedLayerId: undefined, selectedBlockId: 'headline' })
-            flash('RESET TO DEFAULTS — UNDO RESTORES')
+            s.setUi({
+              selectedLayerId: undefined,
+              selectedBlockId: 'headline',
+              selectedBlockIds: ['headline'],
+            })
+            flash('RESET — UNDO RESTORES')
           }}
         >
-          NEW PROJECT
+          RESET
         </button>
         {note ? <div className="panel-note">{note}</div> : null}
       </div>

@@ -28,6 +28,7 @@ export type SheetClone = {
   opacity: number
   shape: Exclude<SheetShape, 'mixed'>
   stroked: boolean // outline instead of fill
+  drawnIndex?: number // index into the layer's bound drawn protos
   z: number // layer index, 0 = front
 }
 
@@ -165,15 +166,24 @@ export function buildSheetClones(
   height: number,
   seed: number,
   curvePts?: { x: number; y: number }[],
+  drawnCount?: number,
 ): SheetClone[] {
   const nx = Math.max(2, Math.round(sheet.countX))
   const ny = Math.max(2, Math.round(sheet.countY))
   const nz = Math.max(1, Math.round(sheet.countZ))
   const minDim = Math.min(width, height)
-  const cells =
+  // BOUNDS: the grid lays inside the fractional box (absent = full
+  // bleed). Cells land in true artboard coordinates, so the noise and
+  // curve fields read the same space as every other layer.
+  const bx = (sheet.boxX ?? 0) * width
+  const by = (sheet.boxY ?? 0) * height
+  const bw = Math.max(0.02, sheet.boxW ?? 1) * width
+  const bh = Math.max(0.02, sheet.boxH ?? 1) * height
+  const cells = (
     (sheet.layout ?? 'grid') === 'packed'
-      ? packCells(width, height, nx, ny, seed)
-      : gridCells(width, height, nx, ny)
+      ? packCells(bw, bh, nx, ny, seed)
+      : gridCells(bw, bh, nx, ny)
+  ).map((c) => ({ ...c, x: c.x + bx, y: c.y + by }))
   const cx = width * 0.5
   const cy = height * 0.5
   const curveFx = (sheet.curve ?? 0) * (curvePts && curvePts.length > 1 ? 1 : 0)
@@ -221,6 +231,14 @@ export function buildSheetClones(
         if ((shape as string) === 'diamond') shape = 'square'
       }
 
+      // bound drawn protos deal from the SAME noise-blended t as MIX, so
+      // coherent noise patches still select coherently
+      let drawnIndex: number | undefined
+      if (drawnCount && drawnCount > 0) {
+        const t = noiseAmt > 0 ? nShape * 0.8 + hash(ix, iy, iz, 5, seed) * 0.2 : hash(ix, iy, iz, 5, seed)
+        drawnIndex = Math.min(drawnCount - 1, Math.floor(t * drawnCount))
+      }
+
       // rotation: truchet shapes turn in 90-degree steps; everything else
       // tilts continuously with RANDOM
       let rotate: number
@@ -248,7 +266,10 @@ export function buildSheetClones(
         if (hash(ix, iy, iz, 9, seed) < curveFx) stroked = !sig.inside
       }
 
-      if (shape === 'meta') stroked = true // the mark is always a line drawing
+      // drawn protos carry their own fill — the stroke population and the
+      // meta-is-a-line rule only apply to the built-in vocabulary
+      if (drawnIndex !== undefined) stroked = false
+      else if (shape === 'meta') stroked = true // the mark is always a line drawing
 
       out.push({
         x: px,
@@ -258,6 +279,7 @@ export function buildSheetClones(
         opacity: layerOpacity,
         shape,
         stroked,
+        drawnIndex,
         z: iz,
       })
     }

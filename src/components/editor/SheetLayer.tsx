@@ -4,32 +4,15 @@ import { useMemo } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { buildSheetClones, metaUnitOutline, unitPolygon, type SheetClone } from '@/core/sheet/sheet'
+import { transformedCurve } from '@/core/lissajous/figureTransform'
+import { resolveProjectProtos, PROTO_SIZE } from '@/core/canvas/shapeProtos'
 import type { ShapeLayer } from '@/core/state/types'
 import { layerBaseColor, fieldSampler } from '@/core/layers/paint'
+import { ProtoDefs } from './ProtoDefs'
 import { layerStyle, fillPaint, TexturePatternDef } from './layerPaint'
 
-// the curve the CURVE effector reads: the layout figure under the same
-// zoom + pan the background field applies
-export function transformedCurve(
-  project: ReturnType<typeof useStore.getState>['project'],
-): { x: number; y: number }[] {
-  const derived = getDerived(project)
-  const W = project.artboard.width
-  const H = project.artboard.height
-  const scale = project.background.fieldScale ?? 1
-  const ox = (project.background.fieldOffsetX ?? 0) * W
-  const oy = (project.background.fieldOffsetY ?? 0) * H
-  const cx = W * 0.5
-  const cy = H * 0.5
-  const pts: { x: number; y: number }[] = []
-  const stride = Math.max(1, Math.floor(derived.samples.length / 200))
-  for (let i = 0; i < derived.samples.length; i += stride) {
-    const s = derived.samples[i]
-    pts.push({ x: cx + (s.x - cx) * scale + ox, y: cy + (s.y - cy) * scale + oy })
-  }
-  if (pts.length > 1) pts.push(pts[0])
-  return pts
-}
+// the curve the CURVE effector reads lives in core/lissajous/figureTransform
+// — one shared definition for live layers and the export
 
 // The sheet register drawn as SVG. Primitives are baked into one path
 // per (depth layer x fill/stroke x color) bucket; the meta glyph is
@@ -106,11 +89,19 @@ export function metaGlyphD(): string {
   return d + 'Z'
 }
 
-type SheetLayerT = Extract<ShapeLayer, { type: 'sheet' }>
+// renders the merged cloner's GRID mode — the sheet engine
+type SheetLayerT = Extract<ShapeLayer, { type: 'cloner' }>
 
 export function SheetLayer({ layer }: { layer: SheetLayerT }) {
   const project = useStore((s) => s.project)
+  const shapes = useStore((s) => s.project.shapes)
   const sheet = layer.params
+
+  // bound drawn protos: non-empty switches the vocabulary to <use> stamps
+  const protos = useMemo(
+    () => resolveProjectProtos(project, sheet.sourceShapeIds),
+    [project, sheet.sourceShapeIds],
+  )
 
   const baseColor = layerBaseColor(layer.color, project)
   // SAMPLED bucket-keys by the field color under each clone; the weave
@@ -124,7 +115,8 @@ export function SheetLayer({ layer }: { layer: SheetLayerT }) {
       project.artboard.width,
       project.artboard.height,
       project.background.seed,
-      sheet.curve > 0 ? transformedCurve(project) : undefined,
+      sheet.curve > 0 ? transformedCurve(project, getDerived(project)) : undefined,
+      protos.length,
     )
     // buckets: (z, stroked, color) -> batched path; metas instanced separately
     const buckets = new Map<
@@ -132,7 +124,12 @@ export function SheetLayer({ layer }: { layer: SheetLayerT }) {
       { opacity: number; stroked: boolean; z: number; d: string; color: string | null }
     >()
     const metas: { c: SheetClone; color: string | null }[] = []
+    const drawn: SheetClone[] = []
     for (const c of clones) {
+      if (c.drawnIndex !== undefined) {
+        drawn.push(c)
+        continue
+      }
       const color = sampler ? sampler(c.x, c.y) : null
       if (c.shape === 'meta') {
         metas.push({ c, color })
@@ -147,11 +144,13 @@ export function SheetLayer({ layer }: { layer: SheetLayerT }) {
     return {
       buckets: [...buckets.values()].sort((a, b) => b.z - a.z),
       metas,
+      drawn,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sheet,
     sampler,
+    protos,
     project.artboard.width,
     project.artboard.height,
     project.background.seed,
@@ -176,6 +175,7 @@ export function SheetLayer({ layer }: { layer: SheetLayerT }) {
     >
       <defs>
         <path id={`sheet-meta-${layer.id}`} d={metaGlyphD()} />
+        <ProtoDefs protos={protos} layerId={layer.id} />
         <TexturePatternDef layer={layer} color={baseColor} />
       </defs>
       {built.buckets.map((b, i) => (
@@ -201,6 +201,23 @@ export function SheetLayer({ layer }: { layer: SheetLayerT }) {
           transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${((c.rotate * 180) / Math.PI).toFixed(1)}) scale(${c.r.toFixed(2)})`}
         />
       ))}
+      {built.drawn.map((c, i) => {
+        const di = c.drawnIndex ?? 0
+        const p = protos[di]
+        if (!p) return null
+        // drawn protos stamp with their OWN fill; layer color machinery
+        // does not apply. Proto box is PROTO_SIZE, so scale = diameter/box.
+        return (
+          <use
+            key={i}
+            href={`#dp-${layer.id}-${di}`}
+            fill={p.fill}
+            fillRule="evenodd"
+            opacity={c.opacity * p.opacity}
+            transform={`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)}) rotate(${((c.rotate * 180) / Math.PI).toFixed(1)}) scale(${((c.r * 2) / PROTO_SIZE).toFixed(3)})`}
+          />
+        )
+      })}
     </svg>
   )
 }

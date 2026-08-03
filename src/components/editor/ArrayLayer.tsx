@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/core/state/store'
 import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
+import { resolveProjectProtos, type ShapeProto } from '@/core/canvas/shapeProtos'
 import { BRAND_PALETTE } from '@/core/color/palette'
 import type { ShapeLayer } from '@/core/state/types'
 import { layerStyle } from './layerPaint'
@@ -14,6 +15,7 @@ type ArrayLayerT = Extract<ShapeLayer, { type: 'array' }>
 // for 2D canvas and would be DOM soup as elements.
 export function ArrayLayer({ layer }: { layer: ArrayLayerT }) {
   const project = useStore((s) => s.project)
+  const shapes = useStore((s) => s.project.shapes)
   const state = layer.params
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgCache = useRef<{ src: string; el: HTMLImageElement } | null>(null)
@@ -41,8 +43,9 @@ export function ArrayLayer({ layer }: { layer: ArrayLayerT }) {
       // the palette deal: the poster's three locked/leading roles
       const roles = project.background.roles.slice(0, 3)
       const palette = roles.map((r) => BRAND_PALETTE.roles[r].base)
-      const cells = buildImageCells(state, W, H, pixels, palette)
-      paintImageCells(ctx, cells)
+      const protos = resolveProjectProtos(project, state.sourceShapeIds)
+      const cells = buildImageCells(state, W, H, pixels, palette, protos.map((p: ShapeProto) => p.fill))
+      paintImageCells(ctx, cells, protos)
     }
 
     if (imgCache.current?.src === image.src) {
@@ -58,7 +61,8 @@ export function ArrayLayer({ layer }: { layer: ArrayLayerT }) {
     return () => {
       alive = false
     }
-  }, [state, image, project.artboard.width, project.artboard.height, project.background.roles])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, image, shapes, project.typeBlocks, project.artboard.width, project.artboard.height, project.background.roles])
 
   if (!image) return null
 
