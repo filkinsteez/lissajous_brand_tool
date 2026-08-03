@@ -1,5 +1,6 @@
 'use client'
 
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
@@ -82,12 +83,12 @@ export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
       </div>
       <div className="panel-section">
         <SegmentedControl<TypeAlign>
-          label="ALIGN"
+          label="Align"
           value={block.align}
           options={[
-            { value: 'left', label: 'LEFT' },
-            { value: 'center', label: 'CENTER' },
-            { value: 'right', label: 'RIGHT' },
+            { value: 'left', label: 'Left', icon: AlignLeft },
+            { value: 'center', label: 'Center', icon: AlignCenter },
+            { value: 'right', label: 'Right', icon: AlignRight },
           ]}
           onChange={(align) => { patchBlock({ align }); commit() }}
         />

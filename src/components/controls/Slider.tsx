@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Slider as DialSlider } from 'dialkit'
+import { niceLabel } from './label'
 
 export type SliderProps = {
   label: string
@@ -75,7 +76,7 @@ export function Slider({
       }}
     >
       <DialSlider
-        label={label}
+        label={niceLabel(label)}
         value={Math.round(value * k * 1000) / 1000}
         min={Math.round(min * k * 1000) / 1000}
         max={Math.round(max * k * 1000) / 1000}

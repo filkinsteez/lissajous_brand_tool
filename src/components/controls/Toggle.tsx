@@ -1,6 +1,7 @@
 'use client'
 
 import { Toggle as DialToggle } from 'dialkit'
+import { niceLabel } from './label'
 
 export function Toggle({
   label,
@@ -13,7 +14,7 @@ export function Toggle({
 }) {
   return (
     <div className="ctl-dial">
-      <DialToggle label={label} checked={value} onChange={onChange} />
+      <DialToggle label={niceLabel(label)} checked={value} onChange={onChange} />
     </div>
   )
 }

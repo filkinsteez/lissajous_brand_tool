@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/core/state/store'
@@ -96,58 +96,6 @@ export function SystemPanel() {
 
   return (
     <div className="panel">
-      <div className="panel-section">
-        <div className="panel-heading">IMAGES</div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            void addFiles(e.target.files)
-            e.target.value = ''
-          }}
-        />
-        <button className="ctl-action" onClick={() => fileRef.current?.click()}>
-          ADD IMAGES
-        </button>
-        <button
-          className="ctl-action"
-          onClick={() =>
-            apply({
-              images: project.images.filter((x) => x.id.startsWith('arr-')),
-              bgImageId: null,
-            })
-          }
-          disabled={uploads.length === 0}
-        >
-          CLEAR ALL IMAGE BLOCKS
-        </button>
-        {uploads.length ? (
-          <div className="thumb-strip">
-            {uploads.map((im) => (
-              <div key={im.id} className="thumb-wrap">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={im.src} alt="" className="img-thumb" />
-                <button
-                  className="thumb-remove"
-                  aria-label="Remove image"
-                  onClick={() =>
-                    apply({ images: project.images.filter((x) => x.id !== im.id) })
-                  }
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        <div className="panel-note">
-          Uploads sit on the grid as image blocks and re-deal with SHUFFLE
-          LAYOUT. They stay local — share links do not carry them.
-        </div>
-      </div>
       <div className="panel-section">
         <div className="panel-heading">CURVE</div>
         <Slider label="FREQ X" value={liss.frequencyX} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyX}

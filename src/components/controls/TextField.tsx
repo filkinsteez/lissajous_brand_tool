@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { TextControl } from 'dialkit'
+import { niceLabel } from './label'
 
 // DialKit's text control. It is single-line by design; the one
 // multiline consumer (the shader expression editor) keeps a textarea
@@ -38,7 +39,7 @@ export function TextField({
   if (multiline) {
     return (
       <label className="ctl-dial ctl-dial-multiline">
-        <span className="dial-ish-label">{label}</span>
+        <span className="dial-ish-label">{niceLabel(label)}</span>
         <textarea
           className="text-field"
           rows={3}
@@ -54,7 +55,7 @@ export function TextField({
   return (
     <div className="ctl-dial">
       <TextControl
-        label={label}
+        label={niceLabel(label)}
         value={value}
         placeholder={placeholder}
         onChange={(v) => {

@@ -23,11 +23,14 @@ export function LayersRail() {
   const layers = project.layers
   const selected = layers.find((l) => l.id === ui.selectedLayerId) ?? layers[layers.length - 1]
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const selectedObjectIds = [...ui.selectedShapeIds, ...ui.selectedBlockIds, ...ui.selectedImageIds]
 
   // the object tree: unbound canvas objects in reverse paint order
   // (text paints above drawn shapes), plus each effector's bound sources
   const consumed = consumedShapeIds(layers)
   const label = (t: string) => (t.trim() || 'TEXT').slice(0, 18).toUpperCase()
+  // paint order, top first: text, drawn shapes, then images. Array
+  // assets (arr- prefix) belong to their effector, not the canvas.
   const treeObjects: TreeObject[] = [
     ...[...project.typeBlocks]
       .reverse()
@@ -36,7 +39,11 @@ export function LayersRail() {
     ...[...project.shapes]
       .reverse()
       .filter((s) => !consumed.has(s.id))
-      .map((s) => ({ id: s.id, kind: 'shape' as const, label: s.kind.toUpperCase(), fill: s.fill })),
+      .map((s) => ({ id: s.id, kind: 'shape' as const, label: s.kind, fill: s.fill })),
+    ...[...project.images]
+      .reverse()
+      .filter((im) => !im.id.startsWith('arr-') && im.id !== project.bgImageId)
+      .map((im) => ({ id: im.id, kind: 'image' as const, label: 'Image', src: im.src })),
   ]
   const objById = new Map<string, TreeObject>()
   for (const b of project.typeBlocks)
@@ -96,7 +103,9 @@ export function LayersRail() {
     setUi(
       o.kind === 'text'
         ? { selectedBlockIds: [o.id], selectedBlockId: o.id, selectedShapeIds: [], selectedImageIds: [] }
-        : { selectedShapeIds: [o.id], selectedBlockIds: [], selectedBlockId: undefined, selectedImageIds: [] },
+        : o.kind === 'image'
+          ? { selectedImageIds: [o.id], selectedShapeIds: [], selectedBlockIds: [], selectedBlockId: undefined }
+          : { selectedShapeIds: [o.id], selectedBlockIds: [], selectedBlockId: undefined, selectedImageIds: [] },
     )
   }
 
@@ -181,7 +190,7 @@ export function LayersRail() {
         </div>
         <ObjectRows
           objects={treeObjects}
-          selectedIds={[...ui.selectedShapeIds, ...ui.selectedBlockIds]}
+          selectedIds={selectedObjectIds}
           onBind={bindTo}
           onSelect={selectObject}
           setDropTarget={setDropTarget}
@@ -206,6 +215,7 @@ export function LayersRail() {
             onDuplicate={duplicateLayer}
             onRename={renameLayer}
             sourcesFor={sourcesFor}
+            selectedObjectIds={selectedObjectIds}
             onUnbind={unbindFrom}
             onBind={bindTo}
             onEditSource={editSource}
@@ -247,7 +257,28 @@ const TYPE_GLYPHS: Record<ShapeLayerType, string> = {
 }
 
 // A canvas object as the tree sees it — a drawn shape or a text block
-export type TreeObject = { id: string; kind: 'shape' | 'text'; label: string; fill?: string }
+// each object kind reads at a glance: text by its T, images by their own
+// thumbnail, drawn shapes by their fill
+function ObjectGlyph({ o }: { o: TreeObject }) {
+  if (o.kind === 'text')
+    return (
+      <span className="source-row-glyph" aria-hidden>
+        T
+      </span>
+    )
+  if (o.kind === 'image')
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={o.src} alt="" className="row-thumb" />
+  return <span className="source-chip-swatch" style={{ background: o.fill }} />
+}
+
+export type TreeObject = {
+  id: string
+  kind: 'shape' | 'text' | 'image'
+  label: string
+  fill?: string
+  src?: string
+}
 
 function LayerStack({
   layers,
@@ -259,6 +290,7 @@ function LayerStack({
   onDuplicate,
   onRename,
   sourcesFor,
+  selectedObjectIds,
   onUnbind,
   onBind,
   onEditSource,
@@ -274,6 +306,7 @@ function LayerStack({
   onDuplicate: (id: string) => void
   onRename: (id: string, name: string) => void
   sourcesFor: (layerId: string) => TreeObject[]
+  selectedObjectIds: string[]
   onUnbind: (objId: string, layerId: string) => void
   onBind: (objId: string, layerId: string) => void
   onEditSource: (obj: TreeObject, layerId: string) => void
@@ -368,6 +401,7 @@ function LayerStack({
           <SourceRows
             layerId={l.id}
             sources={nested}
+            selectedIds={selectedObjectIds}
             onUnbind={onUnbind}
             onBind={onBind}
             onEdit={onEditSource}
@@ -534,13 +568,7 @@ function ObjectRows({
           <span className="layer-grip" aria-hidden>
             ⋮⋮
           </span>
-          {o.kind === 'text' ? (
-            <span className="source-row-glyph" aria-hidden>
-              T
-            </span>
-          ) : (
-            <span className="source-chip-swatch" style={{ background: o.fill }} />
-          )}
+          <ObjectGlyph o={o} />
           <span className="source-row-label">{o.label}</span>
         </div>
       ))}
@@ -555,6 +583,7 @@ function ObjectRows({
 function SourceRows({
   layerId,
   sources,
+  selectedIds,
   onUnbind,
   onBind,
   onEdit,
@@ -562,6 +591,7 @@ function SourceRows({
 }: {
   layerId: string
   sources: TreeObject[]
+  selectedIds: string[]
   onUnbind: (objId: string, layerId: string) => void
   onBind: (objId: string, layerId: string) => void
   onEdit: (obj: TreeObject, layerId: string) => void
@@ -630,20 +660,14 @@ function SourceRows({
       {sources.map((o) => (
         <div
           key={o.id}
-          className="source-row"
+          className={selectedIds.includes(o.id) ? 'source-row selected' : 'source-row'}
           title="Click to edit this master (Esc exits) — drag onto another effector to stack it"
           onPointerDown={(e) => down(e, o.id)}
           onPointerMove={(e) => move(e, o.id)}
           onPointerUp={() => up(o)}
           onPointerCancel={() => up(o)}
         >
-          {o.kind === 'text' ? (
-            <span className="source-row-glyph" aria-hidden>
-              T
-            </span>
-          ) : (
-            <span className="source-chip-swatch" style={{ background: o.fill }} />
-          )}
+          <ObjectGlyph o={o} />
           <span className="source-row-label">{o.label}</span>
           <button
             className="layer-tool"

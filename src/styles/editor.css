@@ -731,8 +731,272 @@ canvas.shape-canvas {
    layer rows, dock chips, headings, actions — styled from the kit's own
    tokens so the two never read as different products. */
 
+/* one typographic voice: the kit's font, sentence case, normal tracking.
+   The mono caps were the app's old instrument voice and read as a
+   different product next to the kit's controls. */
+.panel,
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider,
+.panel-note,
+.panel-empty,
+.ctl-sub-label,
+.ctl-action,
+.layer-add-select,
+.layer-name,
+.layer-rename,
+.source-row-label,
+.object-row,
+.source-chip,
+.mode-tab,
+.topbar-shuffle,
+.wordmark {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider,
+.ctl-sub-label,
+.ctl-action,
+.layer-name,
+.source-row-label,
+.layer-add-select {
+  text-transform: lowercase;
+  font-size: 11px;
+}
+
+.panel-heading::first-letter,
+.rail-title::first-letter,
+.inspector-title::first-letter,
+.panel-divider::first-letter,
+.ctl-sub-label::first-letter,
+.ctl-action::first-letter,
+.layer-name::first-letter,
+.source-row-label::first-letter {
+  text-transform: uppercase;
+}
+
+/* acronyms and proper nouns opt out */
+.keep-case {
+  text-transform: none;
+}
+
+.panel-note,
+.panel-empty {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--dial-text-tertiary);
+}
+
 .ctl-dial {
   padding: 0 10px;
+}
+
+/* a row built to the kit's anatomy: label left, control right, the kit's
+   row height, surface and radius */
+.dial-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--dial-row-height, 36px);
+  padding: 0 4px 0 10px;
+  margin-bottom: 2px;
+  background: var(--dial-surface);
+  border-radius: var(--dial-radius, 8px);
+}
+
+.dial-row-label {
+  font-size: 11px;
+  color: var(--dial-text-label);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.dial-segments {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dial-segment {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--dial-text-label);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.dial-segment svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dial-segment:hover {
+  background: var(--dial-surface-hover);
+  color: var(--dial-text-focus);
+}
+
+.dial-segment.active {
+  background: var(--dial-surface-active);
+  color: var(--dial-text-focus);
+}
+
+/* the color control the kit does not ship, built to its aesthetic */
+.dial-swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--dial-text-focus);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dial-swatch:hover {
+  background: var(--dial-surface-hover);
+}
+
+.dial-swatch-chip {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--dial-border);
+}
+
+.dial-picker {
+  margin: 4px 0 6px;
+  padding: 10px;
+  background: var(--dial-dropdown-bg);
+  border: 1px solid var(--dial-border);
+  border-radius: var(--dial-radius, 8px);
+  box-shadow: var(--dial-shadow-dropdown);
+}
+
+.dial-picker-sv {
+  position: relative;
+  height: 108px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.dial-picker-sv-white,
+.dial-picker-sv-black {
+  position: absolute;
+  inset: 0;
+}
+
+.dial-picker-sv-white {
+  background: linear-gradient(to right, #fff, transparent);
+}
+
+.dial-picker-sv-black {
+  background: linear-gradient(to top, #000, transparent);
+}
+
+.dial-picker-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.dial-picker-strip {
+  position: relative;
+  height: 12px;
+  margin-top: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.dial-picker-hue {
+  background: linear-gradient(
+    to right,
+    #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%
+  );
+}
+
+.dial-picker-alpha {
+  background:
+    linear-gradient(to right, transparent, var(--stop)),
+    repeating-conic-gradient(#666 0% 25%, #999 0% 50%) 0 0 / 8px 8px;
+}
+
+.dial-picker-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.dial-picker-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dial-picker-hex {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dial-border);
+  border-radius: 6px;
+  background: var(--dial-surface);
+  color: var(--dial-text-focus);
+  font: inherit;
+  font-size: 11px;
+}
+
+.dial-picker-hex:focus {
+  outline: none;
+  border-color: var(--dial-border-hover);
+}
+
+.dial-picker-pct {
+  font-size: 11px;
+  color: var(--dial-text-label);
+}
+
+/* actions line up with the kit's controls: same inset, same full width */
+.panel-section .ctl-action,
+.panel-section .layer-add-select {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 4px 10px;
+  padding: 8px 10px;
+  text-align: center;
 }
 
 .ctl-dial-multiline {
@@ -898,6 +1162,20 @@ canvas.shape-canvas {
 .source-row-glyph {
   font-size: 10px;
   color: var(--text-dim);
+}
+
+.row-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+  border: 1px solid var(--dial-border);
+}
+
+.source-row.selected {
+  background: var(--dial-surface-active);
+  color: var(--dial-text-focus);
+  border-radius: 6px;
 }
 
 .source-row-label {
@@ -2009,4 +2287,44 @@ canvas.shape-canvas {
 .array-dropzone.hot {
   border-color: var(--text-dim);
   background: rgba(255, 255, 255, 0.04);
+}
+
+/* ---------------------------------------------------------------------
+   Final typographic pass. These land last so the app's older mono-caps
+   rules cannot re-introduce tracking the kit never uses. */
+.panel,
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider,
+.panel-note,
+.panel-empty,
+.ctl-sub-label,
+.ctl-action,
+.layer-add-select,
+.layer-name,
+.layer-rename,
+.source-row,
+.source-row-label,
+.object-row,
+.source-chip,
+.dial-row-label,
+.dial-segment,
+.dial-swatch,
+.mode-tab,
+.topbar-shuffle,
+.topbar-history,
+.zoom-chip,
+.isolate-banner {
+  letter-spacing: 0;
+  font-family: inherit;
+}
+
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider,
+.ctl-sub-label {
+  font-size: 11px;
+  color: var(--dial-text-section);
 }
