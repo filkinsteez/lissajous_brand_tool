@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Roboto_Flex, Fraunces, IBM_Plex_Mono } from 'next/font/google'
+import { DialRoot } from 'dialkit'
+import 'dialkit/styles.css'
 import '@/styles/globals.css'
 import '@/styles/editor.css'
 
@@ -37,7 +39,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${flex.variable} ${fraunces.variable} ${plexMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <DialRoot />
+      </body>
     </html>
   )
 }

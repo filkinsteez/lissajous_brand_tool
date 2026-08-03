@@ -7,6 +7,7 @@ import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
 import { ColorField } from '@/components/controls/ColorField'
 import { importImageFile } from '@/core/images'
+import { TypePanel } from './TypePanel'
 import type {
   ClonerState,
   ContourState,
@@ -86,14 +87,19 @@ export function ShapesPanel() {
           commit={commit}
         />
       ) : ui.selectedBlockIds.length ? (
-        <div className="panel-section">
-          <div className="panel-heading">TEXT SELECTED</div>
-          <button className="ctl-action" onClick={() => setUi({ designTab: 'type' })}>
-            EDIT STYLE IN TYPE
-          </button>
-        </div>
+        // a selected text block edits IN PLACE — the panel adapts to the
+        // selection instead of sending you to another tab
+        <>
+          <div className="panel-section">
+            <div className="panel-heading">
+              {ui.selectedBlockIds.length > 1 ? `${ui.selectedBlockIds.length} TEXT BLOCKS` : 'TEXT'}
+            </div>
+          </div>
+          <TypePanel embedded />
+        </>
       ) : null}
-      {selected ? (
+      {/* the effector's own settings, only when IT is the selection */}
+      {selected && !ui.selectedShapeIds.length && !ui.selectedBlockIds.length ? (
         <>
           <LayerControls
             layer={selected}

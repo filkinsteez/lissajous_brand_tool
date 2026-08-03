@@ -1,9 +1,11 @@
 'use client'
 
+import { SelectControl } from 'dialkit'
+
 export type SegmentedOption<T extends string> = { value: T; label: string }
 
-// Up to four options read as a segmented control; more than four becomes
-// a dropdown — a row of nine tiny chips is a wall, not a control.
+// One value-picker idiom for the whole app: DialKit's select. The old
+// hand-rolled segment chips are gone — the kit owns this control.
 export function SegmentedControl<T extends string>({
   label,
   value,
@@ -15,38 +17,14 @@ export function SegmentedControl<T extends string>({
   options: SegmentedOption<T>[]
   onChange: (v: T) => void
 }) {
-  if (options.length > 4) {
-    return (
-      <label className="ctl">
-        {label ? <span className="ctl-label">{label}</span> : null}
-        <select
-          className="ctl-select"
-          value={value}
-          onChange={(e) => onChange(e.target.value as T)}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    )
-  }
   return (
-    <div className="ctl ctl-col">
-      {label ? <span className="ctl-label">{label}</span> : null}
-      <div className="segmented">
-        {options.map((o) => (
-          <button
-            key={o.value}
-            className={o.value === value ? 'segment active' : 'segment'}
-            onClick={() => onChange(o.value)}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+    <div className="ctl-dial">
+      <SelectControl
+        label={label ?? ''}
+        value={value}
+        options={options.map((o) => ({ value: o.value, label: o.label }))}
+        onChange={(v) => onChange(v as T)}
+      />
     </div>
   )
 }

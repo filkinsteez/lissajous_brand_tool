@@ -725,11 +725,89 @@ canvas.shape-canvas {
   pointer-events: auto;
 }
 
+/* ---------------------------------------------------------------------
+   DialKit alignment. The kit owns every control (slider, toggle, select,
+   color, text); everything below is app chrome the kit does not ship —
+   layer rows, dock chips, headings, actions — styled from the kit's own
+   tokens so the two never read as different products. */
+
+.ctl-dial {
+  padding: 0 10px;
+}
+
+.ctl-dial-multiline {
+  display: block;
+  padding: 4px 10px 8px;
+}
+
+.dial-ish-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--dial-text-label);
+}
+
+/* app chrome, kit vocabulary */
+.panel-heading,
+.rail-title,
+.inspector-title,
+.panel-divider {
+  color: var(--dial-text-section);
+}
+
+.ctl-action,
+.layer-add-select,
+.source-chip,
+.object-row,
+.layer-row,
+.source-row {
+  border-radius: 6px;
+  color: var(--dial-text-label);
+}
+
+.ctl-action,
+.layer-add-select {
+  border: 1px solid var(--dial-border);
+  background: var(--dial-surface);
+}
+
+.ctl-action:hover:not(:disabled),
+.layer-add-select:hover {
+  background: var(--dial-surface-hover);
+  border-color: var(--dial-border-hover);
+  color: var(--dial-text-focus);
+}
+
+.ctl-action.primary {
+  background: var(--dial-text-root);
+  color: #141414;
+  border-color: var(--dial-text-root);
+}
+
+.object-row:hover,
+.layer-row:hover,
+.source-row:hover {
+  background: var(--dial-surface);
+  border-color: transparent;
+  color: var(--dial-text-focus);
+}
+
+.object-row.selected,
+.layer-row.active {
+  background: var(--dial-surface-active);
+  border-color: transparent;
+  color: var(--dial-text-focus);
+}
+
+.inspector-wrap,
+.layers-rail {
+  background: var(--dial-glass-bg);
+}
+
 .panel-empty {
   margin: 10px 12px;
-  color: var(--text-faint);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  color: var(--dial-text-tertiary);
+  font-size: 11px;
 }
 
 /* the ground truth row at the bottom of the tree */
@@ -776,6 +854,14 @@ canvas.shape-canvas {
 .object-row:hover {
   color: var(--text);
   border-color: var(--line);
+}
+
+/* the rail must show what is selected — same emphasis as a picked
+   effector row, so the tree reads as one selection model */
+.object-row.selected {
+  color: var(--text);
+  background: var(--chrome-2);
+  border-color: var(--line-strong);
 }
 
 /* bound objects sit at parent level; the effector indents beneath them

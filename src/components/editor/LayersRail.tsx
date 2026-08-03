@@ -181,6 +181,7 @@ export function LayersRail() {
         </div>
         <ObjectRows
           objects={treeObjects}
+          selectedIds={[...ui.selectedShapeIds, ...ui.selectedBlockIds]}
           onBind={bindTo}
           onSelect={selectObject}
           setDropTarget={setDropTarget}
@@ -189,7 +190,16 @@ export function LayersRail() {
           <LayerStack
             layers={layers}
             selectedId={selected?.id}
-            onSelect={(id) => setUi({ selectedLayerId: id })}
+            // one selection at a time: picking an effector drops the
+            // canvas-object selection, so PROPERTIES shows one thing
+            onSelect={(id) =>
+              setUi({
+                selectedLayerId: id,
+                selectedShapeIds: [],
+                selectedBlockIds: [],
+                selectedBlockId: undefined,
+              })
+            }
             onReorder={reorderLayer}
             onToggle={(id, visible) => patchLayer(id, { visible })}
             onRemove={removeLayer}
@@ -441,11 +451,13 @@ function LayerStack({
 // whole selection.
 function ObjectRows({
   objects,
+  selectedIds,
   onBind,
   onSelect,
   setDropTarget,
 }: {
   objects: TreeObject[]
+  selectedIds: string[]
   onBind: (objId: string, layerId: string) => void
   onSelect: (obj: TreeObject) => void
   setDropTarget: (layerId: string | null) => void
@@ -512,8 +524,8 @@ function ObjectRows({
       {objects.map((o) => (
         <div
           key={o.id}
-          className="object-row"
-          title="Drag onto an effector to bind — click to select on the canvas"
+          className={selectedIds.includes(o.id) ? 'object-row selected' : 'object-row'}
+          title="Click to select and edit — drag onto an effector to bind"
           onPointerDown={(e) => down(e, o.id)}
           onPointerMove={(e) => move(e, o.id)}
           onPointerUp={() => up(o.id, o)}

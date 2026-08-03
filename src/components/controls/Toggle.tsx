@@ -1,5 +1,7 @@
 'use client'
 
+import { Toggle as DialToggle } from 'dialkit'
+
 export function Toggle({
   label,
   value,
@@ -10,9 +12,8 @@ export function Toggle({
   onChange: (v: boolean) => void
 }) {
   return (
-    <button className="ctl ctl-toggle" onClick={() => onChange(!value)} aria-pressed={value}>
-      <span className="ctl-label">{label}</span>
-      <span className={value ? 'toggle-pip on' : 'toggle-pip'} />
-    </button>
+    <div className="ctl-dial">
+      <DialToggle label={label} checked={value} onChange={onChange} />
+    </div>
   )
 }

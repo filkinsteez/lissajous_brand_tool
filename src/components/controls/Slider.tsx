@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent, KeyboardEvent } from 'react'
+import { useEffect, useRef } from 'react'
+import { Slider as DialSlider } from 'dialkit'
 
 export type SliderProps = {
   label: string
@@ -10,128 +10,82 @@ export type SliderProps = {
   max: number
   step?: number
   format?: (v: number) => string
+  defaultValue?: number
+  unit?: string
   onChange: (v: number) => void
   // fires once at the end of a drag / key adjustment — the store commits
   // one history entry there instead of one per pixel of drag
   onCommit?: () => void
-  // double-click snaps back to this value (one committed history entry)
-  defaultValue?: number
 }
 
-// The parameter row, DialKit-style: the LABEL scrubs (drag left/right,
-// Alt = fine, Shift = coarse), the VALUE is click-to-type, the track
-// still drags directly. One component — every panel in the app gets the
-// same hand-feel.
-export function Slider({ label, value, min, max, step = 0.01, format, onChange, onCommit, defaultValue }: SliderProps) {
-  const [editing, setEditing] = useState(false)
-  const scrub = useRef<{ id: number; startX: number; startV: number; moved: boolean } | null>(null)
+// DialKit's slider wired to this app's history model. The kit emits a
+// continuous onChange; the store needs transient-while-dragging plus a
+// single commit on release, and the kit captures the pointer, so the
+// release is caught on the window instead of locally.
+//
+// `defaultValue` keeps double-click-to-reset, which the kit does not
+// ship but this tool has relied on since the slider rewrite.
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  defaultValue,
+  unit,
+  onChange,
+  onCommit,
+}: SliderProps) {
+  const dirty = useRef(false)
+  const commitRef = useRef(onCommit)
+  commitRef.current = onCommit
 
-  const quant = (v: number) => {
-    const q = Math.round((v - min) / step) * step + min
-    return Math.min(max, Math.max(min, Number(q.toFixed(6))))
-  }
-
-  const onLabelDown = (e: ReactPointerEvent<HTMLSpanElement>) => {
-    if (e.button !== 0) return
-    scrub.current = { id: e.pointerId, startX: e.clientX, startV: value, moved: false }
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {
-      // synthetic pointers have no active pointer to capture
+  useEffect(() => {
+    const done = () => {
+      if (!dirty.current) return
+      dirty.current = false
+      commitRef.current?.()
     }
-  }
-  const onLabelMove = (e: ReactPointerEvent<HTMLSpanElement>) => {
-    const s = scrub.current
-    if (!s || e.pointerId !== s.id) return
-    const dx = e.clientX - s.startX
-    if (!s.moved && Math.abs(dx) < 3) return
-    s.moved = true
-    // ~220px of travel sweeps the full range; Alt refines, Shift races
-    const perPx = (max - min) / 220
-    const mult = e.altKey ? 0.1 : e.shiftKey ? 4 : 1
-    onChange(quant(s.startV + dx * perPx * mult))
-  }
-  const onLabelUp = () => {
-    if (scrub.current?.moved) onCommit?.()
-    scrub.current = null
-  }
+    window.addEventListener('pointerup', done)
+    window.addEventListener('keyup', done)
+    return () => {
+      window.removeEventListener('pointerup', done)
+      window.removeEventListener('keyup', done)
+    }
+  }, [])
 
-  const commitText = (raw: string) => {
-    setEditing(false)
-    const parsed = Number.parseFloat(raw.replace(',', '.'))
-    if (!Number.isFinite(parsed)) return
-    // formatted displays are usually percentages — accept either scale
-    const looksPct = format && Math.abs(parsed) > max && Math.abs(parsed / 100) <= Math.max(Math.abs(min), Math.abs(max))
-    const next = quant(looksPct ? parsed / 100 : parsed)
-    onChange(next)
-    onCommit?.()
-  }
-
-  const onEditKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') commitText(e.currentTarget.value)
-    else if (e.key === 'Escape') setEditing(false)
-  }
+  // DialKit shows the raw number, so a "display formatter" cannot work:
+  // the UNIT has to be real. Percent-formatted params are scaled x100
+  // and radian params to degrees, then inverted on the way back — the
+  // panel call sites keep passing their native units untouched.
+  const isPct = !!format && format(1) === '100'
+  const isDeg = !!format && format(Math.PI).startsWith('180')
+  const k = isPct ? 100 : isDeg ? 180 / Math.PI : 1
+  const suffix = unit ?? (isPct ? '%' : isDeg ? '°' : undefined)
+  const scaledStep = step ? Math.max(Math.round(step * k * 1000) / 1000, 0.001) : undefined
 
   return (
-    <label
-      className="ctl"
-      onDoubleClick={
-        defaultValue === undefined
-          ? undefined
-          : () => {
-              onChange(defaultValue)
-              onCommit?.()
-            }
-      }
-      title={defaultValue === undefined ? undefined : 'Double-click to reset'}
+    <div
+      className="ctl-dial"
+      onDoubleClick={() => {
+        if (defaultValue === undefined) return
+        onChange(defaultValue)
+        commitRef.current?.()
+      }}
     >
-      <span
-        className="ctl-label ctl-scrub"
-        title="Drag to scrub — Alt fine, Shift coarse"
-        onPointerDown={onLabelDown}
-        onPointerMove={onLabelMove}
-        onPointerUp={onLabelUp}
-        onPointerCancel={onLabelUp}
-      >
-        {label}
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onPointerUp={onCommit}
-        onKeyUp={(e) => {
-          if (e.key.startsWith('Arrow')) onCommit?.()
+      <DialSlider
+        label={label}
+        value={Math.round(value * k * 1000) / 1000}
+        min={Math.round(min * k * 1000) / 1000}
+        max={Math.round(max * k * 1000) / 1000}
+        step={k === 1 ? step : (scaledStep ?? 1)}
+        unit={suffix}
+        onChange={(v) => {
+          dirty.current = true
+          onChange(k === 1 ? v : v / k)
         }}
       />
-      {editing ? (
-        <input
-          className="ctl-value-input"
-          type="text"
-          inputMode="decimal"
-          autoFocus
-          defaultValue={format ? format(value) : String(value)}
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={(e) => commitText(e.currentTarget.value)}
-          onKeyDown={onEditKey}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <span
-          className="ctl-value ctl-value-editable"
-          title="Click to type a value"
-          onClick={(e) => {
-            e.preventDefault()
-            setEditing(true)
-          }}
-        >
-          {format ? format(value) : String(value)}
-        </span>
-      )}
-    </label>
+    </div>
   )
 }

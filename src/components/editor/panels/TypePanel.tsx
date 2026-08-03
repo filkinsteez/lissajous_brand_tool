@@ -13,7 +13,9 @@ import type { FontFamilyId, TypeAlign, TypeBlockState } from '@/core/state/types
 const int = (v: number) => String(Math.round(v))
 const em = (v: number) => v.toFixed(2)
 
-export function TypePanel() {
+// `embedded` renders the style controls only — used by the PROPERTIES
+// inspector, where the layers rail is already the block picker.
+export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
   const project = useStore((s) => s.project)
   const selectedBlockId = useStore((s) => s.ui.selectedBlockId)
   const setUi = useStore((s) => s.setUi)
@@ -44,18 +46,20 @@ export function TypePanel() {
 
   return (
     <div className="panel">
-      <div className="panel-section">
-        <SegmentedControl
-          value={block.id}
-          options={blocks.map((b) => ({ value: b.id, label: b.role.toUpperCase() }))}
-          onChange={(id) => setUi({ selectedBlockId: id, selectedBlockIds: [id] })}
-        />
-        <div className="panel-note">
-          Text is edited on the canvas: double-click a block to type,
-          double-click empty canvas for a new one. This panel styles the
-          selected block.
+      {embedded ? null : (
+        <div className="panel-section">
+          <SegmentedControl
+            value={block.id}
+            options={blocks.map((b) => ({ value: b.id, label: b.role.toUpperCase() }))}
+            onChange={(id) => setUi({ selectedBlockId: id, selectedBlockIds: [id] })}
+          />
+          <div className="panel-note">
+            Text is edited on the canvas: double-click a block to type, or
+            place a new one with the T tool. This panel styles the
+            selected block.
+          </div>
         </div>
-      </div>
+      )}
       <div className="panel-section">
         <SegmentedControl<FontFamilyId>
           label="FAMILY"

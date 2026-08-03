@@ -98,7 +98,9 @@ export function EditorShell() {
   }, [])
 
   return (
-    <div className="editor">
+    /* dialkit-root supplies the kit's design tokens to every control
+       rendered inside the editor */
+    <div className="editor dialkit-root">
       <header className="topbar">
         <div className="wordmark">
           LISSAJOUS<span className="wordmark-dim"> BRAND SYSTEM</span>
