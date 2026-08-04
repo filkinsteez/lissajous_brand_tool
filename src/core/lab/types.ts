@@ -119,6 +119,8 @@ export type LabState = {
   mark: MarkParams
   paint: PaintState | null
   sourceVisibility: number // 0..1 alpha of the source under everything
+  // the two inks: marks/flat/contours draw in INK, the ground is PAPER
+  colors: { ink: string; paper: string }
 }
 
 // Views are ui, not recipe: composite plus the intermediate maps that

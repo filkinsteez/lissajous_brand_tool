@@ -16,6 +16,8 @@ import { deserializeProject } from '@/core/state/serialize'
 import { Slider } from '@/components/controls/Slider'
 import { Toggle } from '@/components/controls/Toggle'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
+import { ColorField } from '@/components/controls/ColorField'
+import { INK, PAPER } from '@/core/state/defaults'
 
 const pct = (v: number) => String(Math.round(v * 100))
 const deg = (v: number) => String(Math.round((v * 180) / Math.PI))
@@ -60,6 +62,7 @@ export function TerritoryPanel() {
   const territory = useLabStore((s) => s.lab.territory)
   const structure = useLabStore((s) => s.lab.structure)
   const sourceVisibility = useLabStore((s) => s.lab.sourceVisibility)
+  const colors = useLabStore((s) => s.lab.colors)
   const apply = useLabStore((s) => s.apply)
   const setT = useLabStore((s) => s.setTransient)
   const commit = useLabStore((s) => s.commitTransient)
@@ -224,6 +227,19 @@ export function TerritoryPanel() {
         </div>
         <Slider label="Source" value={sourceVisibility} min={0} max={1} step={0.01} format={pct}
           onChange={(v) => setT({ sourceVisibility: v })} onCommit={commit} />
+      </div>
+
+      <div className="panel-section">
+        <div className="panel-heading">Inks</div>
+        <ColorField label="Ink" value={colors?.ink ?? INK}
+          onChange={(ink) => setT({ colors: { ink } })} onCommit={commit} />
+        <ColorField label="Paper" value={colors?.paper ?? PAPER}
+          onChange={(paper) => setT({ colors: { paper } })} onCommit={commit} />
+        <div className="panel-note">
+          Marks, flat cells, and contours draw in ink; the ground is paper.
+          Mosaic and photo bands keep the source&apos;s own color — the
+          MARKS color mode can also sample it.
+        </div>
       </div>
     </>
   )

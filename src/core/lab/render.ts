@@ -48,9 +48,13 @@ export function renderLab(
   view: LabView,
 ): void {
   const { width: outW, height: outH, transparent } = lab.output
+  // defensive: a live HMR session may hold pre-`colors` state until the
+  // next apply/restore heals it
+  const ink = lab.colors?.ink ?? INK
+  const paper = lab.colors?.paper ?? PAPER
   ctx.clearRect(0, 0, outW, outH)
   if (!transparent || view !== 'composite') {
-    ctx.fillStyle = PAPER
+    ctx.fillStyle = paper
     ctx.fillRect(0, 0, outW, outH)
   }
 
@@ -107,7 +111,7 @@ export function renderLab(
     return
   }
   if (view === 'cells') {
-    ctx.strokeStyle = INK
+    ctx.strokeStyle = ink
     for (const c of cells) {
       ctx.globalAlpha = 0.25 + c.level * 0.35
       ctx.lineWidth = 0.75
@@ -151,7 +155,7 @@ export function renderLab(
   }
 
   // flat ink masses
-  ctx.fillStyle = INK
+  ctx.fillStyle = ink
   for (const c of cells) {
     if (c.treatment === 'flat') ctx.fillRect(c.x, c.y, c.size + 0.35, c.size + 0.35)
   }
@@ -167,7 +171,7 @@ export function renderLab(
     const clip = new Path2D()
     for (const c of contourCells) clip.rect(c.x, c.y, c.size + 0.35, c.size + 0.35)
     ctx.clip(clip)
-    ctx.strokeStyle = INK
+    ctx.strokeStyle = ink
     ctx.lineWidth = 1.1
     for (const b of bandIdx) {
       for (let k = 0; k < 5; k++) {
@@ -194,7 +198,7 @@ export function renderLab(
     for (const s of stamps) {
       const proto = protos[Math.min(s.protoIndex, protos.length - 1)]
       if (!proto) continue
-      let fill = INK
+      let fill = ink
       let alpha = 1
       if (mode === 'tint') alpha = tintFor(s.tone)
       else if (mode === 'source' && maps) {

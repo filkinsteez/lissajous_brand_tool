@@ -28,6 +28,8 @@ describe('lab recipes', () => {
     expect(lab!.structure.baseCell).toBe(createDefaultLab().structure.baseCell)
     expect(lab!.territory.sources.length).toBeGreaterThan(0)
     expect(lab!.output.width).toBeGreaterThan(0)
+    // pre-colors recipes heal to the default inks
+    expect(lab!.colors).toEqual(createDefaultLab().colors)
   })
 
   it('clamps hand-edited extremes', () => {
