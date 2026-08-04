@@ -9,6 +9,7 @@ import type {
   CurveSnapshot,
   FieldSourceKind,
   FieldSourceState,
+  FlowBasis,
   TreatmentId,
 } from '@/core/lab/types'
 import { TREATMENTS } from '@/core/lab/types'
@@ -63,6 +64,8 @@ export function TerritoryPanel() {
   const structure = useLabStore((s) => s.lab.structure)
   const sourceVisibility = useLabStore((s) => s.lab.sourceVisibility)
   const colors = useLabStore((s) => s.lab.colors)
+  const flow = useLabStore((s) => s.lab.flow)
+  const finish = useLabStore((s) => s.lab.finish)
   const apply = useLabStore((s) => s.apply)
   const setT = useLabStore((s) => s.setTransient)
   const commit = useLabStore((s) => s.commitTransient)
@@ -231,11 +234,42 @@ export function TerritoryPanel() {
       </div>
 
       <div className="panel-section">
+        <div className="panel-heading">Flow</div>
+        <div className="panel-note">
+          The direction Scan, Dabs, Streams, and Echo move — the curve&apos;s
+          tangents, noise eddies, along the band edges, or one angle.
+        </div>
+        <SegmentedControl<FlowBasis>
+          label="Basis"
+          value={flow?.basis ?? 'curve'}
+          options={[
+            { value: 'curve', label: 'Curve' },
+            { value: 'noise', label: 'Noise' },
+            { value: 'contour', label: 'Bands' },
+            { value: 'angle', label: 'Angle' },
+          ]}
+          onChange={(basis) => apply({ flow: { basis } })}
+        />
+        <Slider label="Angle" value={flow?.angle ?? 0} min={0} max={Math.PI * 2}
+          step={Math.PI / 36} format={deg}
+          onChange={(angle) => setT({ flow: { angle } })} onCommit={commit} />
+        <Slider label="Curl" value={flow?.curl ?? 0.25} min={0} max={1} step={0.01} format={pct}
+          onChange={(curl) => setT({ flow: { curl } })} onCommit={commit} />
+        <Slider label="Scale" value={flow?.scale ?? 0.4} min={0} max={1} step={0.01} format={pct}
+          onChange={(scale) => setT({ flow: { scale } })} onCommit={commit} />
+        <Slider label="Warp" value={flow?.warp ?? 0.5} min={0} max={1} step={0.01} format={pct}
+          onChange={(warp) => setT({ flow: { warp } })} onCommit={commit} />
+        <div className="panel-note">Warp is Scan&apos;s displacement — dark image areas pull the lines.</div>
+      </div>
+
+      <div className="panel-section">
         <div className="panel-heading">Colors</div>
         <ColorField label="Shapes" value={colors?.ink ?? INK}
           onChange={(ink) => setT({ colors: { ink } })} onCommit={commit} />
         <ColorField label="Background" value={colors?.paper ?? PAPER}
           onChange={(paper) => setT({ colors: { paper } })} onCommit={commit} />
+        <Slider label="Grain" value={finish?.grain ?? 0} min={0} max={1} step={0.01} format={pct}
+          onChange={(grain) => setT({ finish: { grain } })} onCommit={commit} />
       </div>
     </>
   )

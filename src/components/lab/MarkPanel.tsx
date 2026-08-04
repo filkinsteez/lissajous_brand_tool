@@ -55,6 +55,10 @@ export function MarkPanel() {
       <Slider label="Coherence" value={mark.coherenceScale} min={0} max={1} step={0.01}
         format={pct} defaultValue={MARK_DEFAULTS.coherenceScale}
         onChange={(coherenceScale) => setT({ mark: { coherenceScale } })} onCommit={commit} />
+      <Slider label="Echo" value={mark.echo ?? 0} min={0} max={6} step={1}
+        format={(v) => String(Math.round(v))} defaultValue={0}
+        onChange={(echo) => setT({ mark: { echo } })} onCommit={commit} />
+      <div className="panel-note">Echo trails each mark along the flow — motion left on the page.</div>
       <SegmentedControl<MarkColorMode>
         label="Color"
         value={mark.colorMode}

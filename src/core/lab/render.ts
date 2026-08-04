@@ -8,6 +8,7 @@ import type { Field, FitRect } from './field'
 import { fieldFromMap, fitRect } from './field'
 import { buildCurveField, compileTerritory, territoryGrid } from './territory'
 import { buildCellMarks, buildCells, curveFlowField, tintFor } from './composition'
+import { buildDabs, buildScanlines, buildStreams, composeFlow, type VectorField } from './flow'
 import { getPaintRaster, reconcilePaint } from './paintRuntime'
 import { sampleRGB } from './analysis'
 import { stampProto } from './stamp'
@@ -195,6 +196,85 @@ export function renderLab(
     ctx.restore()
   }
 
+  // the process treatments share one composed vector field
+  const needsVector =
+    cells.some((c) => c.treatment === 'dabs' || c.treatment === 'streams') ||
+    (lab.mark.echo > 0 && cells.some((c) => c.treatment === 'marks'))
+  const vector: VectorField | null =
+    needsVector
+      ? composeFlow(lab.flow, {
+          seed: lab.seed,
+          outW,
+          outH,
+          curveAngle: curveAngleFor(lab, outW, outH),
+          T,
+        })
+      : null
+
+  // SCAN — slit-scan hairlines displaced by the image, clipped to their
+  // territory
+  const scanCells = cells.filter((c) => c.treatment === 'scan')
+  if (scanCells.length) {
+    const lines = buildScanlines({
+      outW,
+      outH,
+      spacing: Math.max(3, lab.structure.baseCell / 3),
+      warp: lab.flow.warp,
+      maps,
+      rect,
+      field: null,
+      bend: 0,
+    })
+    ctx.save()
+    const clip = new Path2D()
+    for (const c of scanCells) clip.rect(c.x, c.y, c.size + 0.35, c.size + 0.35)
+    ctx.clip(clip)
+    ctx.strokeStyle = ink
+    ctx.lineWidth = 1.1
+    for (const pts of lines) strokePolyline(ctx, pts)
+    ctx.restore()
+  }
+
+  // STREAMS — long field-line hairlines. Seeded BY their territory but
+  // free to travel: walkers obey the field, not the band boundary
+  if (vector && cells.some((c) => c.treatment === 'streams')) {
+    const streams = buildStreams({ cells, seed: lab.seed, field: vector, outW, outH })
+    ctx.strokeStyle = ink
+    ctx.lineWidth = 1
+    ctx.globalAlpha = 0.85
+    for (const pts of streams) strokePolyline(ctx, pts)
+    ctx.globalAlpha = 1
+  }
+
+  // DABS — short strokes riding the flow, density and width from tone
+  if (vector && cells.some((c) => c.treatment === 'dabs')) {
+    const dabs = buildDabs({
+      cells,
+      maps,
+      rect,
+      seed: lab.seed,
+      field: vector,
+      occupancy: lab.mark.occupancy,
+    })
+    const mode = lab.mark.colorMode
+    ctx.lineCap = 'round'
+    for (const d of dabs) {
+      let stroke = ink
+      let alpha = 1
+      if (mode === 'tint') alpha = tintFor(d.tone)
+      else if (mode === 'source' && maps) {
+        const [r, g, b] = sampleRGB(maps, d.mx, d.my)
+        stroke = `rgb(${r} ${g} ${b})`
+      }
+      ctx.strokeStyle = stroke
+      ctx.globalAlpha = alpha
+      ctx.lineWidth = d.width
+      strokePolyline(ctx, d.pts)
+    }
+    ctx.globalAlpha = 1
+    ctx.lineCap = 'butt'
+  }
+
   // marks — with or without a source; territory alone can carry them
   if (cells.some((c) => c.treatment === 'marks')) {
     const stamps = buildCellMarks({
@@ -207,6 +287,7 @@ export function renderLab(
       flowField: flowFieldFor(lab, outW, outH),
     })
     const mode = lab.mark.colorMode
+    const echo = Math.round(lab.mark.echo)
     for (const s of stamps) {
       const proto = protos[Math.min(s.protoIndex, protos.length - 1)]
       if (!proto) continue
@@ -217,9 +298,65 @@ export function renderLab(
         const [r, g, b] = sampleRGB(maps, s.mx, s.my)
         fill = `rgb(${r} ${g} ${b})`
       }
+      // ECHO: the mark repeats along the flow with a decaying ramp —
+      // motion unfolded into space. Echoes stamp first so the live mark
+      // sits on top of its own trail.
+      if (echo > 0 && vector) {
+        let ex = s.x
+        let ey = s.y
+        const [vx, vy] = vector(s.x, s.y)
+        const l = Math.hypot(vx, vy) || 1
+        const stepX = (vx / l) * s.size * 0.7
+        const stepY = (vy / l) * s.size * 0.7
+        for (let e = echo; e >= 1; e--) {
+          ex = s.x + stepX * e
+          ey = s.y + stepY * e
+          stampProto(
+            ctx,
+            proto,
+            ex,
+            ey,
+            s.rot,
+            s.size * Math.pow(0.88, e),
+            fill,
+            alpha * Math.pow(0.62, e),
+          )
+        }
+      }
       stampProto(ctx, proto, s.x, s.y, s.rot, s.size, fill, alpha)
     }
   }
+
+  // GRAIN — the shared surface pass: seeded hash noise over the whole
+  // composite, so every treatment reads as one printed artifact
+  if (lab.finish.grain > 0) applyGrain(ctx, lab.finish.grain, lab.seed)
+}
+
+function strokePolyline(ctx: CanvasRenderingContext2D, pts: number[]): void {
+  if (pts.length < 4) return
+  ctx.beginPath()
+  ctx.moveTo(pts[0], pts[1])
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1])
+  ctx.stroke()
+}
+
+function applyGrain(ctx: CanvasRenderingContext2D, amount: number, seed: number): void {
+  const { width, height } = ctx.canvas
+  const img = ctx.getImageData(0, 0, width, height)
+  const d = img.data
+  const amp = amount * 34
+  for (let y = 0; y < height; y++) {
+    let h = Math.imul(y + 1, 0x9e3779b1) ^ Math.imul(seed + 1, 0x85ebca6b)
+    for (let x = 0; x < width; x++) {
+      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+      const n = (((h >>> 16) & 0xff) / 255 - 0.5) * amp
+      const o = (y * width + x) * 4
+      d[o] += n
+      d[o + 1] += n
+      d[o + 2] += n
+    }
+  }
+  ctx.putImageData(img, 0, 0)
 }
 
 function compileTerritoryCached(
@@ -247,14 +384,21 @@ function compileTerritoryCached(
   return compileTerritory(lab.territory, { rect, outW, outH, maps, paintField, fieldOverrides })
 }
 
-function flowFieldFor(lab: LabState, outW: number, outH: number) {
+// the curve's tangent-angle field, cached — null when no curve source
+function curveAngleFor(lab: LabState, outW: number, outH: number) {
   const src = lab.territory.sources.find((s) => s.kind === 'curve' && s.enabled && s.curve)
-  if (!src?.curve || lab.mark.flow <= 0) return null
+  if (!src?.curve) return null
   const key = `${JSON.stringify(src.curve)}|${outW}x${outH}`
   return cached(flowCache, key, () => {
     const samples = sampleCurve({ ...src.curve!, sampleDensity: 96, curve: src.curve!.curve }, outW, outH, 200)
     return curveFlowField(samples, outW, outH)
   })
+}
+
+// marks only hand orientation to the curve when FLOW is dialed in
+function flowFieldFor(lab: LabState, outW: number, outH: number) {
+  if (lab.mark.flow <= 0) return null
+  return curveAngleFor(lab, outW, outH)
 }
 
 function drawFieldView(ctx: CanvasRenderingContext2D, f: Field, outW: number, outH: number) {

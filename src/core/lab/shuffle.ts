@@ -36,6 +36,13 @@ export function shuffleLab(lab: LabState, shuffleSeed: number, scopes: ShuffleSc
       ...patch.territory,
       sources: lab.territory.sources.map((s) => shuffleSource(s, rng)),
     }
+    patch.flow = {
+      basis: rngPick(rng, ['curve', 'curve', 'noise', 'contour'] as const),
+      angle: rng() * Math.PI * 2,
+      curl: rngRange(rng, 0, 0.7),
+      scale: rngRange(rng, 0.15, 0.8),
+      warp: rngRange(rng, 0.2, 0.9),
+    }
   }
 
   if (scopes.bands) {
@@ -45,12 +52,12 @@ export function shuffleLab(lab: LabState, shuffleSeed: number, scopes: ShuffleSc
       rng,
       hasSource
         ? (['photo', 'photo', 'mosaic', 'flat'] as TreatmentId[])
-        : (['flat', 'marks', 'contours'] as TreatmentId[]),
+        : (['flat', 'marks', 'contours', 'dabs'] as TreatmentId[]),
     )
-    const far = rngPick(rng, ['empty', 'empty', 'marks', 'contours'] as TreatmentId[])
+    const far = rngPick(rng, ['empty', 'empty', 'marks', 'scan', 'streams'] as TreatmentId[])
     const middlePool = hasSource
-      ? (['marks', 'marks', 'contours', 'mosaic', 'flat', 'empty'] as TreatmentId[])
-      : (['marks', 'marks', 'contours', 'flat', 'empty'] as TreatmentId[])
+      ? (['marks', 'marks', 'contours', 'mosaic', 'scan', 'dabs', 'streams', 'empty'] as TreatmentId[])
+      : (['marks', 'marks', 'contours', 'scan', 'dabs', 'streams', 'empty'] as TreatmentId[])
     const bands: TreatmentId[] = [far]
     for (let i = 1; i < count - 1; i++) bands.push(rngPick(rng, middlePool))
     bands.push(near)
@@ -79,6 +86,7 @@ export function shuffleLab(lab: LabState, shuffleSeed: number, scopes: ShuffleSc
         : 0,
       coherenceScale: rngRange(rng, 0.2, 0.8),
       colorMode: rngPick(rng, ['ink', 'ink', 'tint', 'source'] as const),
+      echo: rngPick(rng, [0, 0, 0, 2, 3, 4] as const),
     }
   }
 

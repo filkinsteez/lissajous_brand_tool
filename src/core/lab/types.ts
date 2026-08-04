@@ -59,7 +59,16 @@ export type FieldSourceState = {
   curve?: CurveSnapshot
 }
 
-export type TreatmentId = 'empty' | 'flat' | 'mosaic' | 'photo' | 'marks' | 'contours'
+export type TreatmentId =
+  | 'empty'
+  | 'flat'
+  | 'mosaic'
+  | 'photo'
+  | 'marks'
+  | 'contours'
+  | 'scan'
+  | 'dabs'
+  | 'streams'
 
 export const TREATMENTS: { id: TreatmentId; label: string }[] = [
   { id: 'empty', label: 'Empty' },
@@ -68,7 +77,23 @@ export const TREATMENTS: { id: TreatmentId; label: string }[] = [
   { id: 'photo', label: 'Photo' },
   { id: 'marks', label: 'Marks' },
   { id: 'contours', label: 'Contours' },
+  { id: 'scan', label: 'Scan' },
+  { id: 'dabs', label: 'Dabs' },
+  { id: 'streams', label: 'Streams' },
 ]
+
+// The vector field: WHICH WAY the process treatments move. The scalar
+// territory decides where a law applies; flow decides the direction
+// scan lines bend, dabs stroke, and streams travel.
+export type FlowBasis = 'curve' | 'noise' | 'contour' | 'angle'
+
+export type FlowState = {
+  basis: FlowBasis
+  angle: number // radians, the 'angle' basis direction
+  curl: number // 0..1 — noise turbulence blended over the basis
+  scale: number // 0..1 — noise feature size (small = tight eddies)
+  warp: number // 0..1 — image-luminance displacement on scan lines
+}
 
 export type BoundaryMode = 'hard' | 'dither' | 'porous'
 
@@ -106,6 +131,9 @@ export type MarkParams = {
   flow: number // 0 image edges orient marks .. 1 the curve's tangent does
   coherenceScale: number
   colorMode: MarkColorMode
+  // each mark repeats along the flow with a decaying ramp — motion
+  // unfolded into space (0 = single stamp)
+  echo: number
 }
 
 export type LabState = {
@@ -121,6 +149,9 @@ export type LabState = {
   sourceVisibility: number // 0..1 alpha of the source under everything
   // the two inks: marks/flat/contours draw in INK, the ground is PAPER
   colors: { ink: string; paper: string }
+  flow: FlowState
+  // shared surface pass over the whole composite
+  finish: { grain: number }
 }
 
 // Views are ui, not recipe: composite plus the intermediate maps that

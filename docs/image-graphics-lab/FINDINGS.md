@@ -100,9 +100,54 @@ FLOW: orientation hands over from image edges to the curve's tangent field.
   recipe can be judged side by side, then Material Field as the shared
   finishing pass over all treatments.
 
-## Study 4 — Material Field
+## Study 4 — Flow (the process dimension)
 
-_Not yet implemented._
+**Source.** are.na/frederic-fornini/p5_inspiration (69 blocks, ~24 studied
+individually). Taxonomy of the channel, by primitive rather than look:
+
+| Reference | Surface read | Underlying primitive |
+| --- | --- | --- |
+| slit-scan portrait (b01) | face from warped scanlines | lines + displacement field |
+| dab spirals (b40) | Van Gogh stroke vortices | walkers + deposition |
+| magnetic field (b38) | hairline field lines | walkers, longer integration |
+| Vasarely checker (b48) | bulged grid | same displacement, applied to a carrier |
+| circle trails / growing rects (b25/b46) | motion unfolded into space | one walk step, echoed with a ramp |
+| gradient→bars (b26) | continuous quantizing regionally | ALREADY OURS — bands over color resolution |
+| type walls (b04/b07/b08) | text as texture on warped baselines | lines primitive + type protos (future) |
+| grainy gradients (b06/b44/b50) | print-noise surfaces | shared finishing pass |
+
+**The non-literal leap.** Four of five families reduce to one missing
+core: the lab had scalar fields (WHERE a law applies) but no VECTOR
+field (WHICH WAY things move). Implemented as `flow.ts`: one composed
+vector field — curve tangents / seeded curl noise / territory-contour
+flow (perpendicular to ∇T, i.e. along the band edges) / fixed angle,
+with CURL turbulence blended over any basis — consumed by three new
+band treatments (SCAN, DABS, STREAMS), an ECHO dial on marks, and a
+GRAIN finish. Everything is territory-native: the bands and brush
+still decide where, flow decides which way. Walkers resolve the mod-π
+tangent sign ambiguity by direction continuity (the smear-shader trick,
+now in its third home).
+
+- What worked (devshots p5-scan-portrait / p5-streams-curve / p5-dabs /
+  p5-echo): the slit-scan figure emerges from displaced ruling with the
+  background staying flat; streams wrap the photo territory like wood
+  grain; dabs swirl with tone-driven density and source color; echo
+  trails marks in decaying comets. All four reads land on the first
+  recipe attempt — evidence the primitive is right, not tuned-to-fit.
+- Deliberate scope cuts: no carrier warp (the Vasarely bulge needs
+  non-square cells — noted for later), scan lines don't yet bend along
+  the flow (buildScanlines has the parameter, UI doesn't expose it),
+  no type-on-flow-lines yet (the type-wall family is protos + the
+  lines primitive — the pieces now exist).
+- Streams deliberately ignore band clipping: territory SEEDS them, the
+  walk is free. Reads as intentional escape, not a bug.
+- Grain is indexed on device pixels, so preview grain differs from
+  export grain in pattern (not in amount) — acceptable for a surface
+  pass, noted.
+- Primitive map update: Field (scalar) + FlowField (vector) + walk +
+  echo now cover: territory, evidence, coherence, masks, displacement,
+  deposition, and trails. The "process" dimension the p5 channel is
+  actually about is: ITERATION MADE VISIBLE.
 
 ## Cross-study primitive map
 

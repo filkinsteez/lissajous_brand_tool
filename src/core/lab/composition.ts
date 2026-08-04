@@ -263,4 +263,5 @@ export const MARK_DEFAULTS: MarkParams = {
   flow: 0,
   coherenceScale: 0.45,
   colorMode: 'ink',
+  echo: 0,
 }

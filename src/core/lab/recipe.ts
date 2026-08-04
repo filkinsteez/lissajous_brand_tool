@@ -3,6 +3,7 @@ import { PAPER } from '@/core/state/defaults'
 import type { LabState } from './types'
 import { LAB_VERSION } from './types'
 import { MARK_DEFAULTS } from './composition'
+import { FLOW_DEFAULTS } from './flow'
 import { createFieldSource } from './territory'
 
 // Lab recipes follow the editor's contract: whole state as JSON,
@@ -34,6 +35,8 @@ export function createDefaultLab(seed = 1913): LabState {
     paint: null,
     sourceVisibility: 0,
     colors: { ink: META_BLUE, paper: PAPER },
+    flow: { ...FLOW_DEFAULTS },
+    finish: { grain: 0 },
   }
 }
 
@@ -58,6 +61,11 @@ export function deserializeLab(json: string): LabState | null {
     lab.structure.baseCell = Math.max(8, Math.min(160, lab.structure.baseCell))
     lab.structure.maxLevels = Math.max(0, Math.min(2, Math.round(lab.structure.maxLevels))) as 0 | 1 | 2
     if (!lab.territory.bands.length) lab.territory.bands = ['empty', 'marks']
+    lab.mark.echo = Math.max(0, Math.min(6, Math.round(lab.mark.echo)))
+    lab.flow.curl = Math.max(0, Math.min(1, lab.flow.curl))
+    lab.flow.scale = Math.max(0, Math.min(1, lab.flow.scale))
+    lab.flow.warp = Math.max(0, Math.min(1, lab.flow.warp))
+    lab.finish.grain = Math.max(0, Math.min(1, lab.finish.grain))
     return lab
   } catch {
     return null
