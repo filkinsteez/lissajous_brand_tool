@@ -90,6 +90,10 @@ export function renderLab(
           Math.max(-1, Math.min(1, (raw(x, y) * 255 - 128) / 127))
       })()
     : null
+  // the positive (erase) side of the mask protects the photo outright
+  const restore: Field | null = paintField
+    ? (x: number, y: number) => Math.max(0, paintField(x, y))
+    : null
   const T = compileTerritoryCached(lab, rect, outW, outH, maps, paintField)
 
   if (view === 'territory') {
@@ -106,6 +110,7 @@ export function renderLab(
     outW,
     outH,
     seed: lab.seed,
+    restore,
   })
 
   if (view === 'bands') {

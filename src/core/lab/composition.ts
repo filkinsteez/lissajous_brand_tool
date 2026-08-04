@@ -49,8 +49,13 @@ export function buildCells(opts: {
   outW: number
   outH: number
   seed: number
+  // the eraser's core: where this field is strong the cell IS the
+  // photo, whatever the bands say — pushing territory to the top band
+  // was not enough when the top band itself is a treatment (a mosaic
+  // near-band made faces impossible to un-blur)
+  restore?: Field | null
 }): CellNode[] {
-  const { T, territory, structure, maps, rect, outW, outH, seed } = opts
+  const { T, territory, structure, maps, rect, outW, outH, seed, restore } = opts
   // ONE square pitch — deriving separate x/y pitches and sizing cells
   // min(cw, ch) left unpainted paper gutters along the larger axis.
   // The last column/row overflows past the edge instead; the canvas
@@ -74,7 +79,8 @@ export function buildCells(opts: {
     const cy = y + size / 2
     const t = T(cx, cy)
     const band = bandAt(t, bands, territory.boundary, ix, iy, seed, cellId(level, ix, iy))
-    const treatment = territory.bands[band] ?? 'empty'
+    const treatment: TreatmentId =
+      restore && restore(cx, cy) > 0.45 ? 'photo' : (territory.bands[band] ?? 'empty')
 
     // split while detail earns it — and only where a treatment can use
     // the resolution (empty and flat cells gain nothing from splitting)

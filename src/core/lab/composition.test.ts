@@ -87,6 +87,24 @@ describe('buildCells', () => {
     expect(new Set(mk('porous').map((c) => c.band)).size).toBe(2)
   })
 
+  it('a strong restore field forces the photo treatment over any band', () => {
+    const cells = buildCells({
+      T: () => 0.9, // band 1 = marks
+      territory: TERR,
+      structure: STRUCT,
+      maps: null,
+      rect: RECT,
+      outW: 320,
+      outH: 320,
+      seed: 1,
+      restore: (x) => (x < 160 ? 1 : 0), // erased left half
+    })
+    const left = cells.filter((c) => c.x + c.size / 2 < 160)
+    const right = cells.filter((c) => c.x + c.size / 2 >= 160)
+    expect(new Set(left.map((c) => c.treatment))).toEqual(new Set(['photo']))
+    expect(new Set(right.map((c) => c.treatment))).toEqual(new Set(['marks']))
+  })
+
   it('empty and flat treatments never subdivide', () => {
     const cells = buildCells({
       T: () => 0.2, // band 0 = empty
