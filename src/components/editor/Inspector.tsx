@@ -22,6 +22,13 @@ export function Inspector() {
   const mode = useStore((s) => s.ui.mode)
   const setUi = useStore((s) => s.setUi)
   const designTab = useStore((s) => s.ui.designTab)
+  const selectionTitle = useStore((s) => {
+    const blocks = s.ui.selectedBlockIds.length
+    const shapes = s.ui.selectedShapeIds.length
+    if (blocks) return blocks > 1 ? `${blocks} text blocks` : 'Text properties'
+    if (shapes) return shapes > 1 ? `${shapes} shapes` : 'Shape properties'
+    return 'Properties'
+  })
   const panelOpen = useStore((s) => s.ui.panelOpen)
 
   const motionSide = mode === 'motion' || mode === 'path'
@@ -56,7 +63,9 @@ export function Inspector() {
         ) : panelOpen ? (
           <>
             <div className="inspector-title">
-              <span>{SECTION_TITLES[designTab]}</span>
+              {/* the title names what is selected, so the panel below
+                  never repeats it */}
+              <span>{designTab === 'layers' ? selectionTitle : SECTION_TITLES[designTab]}</span>
             </div>
             {designTab === 'system' ? (
               <SystemPanel />

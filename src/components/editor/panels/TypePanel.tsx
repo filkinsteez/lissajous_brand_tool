@@ -29,12 +29,32 @@ export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
   const nCols = grid.columnBoundaries.length - 1
   const nRows = grid.rowBoundaries.length - 1
 
+  // legibility belongs with type, not with the shader: it thins the
+  // field where copy sits, so it is a property of the words. It lives
+  // outside the per-block controls so it is reachable with nothing
+  // selected.
+  const calmSection = (
+    <div className="panel-section">
+      <Toggle
+        label="Calm field behind text"
+        value={project.background.typeCalm}
+        onChange={(typeCalm) => useStore.getState().apply({ background: { typeCalm } })}
+      />
+      <div className="panel-note">
+        Thins the field&apos;s color where text sits so copy stays
+        readable. It couples the gradient to the layout, so moving blocks
+        re-shapes the field while it is on.
+      </div>
+    </div>
+  )
+
   if (!block)
     return (
       <div className="panel">
         <div className="panel-empty">
           No text yet — the T tool in the dock places a block on the canvas.
         </div>
+        {embedded ? null : calmSection}
       </div>
     )
 
@@ -106,6 +126,7 @@ export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
             onChange={(background) => patchBlock({ background })} onCommit={commit} />
         ) : null}
       </div>
+      {calmSection}
     </div>
   )
 }

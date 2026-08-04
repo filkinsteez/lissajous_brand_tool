@@ -340,23 +340,11 @@ export function FieldPanel() {
           onChange={(v) => background({ contrast: v })}
           onCommit={settle}
         />
-        <Toggle
-          label="Type calm"
-          value={project.background.typeCalm}
-          onChange={(typeCalm) => {
-            apply({ background: { typeCalm } })
-          }}
-        />
-        <div className="panel-note">
-          TYPE CALM thins the field&apos;s color where text sits, so copy
-          stays readable — it couples the gradient to the text layout, so
-          moving blocks re-shapes the field while it&apos;s on.
-        </div>
         <button className="ctl-action" onClick={shuffleBackground}>
           Shuffle background
         </button>
         <button className="ctl-action" onClick={() => void generateVariations()} disabled={variationBusy}>
-          {variationBusy ? 'BUILDING VARIATIONS...' : 'Explore variations'}
+          {variationBusy ? 'Building variations…' : 'Explore variations'}
         </button>
         {variations.length ? (
           <div className="thumb-strip">

@@ -178,21 +178,31 @@ void main() {
   // pull should read as one wide gesture
   float curlScale = 1.1 + uWarp * 0.8;
 
-  const int TAPS = 14;
-  float stepLen = smearPx / float(TAPS);
+  // The tap COUNT follows the smear length so the step stays a few
+  // pixels at any drift. A fixed count made the step grow with DRIFT —
+  // at full drift each tap jumped ~70px, and sampling the field that
+  // coarsely is what printed the chattery, boxy blocks.
+  const int MAX_TAPS = 40;
+  int taps = int(clamp(smearPx / 6.0, 10.0, float(MAX_TAPS)));
+  float stepLen = smearPx / float(taps);
   vec3 acc = texture(uSceneTex, vUv).rgb;
   float wsum = 1.0;
+
+  // weights decay over the NORMALIZED walk, not the tap index, so the
+  // falloff (and the look) is identical whatever the tap count is
+  float invTaps = 1.0 / float(taps);
 
   vec2 posF = px;
   vec2 posB = px;
   vec2 dirF = tangent;
   vec2 dirB = -tangent;
-  for (int i = 1; i <= TAPS; i++) {
+  for (int i = 1; i <= MAX_TAPS; i++) {
+    if (i > taps) break;
     vec2 cF = curl(posF / minDim * curlScale + seedOff);
     dirF = safeDir(mix(safeDir(cF, dirF), dirF, obey), dirF);
     posF += dirF * stepLen;
     vec2 uvF = screenToUv(posF);
-    float wF = exp(-float(i) * 0.11) * edgeFade(uvF);
+    float wF = exp(-float(i) * invTaps * 1.54) * edgeFade(uvF);
     acc += texture(uSceneTex, clamp(uvF, vec2(0.0), vec2(1.0))).rgb * wF;
     wsum += wF;
 
@@ -201,7 +211,7 @@ void main() {
     posB += dirB * stepLen;
     // shorter memory backward: streaks get a direction
     vec2 uvB = screenToUv(posB);
-    float wB = exp(-float(i) * 0.26) * edgeFade(uvB);
+    float wB = exp(-float(i) * invTaps * 3.64) * edgeFade(uvB);
     acc += texture(uSceneTex, clamp(uvB, vec2(0.0), vec2(1.0))).rgb * wB;
     wsum += wB;
   }

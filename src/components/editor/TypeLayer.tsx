@@ -419,11 +419,19 @@ export function TypeLayer() {
         clickGuard.suppress = false
         return
       }
-      // the armed TEXT tool claims the click wherever it lands; shape
-      // tools own the whole pointer flow in the draw layer
+      // the armed TEXT tool creates on EMPTY canvas only — clicking an
+      // existing block puts the caret in it, the way every editor works
       const armedTool = useStore.getState().ui.tool
       if (armedTool === 'text') {
-        createBlockAtRef.current(e.clientX, e.clientY)
+        const hit = (e.target as HTMLElement).closest('.type-block') as HTMLElement | null
+        const id = hit?.getAttribute('data-block-id')
+        if (id) {
+          selectOnly(id)
+          setEditingId(id)
+          useStore.getState().setUi({ tool: 'select' })
+        } else {
+          createBlockAtRef.current(e.clientX, e.clientY)
+        }
         return
       }
       if (armedTool !== 'select') return

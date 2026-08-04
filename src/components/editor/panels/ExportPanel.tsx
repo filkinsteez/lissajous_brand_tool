@@ -122,7 +122,7 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
               else startNew()
             }}
           >
-            New composition
+            New Composition
           </button>
         )}
         {note ? <div className="panel-note">{note}</div> : null}

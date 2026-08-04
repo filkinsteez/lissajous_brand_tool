@@ -91,14 +91,9 @@ export function ShapesPanel() {
       ) : ui.selectedBlockIds.length ? (
         // a selected text block edits IN PLACE — the panel adapts to the
         // selection instead of sending you to another tab
-        <>
-          <div className="panel-section">
-            <div className="panel-heading">
-              {ui.selectedBlockIds.length > 1 ? `${ui.selectedBlockIds.length} text blocks` : 'Text'}
-            </div>
-          </div>
-          <TypePanel embedded />
-        </>
+        // no second heading — the inspector title already names the
+        // selection, and two stacked labels never lined up
+        <TypePanel embedded />
       ) : null}
       {/* the effector's own settings, only when IT is the selection */}
       {selected && !ui.selectedShapeIds.length && !ui.selectedBlockIds.length ? (
