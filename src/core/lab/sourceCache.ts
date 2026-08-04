@@ -35,7 +35,9 @@ export function clearLabSource(): void {
   current = null
 }
 
-export async function loadLabSourceFile(file: File): Promise<LabSource> {
+// decode WITHOUT committing — the caller decides whether this decode
+// still wins (a slow large file must not overwrite a later small one)
+export async function decodeLabSourceFile(file: File): Promise<LabSource> {
   const url = URL.createObjectURL(file)
   const image = new Image()
   image.src = url
@@ -67,7 +69,7 @@ export async function loadLabSourceFile(file: File): Promise<LabSource> {
   ctx.drawImage(image, 0, 0, aw, ah)
   const data = ctx.getImageData(0, 0, aw, ah)
 
-  const next: LabSource = {
+  return {
     image,
     url,
     fullW,
@@ -76,7 +78,13 @@ export async function loadLabSourceFile(file: File): Promise<LabSource> {
     hash: labContentHash(data.data, aw, ah),
     filename: file.name,
   }
-  if (current) URL.revokeObjectURL(current.url)
-  current = next
-  return next
+}
+
+export function commitLabSource(src: LabSource): void {
+  if (current && current !== src) URL.revokeObjectURL(current.url)
+  current = src
+}
+
+export function discardLabSource(src: LabSource): void {
+  if (src !== current) URL.revokeObjectURL(src.url)
 }

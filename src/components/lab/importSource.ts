@@ -1,4 +1,4 @@
-import { loadLabSourceFile } from '@/core/lab/sourceCache'
+import { commitLabSource, decodeLabSourceFile, discardLabSource } from '@/core/lab/sourceCache'
 import { useLabStore } from '@/core/lab/labStore'
 
 // Bring a dropped/picked file into the lab: decode + analyze into the
@@ -8,10 +8,20 @@ import { useLabStore } from '@/core/lab/labStore'
 
 const OUTPUT_CAP = 2048
 
+// the last file DROPPED wins, not the last decode to finish — a huge
+// image dropped first must not overwrite the small one dropped after
+let importGen = 0
+
 export async function importLabSource(file: File): Promise<void> {
   const store = useLabStore.getState()
+  const gen = ++importGen
   try {
-    const src = await loadLabSourceFile(file)
+    const src = await decodeLabSourceFile(file)
+    if (gen !== importGen) {
+      discardLabSource(src)
+      return
+    }
+    commitLabSource(src)
     const k = Math.min(1, OUTPUT_CAP / Math.max(src.fullW, src.fullH))
     store.apply({
       source: {

@@ -1,16 +1,15 @@
 'use client'
 
 import { useLabStore } from '@/core/lab/labStore'
-import { MARK_DEFAULTS } from '@/core/lab/markTranslation'
+import { MARK_DEFAULTS } from '@/core/lab/composition'
 import type { MarkBankId, MarkColorMode } from '@/core/lab/types'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 
 const pct = (v: number) => String(Math.round(v * 100))
-const px = (v: number) => String(Math.round(v))
 
-// Controls follow the brief's set for study 1 and nothing more — each
-// one exists to test the hypothesis, not to be product UI.
+// The mark treatment's law: tone is coverage and size, structure is
+// selection and rotation, FLOW hands orientation over to the curve.
 export function MarkPanel() {
   const mark = useLabStore((s) => s.lab.mark)
   const seed = useLabStore((s) => s.lab.seed)
@@ -20,7 +19,7 @@ export function MarkPanel() {
 
   return (
     <div className="panel-section">
-      <div className="panel-heading">Mark translation</div>
+      <div className="panel-heading">Marks</div>
       <SegmentedControl<MarkBankId>
         label="Bank"
         value={mark.bank}
@@ -31,9 +30,6 @@ export function MarkPanel() {
         ]}
         onChange={(bank) => apply({ mark: { bank } })}
       />
-      <Slider label="Cell size" value={mark.cellSize} min={8} max={96} step={1} format={px}
-        unit="px" defaultValue={MARK_DEFAULTS.cellSize}
-        onChange={(cellSize) => setT({ mark: { cellSize } })} onCommit={commit} />
       <Slider label="Evidence" value={mark.evidenceMix} min={0} max={1} step={0.01} format={pct}
         defaultValue={MARK_DEFAULTS.evidenceMix}
         onChange={(evidenceMix) => setT({ mark: { evidenceMix } })} onCommit={commit} />
@@ -50,12 +46,15 @@ export function MarkPanel() {
       <Slider label="Rotation" value={mark.rotationInfluence} min={0} max={1} step={0.01}
         format={pct} defaultValue={MARK_DEFAULTS.rotationInfluence}
         onChange={(rotationInfluence) => setT({ mark: { rotationInfluence } })} onCommit={commit} />
+      <Slider label="Flow" value={mark.flow} min={0} max={1} step={0.01} format={pct}
+        defaultValue={MARK_DEFAULTS.flow}
+        onChange={(flow) => setT({ mark: { flow } })} onCommit={commit} />
+      <div className="panel-note">
+        0% marks follow the image&apos;s edges · 100% they flow with the curve
+      </div>
       <Slider label="Coherence" value={mark.coherenceScale} min={0} max={1} step={0.01}
         format={pct} defaultValue={MARK_DEFAULTS.coherenceScale}
         onChange={(coherenceScale) => setT({ mark: { coherenceScale } })} onCommit={commit} />
-      <Slider label="Source" value={mark.sourceVisibility} min={0} max={1} step={0.01}
-        format={pct} defaultValue={MARK_DEFAULTS.sourceVisibility}
-        onChange={(sourceVisibility) => setT({ mark: { sourceVisibility } })} onCommit={commit} />
       <SegmentedControl<MarkColorMode>
         label="Color"
         value={mark.colorMode}
@@ -74,7 +73,7 @@ export function MarkPanel() {
           Reroll seed · {seed}
         </button>
         <button className="ctl-action" onClick={() => apply({ mark: { ...MARK_DEFAULTS } })}>
-          Reset study
+          Reset marks
         </button>
       </div>
     </div>

@@ -1,7 +1,8 @@
 import { mergeDeep } from '@/core/state/store'
 import type { LabState } from './types'
 import { LAB_VERSION } from './types'
-import { MARK_DEFAULTS } from './markTranslation'
+import { MARK_DEFAULTS } from './composition'
+import { createFieldSource } from './territory'
 
 // Lab recipes follow the editor's contract: whole state as JSON,
 // partial saves healed by mergeDeep over defaults, a hard version gate.
@@ -11,11 +12,26 @@ import { MARK_DEFAULTS } from './markTranslation'
 export function createDefaultLab(seed = 1913): LabState {
   return {
     version: LAB_VERSION,
-    studyId: 'mark-translation',
+    studyId: 'territory',
     seed,
     output: { width: 1400, height: 1400, transparent: false },
     source: null,
+    // The default composition tells the thesis: the brand curve is the
+    // organizing form — the photo survives only near it, marks carry
+    // tone further out, contours band the transition, the far field
+    // goes empty. Tone deepens the territory where the image is dark.
+    territory: {
+      sources: [
+        createFieldSource('curve', 'src-curve'),
+        { ...createFieldSource('tone', 'src-tone'), weight: 0.35 },
+      ],
+      bands: ['empty', 'marks', 'contours', 'photo'],
+      boundary: 'hard',
+    },
+    structure: { baseCell: 28, maxLevels: 2, subdivide: 0.55 },
     mark: { ...MARK_DEFAULTS },
+    paint: null,
+    sourceVisibility: 0,
   }
 }
 
@@ -25,14 +41,18 @@ export function serializeLab(lab: LabState): string {
 
 export function deserializeLab(json: string): LabState | null {
   try {
-    const raw = JSON.parse(json) as Partial<LabState>
+    const raw = JSON.parse(json) as Partial<LabState> & { studyId?: string }
     if (typeof raw !== 'object' || raw === null) return null
     if (raw.version !== LAB_VERSION) return null
+    // older lab saves carried 'mark-translation'; the territory engine
+    // supersedes it and heals their params in
+    raw.studyId = 'territory'
     const lab = mergeDeep(createDefaultLab(typeof raw.seed === 'number' ? raw.seed : undefined), raw)
-    // clamp what could break the render if hand-edited
     lab.output.width = clampInt(lab.output.width, 64, 8192)
     lab.output.height = clampInt(lab.output.height, 64, 8192)
-    lab.mark.cellSize = Math.max(4, Math.min(160, lab.mark.cellSize))
+    lab.structure.baseCell = Math.max(8, Math.min(160, lab.structure.baseCell))
+    lab.structure.maxLevels = Math.max(0, Math.min(2, Math.round(lab.structure.maxLevels))) as 0 | 1 | 2
+    if (!lab.territory.bands.length) lab.territory.bands = ['empty', 'marks']
     return lab
   } catch {
     return null

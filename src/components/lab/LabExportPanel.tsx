@@ -56,37 +56,42 @@ export function LabExportPanel() {
     }
   }, [])
 
-  const dim = (v: string, key: 'width' | 'height') => {
-    const n = Math.max(64, Math.min(8192, Math.round(Number(v)) || 0))
-    if (n >= 64) apply({ output: { [key]: n } })
+  // dimensions edit as free text and commit on blur/Enter — clamping
+  // per keystroke turned "type 900" into 64 -> 640 -> 6400 with an undo
+  // entry and a full re-render at every bogus intermediate value
+  const [draft, setDraft] = useState<{ width?: string; height?: string }>({})
+
+  const commitDim = (key: 'width' | 'height') => {
+    const v = draft[key]
+    setDraft((d) => ({ ...d, [key]: undefined }))
+    if (v === undefined) return
+    const n = Math.round(Number(v))
+    if (!Number.isFinite(n) || n < 1) return
+    apply({ output: { [key]: Math.max(64, Math.min(8192, n)) } })
   }
+
+  const dimInput = (key: 'width' | 'height') => (
+    <input
+      className="lab-dim-input"
+      type="number"
+      value={draft[key] ?? String(output[key])}
+      min={64}
+      max={8192}
+      onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
+      onBlur={() => commitDim(key)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        if (e.key === 'Escape') setDraft((d) => ({ ...d, [key]: undefined }))
+      }}
+    />
+  )
 
   return (
     <div className="panel-section">
       <div className="panel-heading">Export</div>
       <div className="lab-row">
-        <label className="lab-dim">
-          W
-          <input
-            className="lab-dim-input"
-            type="number"
-            value={output.width}
-            min={64}
-            max={8192}
-            onChange={(e) => dim(e.target.value, 'width')}
-          />
-        </label>
-        <label className="lab-dim">
-          H
-          <input
-            className="lab-dim-input"
-            type="number"
-            value={output.height}
-            min={64}
-            max={8192}
-            onChange={(e) => dim(e.target.value, 'height')}
-          />
-        </label>
+        <label className="lab-dim">W{dimInput('width')}</label>
+        <label className="lab-dim">H{dimInput('height')}</label>
       </div>
       <Toggle
         label="Transparent"

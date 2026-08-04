@@ -1,0 +1,134 @@
+import { describe, expect, it } from 'vitest'
+import { contourAtLevel } from '@/core/cloner/contours'
+import { sampleCurve } from '@/core/lissajous/sampler'
+import { constantField } from './field'
+import {
+  META_CURVE,
+  bandAt,
+  buildCurveField,
+  compileTerritory,
+  createFieldSource,
+  territoryGrid,
+} from './territory'
+import type { TerritoryDeps } from './territory'
+
+const DEPS: TerritoryDeps = {
+  rect: { x: 0, y: 0, w: 400, h: 400 },
+  outW: 400,
+  outH: 400,
+  maps: null,
+  paintField: null,
+}
+
+describe('field sources', () => {
+  it('linear ramps along its axis around the offset midpoint', () => {
+    const src = { ...createFieldSource('linear', 'l'), angle: 0, offset: 0.5, softness: 0.3 }
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    expect(T(10, 200)).toBeLessThan(0.1)
+    expect(T(390, 200)).toBeGreaterThan(0.55) // weight 0.8 caps the top
+    expect(T(200, 200)).toBeCloseTo(0.4, 1) // midpoint = 0.5 * weight
+    // vertical position does not matter for angle 0
+    expect(T(300, 50)).toBeCloseTo(T(300, 350), 5)
+  })
+
+  it('radial peaks at its center and dies past the radius', () => {
+    const src = {
+      ...createFieldSource('radial', 'r'),
+      weight: 1,
+      centerX: 0.5,
+      centerY: 0.5,
+      radius: 0.25,
+      softness: 0.4,
+    }
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    expect(T(200, 200)).toBeGreaterThan(0.9)
+    expect(T(10, 10)).toBe(0)
+    // on the falloff ramp, past the plateau (radius 100px, ramp 40px)
+    expect(T(200, 200)).toBeGreaterThan(T(299, 200))
+    expect(T(299, 200)).toBeGreaterThan(0)
+  })
+
+  it('the curve field is 1 on the curve and 0 far away', () => {
+    const f = buildCurveField(META_CURVE, 400, 400, 0.25)
+    // any sampled curve point is ON the curve by construction
+    const s = sampleCurve({ ...META_CURVE, sampleDensity: 96, curve: META_CURVE.curve }, 400, 400, 64)[0]
+    expect(f(s.x, s.y)).toBeGreaterThan(0.9)
+    expect(f(2, 2)).toBeLessThan(0.05)
+  })
+
+  it('invert and combine modes compose', () => {
+    const a = { ...createFieldSource('linear', 'a'), angle: 0, weight: 1, softness: 0.05 }
+    const b = { ...createFieldSource('linear', 'b'), angle: 0, weight: 1, softness: 0.05, invert: true, combine: 'multiply' as const }
+    const T = compileTerritory({ sources: [a, b], bands: [], boundary: 'hard' }, DEPS)
+    // a rises to 1 on the right, b (inverted) falls to 0 there — product ~0 both ends
+    expect(T(395, 200)).toBeLessThan(0.05)
+    expect(T(5, 200)).toBeLessThan(0.05)
+    const c = { ...b, combine: 'max' as const }
+    const Tm = compileTerritory({ sources: [a, c], bands: [], boundary: 'hard' }, DEPS)
+    expect(Tm(5, 200)).toBeGreaterThan(0.9) // max keeps the inverted side
+  })
+
+  it('disabled and zero-weight sources contribute nothing', () => {
+    const src = { ...createFieldSource('radial', 'r'), enabled: false }
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    expect(T(200, 200)).toBe(0)
+  })
+
+  it('field overrides keep the source position and combine semantics', () => {
+    // regression: the render cache once re-added overridden curve
+    // sources with forced 'add', contradicting the tested engine
+    const a = { ...createFieldSource('curve', 'a'), weight: 1 }
+    const b = {
+      ...createFieldSource('linear', 'b'),
+      angle: 0,
+      weight: 1,
+      softness: 0.05,
+      combine: 'multiply' as const,
+    }
+    const overrides = new Map([['a', constantField(0.5)]])
+    const T = compileTerritory(
+      { sources: [a, b], bands: [], boundary: 'hard' },
+      { ...DEPS, fieldOverrides: overrides },
+    )
+    // left edge: linear ≈ 0 → product ≈ 0 (add semantics would read 0.5)
+    expect(T(5, 200)).toBeLessThan(0.05)
+    // right edge: linear ≈ 1 → product ≈ 0.5
+    expect(T(395, 200)).toBeCloseTo(0.5, 1)
+  })
+})
+
+describe('bandAt', () => {
+  it('hard mode floors cleanly and clamps t=1', () => {
+    expect(bandAt(0.1, 4, 'hard', 0, 0, 1, 1)).toBe(0)
+    expect(bandAt(0.6, 4, 'hard', 0, 0, 1, 1)).toBe(2)
+    expect(bandAt(1, 4, 'hard', 0, 0, 1, 1)).toBe(3)
+  })
+
+  it('dither varies with cell coords, porous with the seeded channel', () => {
+    const dither = new Set<number>()
+    const porous = new Set<number>()
+    for (let i = 0; i < 64; i++) {
+      dither.add(bandAt(0.5, 2, 'dither', i & 7, i >> 3, 1, i))
+      porous.add(bandAt(0.5, 2, 'porous', 0, 0, 1, i))
+    }
+    expect(dither.size).toBe(2)
+    expect(porous.size).toBe(2)
+    // deterministic per address
+    expect(bandAt(0.5, 2, 'porous', 0, 0, 1, 9)).toBe(bandAt(0.5, 2, 'porous', 0, 0, 1, 9))
+  })
+})
+
+describe('territory contours', () => {
+  it('marching squares finds a level set of the composed field', () => {
+    const grid = territoryGrid(constantFieldRadial(), 400, 400, 64)
+    const d = contourAtLevel(grid, 0.5)
+    expect(d.length).toBeGreaterThan(50)
+    expect(d.startsWith('M')).toBe(true)
+  })
+})
+
+function constantFieldRadial() {
+  const c = constantField(0)
+  void c
+  return (x: number, y: number) => Math.max(0, 1 - Math.hypot(x - 200, y - 200) / 150)
+}

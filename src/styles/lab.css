@@ -193,3 +193,53 @@
   outline: none;
   border-color: var(--line-strong);
 }
+
+/* territory source rows */
+.lab-source {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--chrome-0);
+}
+
+.lab-source-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lab-source-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.lab-source-x {
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.lab-source-x:hover {
+  color: var(--text);
+}
+
+.lab-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lab-canvas.painting {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.lab-brush-size {
+  width: 80px;
+  accent-color: var(--text-dim);
+}

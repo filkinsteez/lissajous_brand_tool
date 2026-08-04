@@ -90,6 +90,12 @@ export const useLabStore = create<LabStoreState>()((set, get) => ({
 
 export const LAB_AUTOSAVE_KEY = 'lbs-lab-autosave'
 
+// The store is a module singleton that outlives the /lab route — the
+// autosave restore must run once per page load, not once per mount, or
+// re-entering the lab replaces live state with (possibly stale) storage
+// and wipes the undo stack.
+export const labHydration = { done: false }
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
   ;(window as unknown as { __lbsLabStore?: typeof useLabStore }).__lbsLabStore = useLabStore
 }

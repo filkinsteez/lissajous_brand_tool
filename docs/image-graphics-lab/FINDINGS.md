@@ -52,13 +52,53 @@ seed) with independent chan channels.
 - Recommendation (continue / revise / merge / stop): continue — mechanics
   verified; judgment needs real sources and the M2 compare grid.
 
-## Study 2 — Regional Encoding
+## Study 2+3 — Territory composition (Regional Encoding + Shared Territory, fused)
 
-_Not yet implemented._
+**Why fused.** Study 1 landed as "a really simple pixel filter" (direct quote,
+and correct): a uniform grid with one rule everywhere is a filter no matter the
+vocabulary. Regional Encoding's multiscale scaffold and Shared Territory's
+relationship map turned out to be the SAME mechanism — a territory field that
+decides which law applies where — so they shipped as one engine rather than two
+studies that would each have half of it.
 
-## Study 3 — Shared Territory
+**Implemented.** A composable stack of masking field sources — THE CURVE's
+distance field (snapshotted from the editor's autosave, meta ∞ fallback),
+linear/radial gradients, a paintable brush mask (128-wide byte raster living in
+the recipe), image tone, image detail — each with weight/invert/combine
+(add·multiply·max), folding into one territory field. The territory quantizes
+into 2–5 bands; each band owns a treatment: EMPTY, FLAT ink, MOSAIC (source
+quantized to the cell grid), PHOTO (source revealed cell-by-cell), MARKS
+(study 1's evidence machinery), or CONTOURS (marching-squares hairlines of the
+territory itself, clipped to the band). Boundaries resolve HARD (stepped,
+grid-aware), DITHER (8×8 Bayer over cell coords — stable across render
+scales), or POROUS (seeded per-cell). Cells subdivide up to 2 levels where
+image detail × SUBDIVIDE earns it; empty/flat bands never split. Marks gain
+FLOW: orientation hands over from image edges to the curve's tangent field.
 
-_Not yet implemented._
+- Source images tested: synthetic portrait fixture (silhouette + gradient +
+  texture + halo). Real photography still owed.
+- What worked: the default recipe (curve 0.8 + tone 0.35 → empty/marks/
+  contours/photo, hard) produces a composed poster on first load — the curve
+  organizes, the photo survives only in its territory, stepped boundaries read
+  as designed rather than filtered. The brush paints LAWS, not pixels: a
+  stroke through the empty field carves regions that arrive fully dressed in
+  contour rings and mosaic cores. One stroke = one undo entry.
+- Behaviors that felt brand-specific: territory contours wrap the curve's
+  lobes (the ∞ is legible in the hairlines); dither boundaries quote the
+  print-logic research without a "dither filter" existing anywhere.
+- Costs measured: 900×1200 export ≈ 32ms with all six treatments active.
+- Primitives confirmed recurring: the Field carried image evidence, the
+  coherence lattice, gradients, the curve SDF, and the painted mask through
+  ONE interface — the abstraction hypothesis is holding. bandAt is the
+  "representation ownership" primitive from the research map (§3.6).
+- Open questions: should treatments be per-band parameterized (marks band with
+  its own bank)? Do gradient handles belong ON canvas? Does the contour
+  treatment want its own line-weight/count dials? Reciprocity is still one-way
+  (image→graphics) except through the shared field — the displacement
+  direction (graphics→image) is Study 4's territory.
+- Recommendation: continue — build the compare grid next so variants of one
+  recipe can be judged side by side, then Material Field as the shared
+  finishing pass over all treatments.
 
 ## Study 4 — Material Field
 

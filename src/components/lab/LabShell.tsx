@@ -2,10 +2,11 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { LAB_AUTOSAVE_KEY, useLabStore } from '@/core/lab/labStore'
+import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore'
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
 import { LabCanvas } from './LabCanvas'
 import { LabSourcePanel } from './LabSourcePanel'
+import { TerritoryPanel } from './TerritoryPanel'
 import { MarkPanel } from './MarkPanel'
 import { LabExportPanel } from './LabExportPanel'
 
@@ -18,32 +19,45 @@ export function LabShell() {
   const undo = useLabStore((s) => s.undo)
   const redo = useLabStore((s) => s.redo)
 
-  // restore autosave -> defaults, then keep a debounced write-back
+  // restore autosave -> defaults ONCE PER PAGE LOAD (the store outlives
+  // route mounts — restoring on every mount would replace live state
+  // with storage and wipe undo), then keep a debounced write-back that
+  // FLUSHES on unmount so leaving the lab never drops the last edit
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LAB_AUTOSAVE_KEY)
-      if (saved) {
-        const lab = deserializeLab(saved)
-        if (lab) useLabStore.getState().replaceLab(lab)
+    if (!labHydration.done) {
+      labHydration.done = true
+      try {
+        const saved = localStorage.getItem(LAB_AUTOSAVE_KEY)
+        if (saved) {
+          const lab = deserializeLab(saved)
+          if (lab) useLabStore.getState().replaceLab(lab)
+        }
+      } catch {
+        // storage unavailable — the lab still runs, it just forgets
       }
-    } catch {
-      // storage unavailable — the lab still runs, it just forgets
+    }
+    const write = () => {
+      try {
+        localStorage.setItem(LAB_AUTOSAVE_KEY, serializeLab(useLabStore.getState().lab))
+      } catch {
+        // quota/privacy failures stay silent, same as the editor
+      }
     }
     let timer: ReturnType<typeof setTimeout> | undefined
+    let dirty = false
     const unsub = useLabStore.subscribe((s, prev) => {
       if (s.lab === prev.lab) return
+      dirty = true
       clearTimeout(timer)
       timer = setTimeout(() => {
-        try {
-          localStorage.setItem(LAB_AUTOSAVE_KEY, serializeLab(useLabStore.getState().lab))
-        } catch {
-          // quota/privacy failures stay silent, same as the editor
-        }
+        dirty = false
+        write()
       }, 500)
     })
     return () => {
       clearTimeout(timer)
       unsub()
+      if (dirty) write()
     }
   }, [])
 
@@ -72,7 +86,7 @@ export function LabShell() {
           ← Editor
         </Link>
         <span className="lab-title">Research lab</span>
-        <span className="lab-study-name">01 · Mark translation</span>
+        <span className="lab-study-name">02 · Territory composition</span>
       </header>
       <div className="lab-columns">
         <aside className="lab-side">
@@ -80,10 +94,12 @@ export function LabShell() {
           <div className="panel-section">
             <div className="panel-heading">Hypothesis</div>
             <div className="panel-note">
-              A source image translated through the brand-shape vocabulary
-              should feel more specific than generic ASCII, halftone, or
-              dot conversion. The DOTS bank is the generic baseline to
-              beat; BRAND stamps the shapes drawn in the editor.
+              One composition where different areas obey different laws.
+              Masking fields — the brand curve, gradients, a painted mask,
+              the image itself — stack into a territory; its bands decide
+              where the photo survives, where marks carry tone, where
+              contours draw the field, where ink goes flat, and where
+              nothing lives at all.
             </div>
           </div>
         </aside>
@@ -91,6 +107,7 @@ export function LabShell() {
           <LabCanvas />
         </main>
         <aside className="lab-side lab-side-right">
+          <TerritoryPanel />
           <MarkPanel />
           <LabExportPanel />
         </aside>
