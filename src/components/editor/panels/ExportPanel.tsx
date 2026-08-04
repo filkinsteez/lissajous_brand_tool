@@ -14,6 +14,34 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
   const apply = useStore((s) => s.apply)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+  const [confirming, setConfirming] = useState(false)
+
+  // "changes were made" = anything on the undo stack, or a project that
+  // simply is not the pristine default (a shared link opens with an
+  // empty history but a full composition)
+  const isDirty = () => {
+    const s = useStore.getState()
+    if (history.depth.past > 0) return true
+    return JSON.stringify(s.project) !== JSON.stringify(createDefaultProject(s.project.seed))
+  }
+
+  const startNew = () => {
+    // the outgoing composition goes onto the undo stack, so Ctrl+Z
+    // brings it straight back
+    const s = useStore.getState()
+    history.push(s.project)
+    s.replaceProject(createDefaultProject(), { keepHistory: true })
+    s.setUi({
+      selectedLayerId: undefined,
+      selectedBlockId: 'headline',
+      selectedBlockIds: ['headline'],
+      selectedShapeIds: [],
+      selectedImageIds: [],
+      isolateLayerId: undefined,
+    })
+    setConfirming(false)
+    flash('New composition — undo restores')
+  }
 
   // dev capture hook: the REAL export pipeline as a dataURL, so the
   // devshot loop can verify exports without touching the filesystem
@@ -71,24 +99,32 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
       </div>
       ) : null}
       <div className="panel-section">
-        <button
-          className="ctl-action"
-          onClick={() => {
-            // non-destructive reset: the current composition goes onto the
-            // undo stack, so Ctrl+Z brings it straight back
-            const s = useStore.getState()
-            history.push(s.project)
-            s.replaceProject(createDefaultProject(), { keepHistory: true })
-            s.setUi({
-              selectedLayerId: undefined,
-              selectedBlockId: 'headline',
-              selectedBlockIds: ['headline'],
-            })
-            flash('Reset — undo restores')
-          }}
-        >
-          Reset
-        </button>
+        {confirming ? (
+          // starting fresh throws the current composition away, so it
+          // asks first — and says how to get back
+          <>
+            <div className="panel-note">
+              Start a new composition? This replaces what is on the canvas.
+              Undo brings it back.
+            </div>
+            <button className="ctl-action primary" onClick={startNew}>
+              Discard and start new
+            </button>
+            <button className="ctl-action" onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            className="ctl-action"
+            onClick={() => {
+              if (isDirty()) setConfirming(true)
+              else startNew()
+            }}
+          >
+            New composition
+          </button>
+        )}
         {note ? <div className="panel-note">{note}</div> : null}
       </div>
     </div>
