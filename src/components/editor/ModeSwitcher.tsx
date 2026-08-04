@@ -1,9 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useStore } from '@/core/state/store'
 
-// Two tabs: DESIGN is the poster (canvas, field, shapes, type), MOTION
-// is the animation side (the easing lab and the path lab live under it).
+// Two tabs plus a door: DESIGN is the poster (canvas, field, shapes,
+// type), MOTION is the animation side (the easing lab and the path lab
+// live under it). LAB is a LINK, not a mode — the research lab is its
+// own route with its own store, deliberately outside this document's
+// undo/autosave machinery.
 // 'setup' (construction view) is a state of DESIGN, not its own tab.
 export function ModeSwitcher() {
   const mode = useStore((s) => s.ui.mode)
@@ -28,6 +32,9 @@ export function ModeSwitcher() {
       >
         Motion
       </button>
+      <Link className="mode-tab" href="/lab">
+        Lab
+      </Link>
     </div>
   )
 }

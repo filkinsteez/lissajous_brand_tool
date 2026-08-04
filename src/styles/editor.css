@@ -91,6 +91,11 @@
   color: var(--chrome-0);
 }
 
+/* the LAB tab is a route link, not a mode button — same clothes */
+a.mode-tab {
+  text-decoration: none;
+}
+
 /* ---- body ------------------------------------------------------------- */
 
 .editor-body {
@@ -764,9 +769,9 @@ canvas.shape-canvas {
 .ctl-action,
 .layer-name,
 .source-row-label,
-.layer-add-select {
+.layer-add-select {
   font-size: 11px;
-}
+}
 
 /* acronyms and proper nouns opt out */
 .keep-case {
