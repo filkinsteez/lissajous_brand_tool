@@ -3,6 +3,7 @@ import { History } from '@/core/state/history'
 import { mergeDeep, type DeepPartial } from '@/core/state/store'
 import type { LabState, LabView } from './types'
 import { createDefaultLab } from './recipe'
+import { DEFAULT_SCOPES, type ShuffleScopes } from './shuffle'
 
 // The lab's own store — same discipline as the editor's (apply = one
 // undo entry, setTransient/commitTransient collapse drags, mergeDeep
@@ -20,6 +21,7 @@ export type LabUiState = {
   sourceNonce: number
   zoom: 'fit' | 'actual'
   note: string
+  shuffleScopes: ShuffleScopes
 }
 
 export type LabStoreState = {
@@ -42,7 +44,14 @@ let preTransient: LabState | null = null
 export const useLabStore = create<LabStoreState>()((set, get) => ({
   lab: createDefaultLab(),
   historyVersion: 0,
-  ui: { view: 'composite', quality: 'hq', sourceNonce: 0, zoom: 'fit', note: '' },
+  ui: {
+    view: 'composite',
+    quality: 'hq',
+    sourceNonce: 0,
+    zoom: 'fit',
+    note: '',
+    shuffleScopes: { ...DEFAULT_SCOPES },
+  },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),
 

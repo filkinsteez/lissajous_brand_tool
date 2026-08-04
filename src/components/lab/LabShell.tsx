@@ -6,6 +6,7 @@ import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
 import { LabCanvas } from './LabCanvas'
 import { LabSourcePanel } from './LabSourcePanel'
+import { ShufflePanel } from './ShufflePanel'
 import { TerritoryPanel } from './TerritoryPanel'
 import { MarkPanel } from './MarkPanel'
 import { LabExportPanel } from './LabExportPanel'
@@ -107,6 +108,7 @@ export function LabShell() {
           <LabCanvas />
         </main>
         <aside className="lab-side lab-side-right">
+          <ShufflePanel />
           <TerritoryPanel />
           <MarkPanel />
           <LabExportPanel />
