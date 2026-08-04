@@ -1,0 +1,195 @@
+/* Research-lab chrome. Namespaced .lab-* — editor.css is global with
+   flat class names, so the lab adopts the shared .panel-* and
+   .ctl-action classes deliberately and owns everything else. */
+
+.lab-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--chrome-0);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.lab-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--chrome-1);
+  flex: none;
+}
+
+.lab-back {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.lab-back:hover {
+  color: var(--text);
+}
+
+.lab-title {
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lab-study-name {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.lab-columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.lab-side {
+  width: 248px;
+  flex: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--chrome-1);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lab-side-right {
+  width: 280px;
+  border-right: none;
+  border-left: 1px solid var(--line);
+}
+
+.lab-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.lab-stage-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.lab-view-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.lab-view-gap {
+  flex: 1;
+}
+
+.lab-chip {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.lab-chip:hover {
+  color: var(--text);
+}
+
+.lab-chip.active {
+  color: var(--text);
+  background: var(--chrome-2);
+  border-color: var(--line-strong);
+}
+
+.lab-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  background: var(--chrome-0);
+}
+
+.lab-canvas-wrap.drag {
+  outline: 1px dashed var(--text-dim);
+  outline-offset: -8px;
+}
+
+.lab-canvas {
+  display: block;
+  background:
+    repeating-conic-gradient(#26262a 0% 25%, #1c1c1f 0% 50%) 0 0 / 16px 16px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.lab-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.lab-note {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  background: var(--chrome-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.lab-warn {
+  color: #d49f6a;
+}
+
+.lab-row {
+  display: flex;
+  gap: 6px;
+}
+
+.lab-row .ctl-action {
+  flex: 1;
+}
+
+.lab-dim {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.lab-dim-input {
+  width: 100%;
+  min-width: 0;
+  background: var(--chrome-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.lab-dim-input:focus {
+  outline: none;
+  border-color: var(--line-strong);
+}
