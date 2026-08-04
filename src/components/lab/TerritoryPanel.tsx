@@ -14,6 +14,7 @@ import type {
 } from '@/core/lab/types'
 import { TREATMENTS } from '@/core/lab/types'
 import { deserializeProject } from '@/core/state/serialize'
+import { PALETTES } from '@/core/lab/colorField'
 import { Slider } from '@/components/controls/Slider'
 import { Toggle } from '@/components/controls/Toggle'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
@@ -264,7 +265,51 @@ export function TerritoryPanel() {
 
       <div className="panel-section">
         <div className="panel-heading">Colors</div>
-        <ColorField label="Shapes" value={colors?.ink ?? INK}
+        <div className="lab-add-row">
+          {PALETTES.map((p) => (
+            <button
+              key={p.id}
+              className="lab-chip"
+              onClick={() => apply({ colors: { palette: [...p.colors], ink: p.ink, paper: p.ground } })}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {(colors?.palette ?? []).map((c, i) => (
+          <div className="lab-row" key={i}>
+            <ColorField label={`C${i + 1}`} value={c}
+              onChange={(v) => {
+                const palette = [...(useLabStore.getState().lab.colors.palette ?? [])]
+                palette[i] = v
+                setT({ colors: { palette } })
+              }}
+              onCommit={commit} />
+            <button
+              className="lab-source-x"
+              aria-label={`Remove color ${i + 1}`}
+              onClick={() => {
+                const palette = (useLabStore.getState().lab.colors.palette ?? []).filter(
+                  (_, j) => j !== i,
+                )
+                if (palette.length) apply({ colors: { palette } })
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {(colors?.palette?.length ?? 0) < 10 ? (
+          <button
+            className="ctl-action"
+            onClick={() =>
+              apply({ colors: { palette: [...(colors?.palette ?? []), '#808080'] } })
+            }
+          >
+            Add color
+          </button>
+        ) : null}
+        <ColorField label="Ink" value={colors?.ink ?? INK}
           onChange={(ink) => setT({ colors: { ink } })} onCommit={commit} />
         <ColorField label="Background" value={colors?.paper ?? PAPER}
           onChange={(paper) => setT({ colors: { paper } })} onCommit={commit} />

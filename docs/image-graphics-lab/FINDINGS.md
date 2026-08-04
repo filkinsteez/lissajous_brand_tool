@@ -149,6 +149,49 @@ now in its third home).
   deposition, and trails. The "process" dimension the p5 channel is
   actually about is: ITERATION MADE VISIBLE.
 
+## Study 5 — The color system (palette + color field + fill treatments)
+
+**Trigger.** The flow proofs were judged "horrifically bad" against a
+second reference sheet — correctly. Every reference is a PALETTE
+SURFACE: cells filled with color, not marks floating on paper. The lab
+had one ink. Diagnosis per reference: quantized aurora = generated
+gradient field + coarse mosaic; the flat quilt = palette blocks with
+neighbor coherence; the pegboard = a circle grid where EMPTY CELLS ARE
+STILL DRAWN, with column runs; gradient shingles/circles = per-cell
+gradient fills, direction alternating.
+
+**Implemented.**
+- `colors.palette: string[]` in state, with six curated presets (Bold /
+  Perler / Aurora / Blues / Fluoro / Sunset) as one-click chips, plus a
+  full palette editor (add/remove/edit swatches).
+- `colorField.ts` — the generated COLOR FIELD: each palette color claims
+  territory (color k happiest where T ≈ (k+0.5)/K), so the palette
+  orders itself along the composition; anisotropic seeded noise (taller
+  than wide — the light-shaft read) breaks banding into weather.
+- Three fill treatments: BLOCKS (flat palette quilt, coherent neighbor
+  deals merge cells into runs, rare nested-square accents), BEADS
+  (pegboard: ground beads everywhere, palette runs down columns,
+  concentric inner dots), SHINGLE (per-cell linear gradients between
+  palette neighbors, weave-alternating direction).
+- MOSAIC with no photo quantizes the color field — the pixel-gradient
+  reference exactly.
+- Marks and dabs gain the 'palette' color mode (coherent regional deal).
+- Shuffle's Colors scope now deals curated palettes + grain.
+- New default recipe: mosaic/shingle/beads/blocks under the curve with
+  the Bold palette — the first-load composition is a color surface.
+
+**Judged against the references** (devshots ref1c-aurora, ref2-quilt,
+ref3-beads, ref6-shingles, ref-default-mix): beads and quilt land
+hardest — near-peer with their references on first recipes. The aurora
+lands on color story and quantization; its weather is blobbier than the
+reference's directional shafts even after anisotropy — a flow-driven
+color advection would close it (future: advect the color field along
+the vector field). Shingles read as in-family; larger panel rhythm
+(row-height variation) would close the remaining gap. HMR NOTE: the
+__lbsLabExportPng hook holds stale module closures after edits (the
+round-77 lesson recurs in the lab) — hard reload before trusting
+devshot comparisons.
+
 ## Cross-study primitive map
 
 _Filled at the stop gate. Candidates being watched: the Field

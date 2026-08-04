@@ -69,6 +69,9 @@ export type TreatmentId =
   | 'scan'
   | 'dabs'
   | 'streams'
+  | 'blocks'
+  | 'beads'
+  | 'shingle'
 
 export const TREATMENTS: { id: TreatmentId; label: string }[] = [
   { id: 'empty', label: 'Empty' },
@@ -80,6 +83,9 @@ export const TREATMENTS: { id: TreatmentId; label: string }[] = [
   { id: 'scan', label: 'Scan' },
   { id: 'dabs', label: 'Dabs' },
   { id: 'streams', label: 'Streams' },
+  { id: 'blocks', label: 'Blocks' },
+  { id: 'beads', label: 'Beads' },
+  { id: 'shingle', label: 'Shingle' },
 ]
 
 // The vector field: WHICH WAY the process treatments move. The scalar
@@ -119,7 +125,7 @@ export type PaintState = {
 }
 
 export type MarkBankId = 'dots' | 'geo' | 'brand'
-export type MarkColorMode = 'ink' | 'tint' | 'source'
+export type MarkColorMode = 'ink' | 'tint' | 'source' | 'palette'
 
 export type MarkParams = {
   bank: MarkBankId
@@ -147,8 +153,10 @@ export type LabState = {
   mark: MarkParams
   paint: PaintState | null
   sourceVisibility: number // 0..1 alpha of the source under everything
-  // the two inks: marks/flat/contours draw in INK, the ground is PAPER
-  colors: { ink: string; paper: string }
+  // ink = hairline/mark color, paper = ground, palette = the color
+  // system every fill treatment deals from — the references are all
+  // palette surfaces, not marks on paper
+  colors: { ink: string; paper: string; palette: string[] }
   flow: FlowState
   // shared surface pass over the whole composite
   finish: { grain: number }

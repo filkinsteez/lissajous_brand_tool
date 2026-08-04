@@ -9,6 +9,8 @@ import { fieldFromMap, fitRect } from './field'
 import { buildCurveField, compileTerritory, territoryGrid } from './territory'
 import { buildCellMarks, buildCells, curveFlowField, tintFor } from './composition'
 import { buildDabs, buildScanlines, buildStreams, composeFlow, type VectorField } from './flow'
+import { buildColorField, hexToRgb, rgbCss } from './colorField'
+import { buildBlockFills, buildBeadFills, buildShingleFills, regionValue } from './fills'
 import { getPaintRaster, reconcilePaint } from './paintRuntime'
 import { sampleRGB } from './analysis'
 import { stampProto } from './stamp'
@@ -153,17 +155,93 @@ export function renderLab(
     ctx.restore()
   }
 
-  // mosaic: the source quantized to the cell grid — the same image one
-  // representation coarser
-  if (maps) {
+  // the palette every fill treatment deals from
+  const palette = lab.colors?.palette?.length ? lab.colors.palette : [ink, paper]
+  const K = palette.length
+  const dealPalette = (x: number, y: number, channel: string) =>
+    palette[
+      Math.min(K - 1, Math.floor(regionValue(lab.seed, x, y, lab.structure.baseCell * 2.8, channel) * K))
+    ]
+
+  // mosaic: the source quantized to the cell grid — or, with no photo,
+  // the GENERATED color field quantized the same way (the pixel-
+  // gradient read: a gorgeous smooth field, sampled coarsely)
+  if (cells.some((c) => c.treatment === 'mosaic')) {
+    const field = !maps ? buildColorField({ palette, seed: lab.seed, T, outW, outH }) : null
     for (const c of cells) {
       if (c.treatment !== 'mosaic') continue
-      const u = (c.x + c.size / 2 - rect.x) / rect.w
-      const v = (c.y + c.size / 2 - rect.y) / rect.h
-      if (u < 0 || u > 1 || v < 0 || v > 1) continue
-      const [r, g, b] = sampleRGB(maps, u * maps.w - 0.5, v * maps.h - 0.5)
-      ctx.fillStyle = `rgb(${r} ${g} ${b})`
+      const cx = c.x + c.size / 2
+      const cy = c.y + c.size / 2
+      if (maps) {
+        const u = (cx - rect.x) / rect.w
+        const v = (cy - rect.y) / rect.h
+        if (u < 0 || u > 1 || v < 0 || v > 1) continue
+        const [r, g, b] = sampleRGB(maps, u * maps.w - 0.5, v * maps.h - 0.5)
+        ctx.fillStyle = `rgb(${r} ${g} ${b})`
+      } else {
+        ctx.fillStyle = rgbCss(field!(cx, cy))
+      }
       ctx.fillRect(c.x, c.y, c.size + 0.35, c.size + 0.35)
+    }
+  }
+
+  // BLOCKS — the flat color quilt: flush palette fills whose neighbor
+  // coherence merges cells into larger shapes; rare nested accents
+  if (cells.some((c) => c.treatment === 'blocks')) {
+    for (const f of buildBlockFills({ cells, paletteSize: K, seed: lab.seed })) {
+      const { cell } = f
+      ctx.fillStyle = palette[f.color]
+      ctx.fillRect(cell.x, cell.y, cell.size + 0.35, cell.size + 0.35)
+      if (f.accent !== null) {
+        const inset = cell.size * 0.3
+        ctx.fillStyle = palette[f.accent]
+        ctx.fillRect(cell.x + inset, cell.y + inset, cell.size - inset * 2, cell.size - inset * 2)
+      }
+    }
+  }
+
+  // BEADS — the pegboard: every cell draws a circle, ground beads
+  // included; colored runs travel down columns
+  if (cells.some((c) => c.treatment === 'beads')) {
+    const pg = hexToRgb(paper)
+    const groundBead = rgbCss([pg[0] * 0.94 + 8, pg[1] * 0.94 + 8, pg[2] * 0.94 + 8])
+    for (const f of buildBeadFills({ cells, paletteSize: K, seed: lab.seed })) {
+      const { cell } = f
+      const cx = cell.x + cell.size / 2
+      const cy = cell.y + cell.size / 2
+      ctx.fillStyle = f.active ? palette[f.color] : groundBead
+      ctx.beginPath()
+      ctx.arc(cx, cy, cell.size * 0.47, 0, Math.PI * 2)
+      ctx.fill()
+      if (f.inner !== null) {
+        ctx.fillStyle = palette[f.inner]
+        ctx.beginPath()
+        ctx.arc(cx, cy, cell.size * 0.2, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  }
+
+  // SHINGLE — per-cell linear gradients between palette neighbors,
+  // direction alternating in a weave, leaned by the flow angle
+  if (cells.some((c) => c.treatment === 'shingle')) {
+    const fills = buildShingleFills({
+      cells,
+      paletteSize: K,
+      seed: lab.seed,
+      lean: lab.flow?.basis === 'angle' ? lab.flow.angle : 0,
+    })
+    for (const f of fills) {
+      const { cell } = f
+      const cx = cell.x + cell.size / 2
+      const cy = cell.y + cell.size / 2
+      const dx = (Math.cos(f.angle) * cell.size) / 2
+      const dy = (Math.sin(f.angle) * cell.size) / 2
+      const g = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy)
+      g.addColorStop(0, palette[f.a])
+      g.addColorStop(1, palette[f.b])
+      ctx.fillStyle = g
+      ctx.fillRect(cell.x, cell.y, cell.size + 0.35, cell.size + 0.35)
     }
   }
 
@@ -265,7 +343,7 @@ export function renderLab(
       else if (mode === 'source' && maps) {
         const [r, g, b] = sampleRGB(maps, d.mx, d.my)
         stroke = `rgb(${r} ${g} ${b})`
-      }
+      } else if (mode === 'palette') stroke = dealPalette(d.pts[0], d.pts[1], 'lab.dab.pal')
       ctx.strokeStyle = stroke
       ctx.globalAlpha = alpha
       ctx.lineWidth = d.width
@@ -297,7 +375,7 @@ export function renderLab(
       else if (mode === 'source' && maps) {
         const [r, g, b] = sampleRGB(maps, s.mx, s.my)
         fill = `rgb(${r} ${g} ${b})`
-      }
+      } else if (mode === 'palette') fill = dealPalette(s.x, s.y, 'lab.mark.pal')
       // ECHO: the mark repeats along the flow with a decaying ramp —
       // motion unfolded into space. Echoes stamp first so the live mark
       // sits on top of its own trail.

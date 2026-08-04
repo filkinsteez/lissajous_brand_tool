@@ -1,6 +1,6 @@
 import { mulberry32, rngPick, rngRange } from '@/core/math/random'
-import { INK, PAPER } from '@/core/state/defaults'
 import type { LabPatch } from './labStore'
+import { PALETTES } from './colorField'
 import type { FieldSourceState, LabState, TreatmentId } from './types'
 
 // The shuffle controller: one click = one new variant = ONE undo entry,
@@ -91,27 +91,17 @@ export function shuffleLab(lab: LabState, shuffleSeed: number, scopes: ShuffleSc
   }
 
   if (scopes.colors) {
-    if (rng() < 0.25) {
-      patch.colors = { ink: INK, paper: PAPER }
-    } else {
-      const hue = rng() * 360
-      if (rng() < 0.2) {
-        // inverted ground: light shapes on a deep field
-        patch.colors = {
-          ink: hslToHex(hue, rngRange(rng, 0.25, 0.6), rngRange(rng, 0.82, 0.94)),
-          paper: hslToHex(hue + rngRange(rng, -30, 30), rngRange(rng, 0.2, 0.5), rngRange(rng, 0.1, 0.18)),
-        }
-      } else {
-        patch.colors = {
-          ink: hslToHex(hue, rngRange(rng, 0.5, 0.9), rngRange(rng, 0.22, 0.42)),
-          paper: hslToHex(
-            rng() < 0.5 ? hue : hue + 180,
-            rngRange(rng, 0.04, 0.14),
-            rngRange(rng, 0.9, 0.96),
-          ),
-        }
-      }
+    // deal a curated palette; sometimes rotate its order so the
+    // territory affinity lands on different colors, sometimes retint
+    // the ink for accent
+    const p = rngPick(rng, PALETTES)
+    let palette = [...p.colors]
+    if (rng() < 0.4) {
+      const shift = 1 + Math.floor(rng() * (palette.length - 1))
+      palette = [...palette.slice(shift), ...palette.slice(0, shift)]
     }
+    patch.colors = { palette, ink: p.ink, paper: p.ground }
+    patch.finish = { grain: rngPick(rng, [0, 0.1, 0.15, 0.25]) }
   }
 
   return patch
@@ -147,20 +137,6 @@ function shuffleSource(s: FieldSourceState, rng: () => number): FieldSourceState
     case 'paint':
       return s
   }
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  const c = (1 - Math.abs(2 * l - 1)) * s
-  const hp = (((h % 360) + 360) % 360) / 60
-  const x = c * (1 - Math.abs((hp % 2) - 1))
-  const m = l - c / 2
-  const [r, g, b] =
-    hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x] : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x]
-  const to = (v: number) =>
-    Math.round((v + m) * 255)
-      .toString(16)
-      .padStart(2, '0')
-  return `#${to(r)}${to(g)}${to(b)}`
 }
 
 // minted per click, stored nowhere — the RESULTING state is what

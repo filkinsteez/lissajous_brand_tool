@@ -66,6 +66,7 @@ export function MarkPanel() {
           { value: 'ink', label: 'Ink' },
           { value: 'tint', label: 'Tints' },
           { value: 'source', label: 'Source' },
+          { value: 'palette', label: 'Palette' },
         ]}
         onChange={(colorMode) => apply({ mark: { colorMode } })}
       />

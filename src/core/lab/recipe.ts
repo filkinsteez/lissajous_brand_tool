@@ -4,6 +4,7 @@ import type { LabState } from './types'
 import { LAB_VERSION } from './types'
 import { MARK_DEFAULTS } from './composition'
 import { FLOW_DEFAULTS } from './flow'
+import { PALETTES } from './colorField'
 import { createFieldSource } from './territory'
 
 // Lab recipes follow the editor's contract: whole state as JSON,
@@ -27,16 +28,16 @@ export function createDefaultLab(seed = 1913): LabState {
         createFieldSource('curve', 'src-curve'),
         { ...createFieldSource('tone', 'src-tone'), weight: 0.35 },
       ],
-      bands: ['empty', 'marks', 'contours', 'photo'],
+      bands: ['mosaic', 'shingle', 'beads', 'blocks'],
       boundary: 'hard',
     },
     structure: { baseCell: 28, maxLevels: 2, subdivide: 0.55 },
     mark: { ...MARK_DEFAULTS },
     paint: null,
     sourceVisibility: 0,
-    colors: { ink: META_BLUE, paper: PAPER },
+    colors: { ink: META_BLUE, paper: PAPER, palette: [...PALETTES[0].colors] },
     flow: { ...FLOW_DEFAULTS },
-    finish: { grain: 0 },
+    finish: { grain: 0.12 },
   }
 }
 
@@ -62,6 +63,10 @@ export function deserializeLab(json: string): LabState | null {
     lab.structure.maxLevels = Math.max(0, Math.min(2, Math.round(lab.structure.maxLevels))) as 0 | 1 | 2
     if (!lab.territory.bands.length) lab.territory.bands = ['empty', 'marks']
     lab.mark.echo = Math.max(0, Math.min(6, Math.round(lab.mark.echo)))
+    if (!Array.isArray(lab.colors.palette) || !lab.colors.palette.length) {
+      lab.colors.palette = [...PALETTES[0].colors]
+    }
+    lab.colors.palette = lab.colors.palette.slice(0, 10)
     lab.flow.curl = Math.max(0, Math.min(1, lab.flow.curl))
     lab.flow.scale = Math.max(0, Math.min(1, lab.flow.scale))
     lab.flow.warp = Math.max(0, Math.min(1, lab.flow.warp))
