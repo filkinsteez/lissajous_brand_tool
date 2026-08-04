@@ -357,6 +357,7 @@ export function createDefaultProject(seed?: number): ProjectState {
     images: [],
     shapes: [],
     bgImageId: null,
-    export: { scale: 2 },
+    // 1× — the artboard's own pixels. Scaling up is a deliberate act
+    export: { scale: 1 },
   }
 }

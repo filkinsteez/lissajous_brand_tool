@@ -43,6 +43,28 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
     flash('New composition — undo restores')
   }
 
+  // while the confirm is up it owns the keyboard: Enter goes through,
+  // Esc backs out — the same contract as any dialog
+  useEffect(() => {
+    if (!confirming) return
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const ae = document.activeElement as HTMLElement | null
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        startNew()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setConfirming(false)
+      }
+    }
+    // capture: the canvas key handler must not act on the same Esc
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  })
+
   // dev capture hook: the REAL export pipeline as a dataURL, so the
   // devshot loop can verify exports without touching the filesystem
   useEffect(() => {
@@ -105,7 +127,7 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
           <>
             <div className="panel-note">
               Start a new composition? This replaces what is on the canvas.
-              Undo brings it back.
+              Enter confirms, Esc cancels — and undo brings it back.
             </div>
             <button className="ctl-action primary" onClick={startNew}>
               Discard and start new

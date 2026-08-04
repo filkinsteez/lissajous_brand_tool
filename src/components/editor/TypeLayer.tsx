@@ -216,6 +216,14 @@ export function TypeLayer() {
         })
         return
       }
+      if (e.key === 'Enter' && st.ui.isolateLayerId) {
+        // Enter confirms the mode you are in — leaving source editing is
+        // the only modal state on the canvas, and Esc alone reads as
+        // "cancel" for something that has no cancel
+        e.preventDefault()
+        st.setUi({ isolateLayerId: undefined, selectedShapeIds: [] })
+        return
+      }
       if (e.key === 'Escape') {
         // Esc backs out one layer of intent: isolation first, then the
         // armed tool, then selection

@@ -111,10 +111,10 @@ export function CanvasStage() {
       {isolating ? (
         <button
           className="isolate-banner"
-          title="Exit isolation (Esc)"
+          title="Exit isolation (Enter or Esc)"
           onClick={() => useStore.getState().setUi({ isolateLayerId: undefined, selectedShapeIds: [] })}
         >
-          EDITING SOURCES — the effector updates live · ESC or click here when done
+          EDITING SOURCES — the effector updates live · ENTER, ESC or click here when done
         </button>
       ) : null}
       <button
