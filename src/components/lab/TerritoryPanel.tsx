@@ -144,7 +144,7 @@ export function TerritoryPanel() {
             ) : null}
             <div className="lab-row">
               <Toggle label="Invert" value={src.invert} onChange={(invert) => patchSource(src.id, { invert })} />
-              {i > 0 || src.kind === 'paint' ? (
+              {i > 0 && src.kind !== 'paint' ? (
                 <SegmentedControl<CombineMode>
                   value={src.combine}
                   options={[

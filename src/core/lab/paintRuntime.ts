@@ -20,7 +20,7 @@ export function getPaintRaster(): PaintRaster | null {
 export function ensurePaintRaster(outW: number, outH: number): PaintRaster {
   const h = Math.max(8, Math.round((PAINT_W * outH) / Math.max(1, outW)))
   if (!raster) {
-    raster = { w: PAINT_W, h, bytes: new Uint8Array(PAINT_W * h) }
+    raster = { w: PAINT_W, h, bytes: new Uint8Array(PAINT_W * h).fill(PAINT_NEUTRAL) }
   } else if (raster.w !== PAINT_W || raster.h !== h) {
     // output aspect changed since the mask was painted: RESAMPLE the
     // authored mask into the new grid — discarding it here silently
@@ -62,21 +62,23 @@ export function reconcilePaint(paint: PaintState | null): void {
   // (undefined -> NaN poisons the whole territory into blank paper)
   let bytes = decoded
   if (decoded.length !== w * h) {
-    bytes = new Uint8Array(w * h)
+    bytes = new Uint8Array(w * h).fill(PAINT_NEUTRAL)
     bytes.set(decoded.subarray(0, Math.min(decoded.length, bytes.length)))
   }
   raster = { w, h, bytes }
   lastSerialized = paint.data
 }
 
-// The mask is a THREE-state field, because the tools mean different
-// depths of carve: untouched (0) leaves the territory alone, BRUSH
-// (~0.45) subtracts into the middle bands — the glitch — and ERASE
-// (1.0) subtracts everything, leaving blank paper. Erase-only-undoes-
-// brush was the first version, and it read as "erase does nothing" the
-// moment it was used on an unpainted photo.
-export const BRUSH_LEVEL = 115 // ≈ 0.45 — lands in the treatment bands
-export const ERASE_LEVEL = 255 // full subtraction — blank paper
+// The mask is a SIGNED field around a neutral midpoint (128): the
+// brush pushes territory DOWN into the treatment bands — it paints the
+// glitch — and the eraser pushes territory UP past every band to the
+// photo, restoring the image wherever it touches, painted or not.
+// Two earlier semantics both failed the same way: erase-undoes-brush
+// "did nothing" on unpainted photo, and erase-to-blank-paper read as
+// ADDING white blobs. Erase means "give me the picture back".
+export const PAINT_NEUTRAL = 128
+export const BRUSH_LEVEL = 71 // ≈ −0.45 — carves into the treatment bands
+export const ERASE_LEVEL = 255 // +1 — overrides everything up to photo
 
 // soft round dab that converges toward `target`: painting over an
 // erased area pulls it back DOWN to glitch depth, erasing over a

@@ -75,13 +75,20 @@ export function renderLab(
   // territory — curve lattices arrive as cached field overrides
   reconcilePaint(lab.paint)
   const paint = getPaintRaster()
+  // the mask is SIGNED around its neutral midpoint: brush strokes read
+  // negative (carve into the glitch), erase reads positive (override up
+  // to photo), untouched reads ~0 — folded in with plain 'add'
   const paintField: Field | null = paint
-    ? fieldFromMap(
-        Float32Array.from(paint.bytes, (b) => b / 255),
-        paint.w,
-        paint.h,
-        { x: 0, y: 0, w: outW, h: outH },
-      )
+    ? (() => {
+        const raw = fieldFromMap(
+          Float32Array.from(paint.bytes, (b) => b / 255),
+          paint.w,
+          paint.h,
+          { x: 0, y: 0, w: outW, h: outH },
+        )
+        return (x: number, y: number) =>
+          Math.max(-1, Math.min(1, (raw(x, y) * 255 - 128) / 127))
+      })()
     : null
   const T = compileTerritoryCached(lab, rect, outW, outH, maps, paintField)
 

@@ -237,10 +237,9 @@ export function createFieldSource(
     // empty band whatever the other sources say
     weight: kind === 'paint' ? 1 : kind === 'tone' || kind === 'detail' ? 0.5 : 0.8,
     invert: false,
-    // the brush CARVES: with photo as the near band, painting must push
-    // cells toward the treatment bands, and erasing must restore —
-    // additive paint read exactly backwards
-    combine: kind === 'paint' ? 'subtract' : 'add',
+    // paint arrives as a SIGNED field (brush negative, erase positive,
+    // neutral zero — see paintRuntime), so plain add is its fold
+    combine: 'add',
     angle: Math.PI / 2,
     offset: 0.5,
     softness: kind === 'curve' ? 0.3 : 0.35,

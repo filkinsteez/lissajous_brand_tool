@@ -91,9 +91,26 @@ describe('field sources', () => {
     expect(Tlead(200, 200)).toBe(0)
   })
 
-  it('paint sources default to subtract — the brush carves toward the treatments', () => {
-    expect(createFieldSource('paint', 'p').combine).toBe('subtract')
-    expect(createFieldSource('curve', 'c').combine).toBe('add')
+  it('a signed paint field carves down with the brush and restores up with erase', () => {
+    const a = { ...createFieldSource('linear', 'a'), angle: 0, weight: 1, softness: 0.05 }
+    const paint = createFieldSource('paint', 'p') // add, weight 1
+    expect(paint.combine).toBe('add')
+    expect(paint.weight).toBe(1)
+    const brushed = compileTerritory(
+      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { ...DEPS, paintField: constantField(-0.45) },
+    )
+    expect(brushed(395, 200)).toBeCloseTo(0.55, 1) // photo zone pushed into glitch bands
+    const erased = compileTerritory(
+      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { ...DEPS, paintField: constantField(1) },
+    )
+    expect(erased(5, 200)).toBe(1) // even the empty zone overrides to photo
+    const neutral = compileTerritory(
+      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { ...DEPS, paintField: constantField(0) },
+    )
+    expect(neutral(395, 200)).toBeCloseTo(1, 1) // untouched mask changes nothing
   })
 
   it('field overrides keep the source position and combine semantics', () => {
