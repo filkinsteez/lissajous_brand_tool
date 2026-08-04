@@ -230,16 +230,11 @@ export function TerritoryPanel() {
       </div>
 
       <div className="panel-section">
-        <div className="panel-heading">Inks</div>
-        <ColorField label="Ink" value={colors?.ink ?? INK}
+        <div className="panel-heading">Colors</div>
+        <ColorField label="Shapes" value={colors?.ink ?? INK}
           onChange={(ink) => setT({ colors: { ink } })} onCommit={commit} />
-        <ColorField label="Paper" value={colors?.paper ?? PAPER}
+        <ColorField label="Background" value={colors?.paper ?? PAPER}
           onChange={(paper) => setT({ colors: { paper } })} onCommit={commit} />
-        <div className="panel-note">
-          Marks, flat cells, and contours draw in ink; the ground is paper.
-          Mosaic and photo bands keep the source&apos;s own color — the
-          MARKS color mode can also sample it.
-        </div>
       </div>
     </>
   )
