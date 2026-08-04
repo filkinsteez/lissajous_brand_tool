@@ -6,6 +6,8 @@ import { getLabSource } from '@/core/lab/sourceCache'
 import { renderLab } from '@/core/lab/render'
 import { LAB_VIEWS } from '@/core/lab/types'
 import {
+  BRUSH_LEVEL,
+  ERASE_LEVEL,
   applyStroke,
   ensurePaintRaster,
   reconcilePaint,
@@ -105,6 +107,7 @@ export function LabCanvas() {
     const kx = raster.w / lab.output.width
     const ky = raster.h / lab.output.height
     const rad = Math.max(1.5, brush * kx)
+    const target = tool === 'erase' ? ERASE_LEVEL : BRUSH_LEVEL
     // interpolate from the previous sample so fast drags leave a
     // stroke, not stepping stones
     const prev = lastPointRef.current
@@ -117,11 +120,11 @@ export function LabCanvas() {
           (prev.x + (ox - prev.x) * t) * kx,
           (prev.y + (oy - prev.y) * t) * ky,
           rad,
-          tool === 'erase',
+          target,
         )
       }
     } else {
-      applyStroke(raster, ox * kx, oy * ky, rad, tool === 'erase')
+      applyStroke(raster, ox * kx, oy * ky, rad, target)
     }
     lastPointRef.current = { x: ox, y: oy }
     setUi({ sourceNonce: useLabStore.getState().ui.sourceNonce + 1 })

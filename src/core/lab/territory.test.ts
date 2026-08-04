@@ -74,6 +74,28 @@ describe('field sources', () => {
     expect(T(200, 200)).toBe(0)
   })
 
+  it('subtract carves territory down, and a leading subtract carves nothing', () => {
+    const a = { ...createFieldSource('linear', 'a'), angle: 0, weight: 1, softness: 0.05 }
+    const carve = { ...createFieldSource('paint', 'p'), weight: 1, combine: 'subtract' as const }
+    const T = compileTerritory(
+      { sources: [a, carve], bands: [], boundary: 'hard' },
+      { ...DEPS, paintField: constantField(0.6) },
+    )
+    // right edge: linear ≈ 1, minus 0.6 of paint
+    expect(T(395, 200)).toBeCloseTo(0.4, 1)
+    // subtract folding against nothing stays at zero
+    const Tlead = compileTerritory(
+      { sources: [carve], bands: [], boundary: 'hard' },
+      { ...DEPS, paintField: constantField(0.6) },
+    )
+    expect(Tlead(200, 200)).toBe(0)
+  })
+
+  it('paint sources default to subtract — the brush carves toward the treatments', () => {
+    expect(createFieldSource('paint', 'p').combine).toBe('subtract')
+    expect(createFieldSource('curve', 'c').combine).toBe('add')
+  })
+
   it('field overrides keep the source position and combine semantics', () => {
     // regression: the render cache once re-added overridden curve
     // sources with forced 'add', contradicting the tested engine

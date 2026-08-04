@@ -69,14 +69,25 @@ export function reconcilePaint(paint: PaintState | null): void {
   lastSerialized = paint.data
 }
 
-// soft round brush, max-blend so overlapping strokes never darken past
-// the brush value
+// The mask is a THREE-state field, because the tools mean different
+// depths of carve: untouched (0) leaves the territory alone, BRUSH
+// (~0.45) subtracts into the middle bands — the glitch — and ERASE
+// (1.0) subtracts everything, leaving blank paper. Erase-only-undoes-
+// brush was the first version, and it read as "erase does nothing" the
+// moment it was used on an unpainted photo.
+export const BRUSH_LEVEL = 115 // ≈ 0.45 — lands in the treatment bands
+export const ERASE_LEVEL = 255 // full subtraction — blank paper
+
+// soft round dab that converges toward `target`: painting over an
+// erased area pulls it back DOWN to glitch depth, erasing over a
+// brushed area pushes it on to paper — either tool always wins where
+// it is applied
 export function applyStroke(
   r: PaintRaster,
   x: number, // paint-raster coords
   y: number,
   radius: number,
-  erase: boolean,
+  target: number,
 ): void {
   const rad = Math.max(1, radius)
   const x0 = Math.max(0, Math.floor(x - rad))
@@ -89,8 +100,7 @@ export function applyStroke(
       if (d > rad) continue
       const fall = 1 - (d / rad) * (d / rad)
       const i = py * r.w + px
-      if (erase) r.bytes[i] = Math.min(r.bytes[i], Math.round(255 * (1 - fall)))
-      else r.bytes[i] = Math.max(r.bytes[i], Math.round(255 * fall))
+      r.bytes[i] = Math.round(r.bytes[i] + (target - r.bytes[i]) * fall)
     }
   }
 }

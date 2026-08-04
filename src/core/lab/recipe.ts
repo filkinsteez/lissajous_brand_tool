@@ -1,5 +1,5 @@
 import { mergeDeep } from '@/core/state/store'
-import { INK, PAPER } from '@/core/state/defaults'
+import { PAPER } from '@/core/state/defaults'
 import type { LabState } from './types'
 import { LAB_VERSION } from './types'
 import { MARK_DEFAULTS } from './composition'
@@ -33,9 +33,12 @@ export function createDefaultLab(seed = 1913): LabState {
     mark: { ...MARK_DEFAULTS },
     paint: null,
     sourceVisibility: 0,
-    colors: { ink: INK, paper: PAPER },
+    colors: { ink: META_BLUE, paper: PAPER },
   }
 }
+
+// Meta's primary brand blue — the lab's default shape color
+export const META_BLUE = '#0668e1'
 
 export function serializeLab(lab: LabState): string {
   return JSON.stringify(lab)

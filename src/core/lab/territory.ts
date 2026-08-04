@@ -140,10 +140,13 @@ export function compileTerritory(state: TerritoryState, deps: TerritoryDeps): Fi
       if (src.invert) v = 1 - v
       v *= src.weight
       if (first) {
-        acc = v
+        // a leading multiply/max folds against nothing — it seeds the
+        // territory instead; a leading subtract carves from nothing
+        acc = src.combine === 'subtract' ? 0 : v
         first = false
       } else if (src.combine === 'multiply') acc *= v
       else if (src.combine === 'max') acc = Math.max(acc, v)
+      else if (src.combine === 'subtract') acc -= v
       else acc += v
     }
     return Math.max(0, Math.min(1, acc))
@@ -230,9 +233,14 @@ export function createFieldSource(
     id,
     kind,
     enabled: true,
-    weight: kind === 'tone' || kind === 'detail' ? 0.5 : 0.8,
+    // paint at full weight so ERASE (full mask) reliably reaches the
+    // empty band whatever the other sources say
+    weight: kind === 'paint' ? 1 : kind === 'tone' || kind === 'detail' ? 0.5 : 0.8,
     invert: false,
-    combine: 'add',
+    // the brush CARVES: with photo as the near band, painting must push
+    // cells toward the treatment bands, and erasing must restore —
+    // additive paint read exactly backwards
+    combine: kind === 'paint' ? 'subtract' : 'add',
     angle: Math.PI / 2,
     offset: 0.5,
     softness: kind === 'curve' ? 0.3 : 0.35,

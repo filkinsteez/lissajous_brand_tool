@@ -25,7 +25,7 @@ export type LabSourceMeta = {
 // hand off (hard grid steps, ordered dither, porous noise).
 
 export type FieldSourceKind = 'curve' | 'linear' | 'radial' | 'tone' | 'detail' | 'paint'
-export type CombineMode = 'add' | 'multiply' | 'max'
+export type CombineMode = 'add' | 'subtract' | 'multiply' | 'max'
 
 // snapshot of the editor curve taken when the source is added, so a
 // recipe reproduces without the editor's autosave present

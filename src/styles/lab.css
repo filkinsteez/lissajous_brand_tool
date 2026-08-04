@@ -243,3 +243,8 @@
   width: 80px;
   accent-color: var(--text-dim);
 }
+
+.ctl-action.lab-drop {
+  outline: 1px dashed var(--text-dim);
+  outline-offset: 2px;
+}

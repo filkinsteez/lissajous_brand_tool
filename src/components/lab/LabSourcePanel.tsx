@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useLabStore } from '@/core/lab/labStore'
 import { getLabSource, clearLabSource } from '@/core/lab/sourceCache'
 import type { LabFit } from '@/core/lab/types'
@@ -18,12 +18,32 @@ export function LabSourcePanel() {
   // a recipe can reference a source that has not been re-dropped yet
   const missing = !!source && (!live || (source.contentHash && live.hash !== source.contentHash))
   void sourceNonce // subscription keeps this panel in step with the cache
+  const [dragOver, setDragOver] = useState(false)
+
+  // the whole section takes drops, same handling as the canvas
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith('image/'))
+    if (f) void importLabSource(f)
+  }
 
   return (
-    <div className="panel-section">
+    <div
+      className="panel-section"
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
+    >
       <div className="panel-heading">Source</div>
-      <button className="ctl-action" onClick={() => fileRef.current?.click()}>
-        {source ? 'Replace image' : 'Load image'}
+      <button
+        className={dragOver ? 'ctl-action lab-drop' : 'ctl-action'}
+        onClick={() => fileRef.current?.click()}
+      >
+        {dragOver ? 'Drop it' : source ? 'Replace image' : 'Load image'}
       </button>
       <input
         ref={fileRef}
