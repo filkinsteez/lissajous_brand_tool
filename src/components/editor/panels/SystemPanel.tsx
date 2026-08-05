@@ -40,7 +40,17 @@ export function SystemPanel() {
     clearTimeout(settleTimer.current)
     settleTimer.current = setTimeout(() => setUi({ systemAdjusting: false }), 800)
   }
-  useEffect(() => () => clearTimeout(settleTimer.current), [])
+  // On unmount the pending settle timer dies with the panel, so it must
+  // also CLEAR the flag: selecting an image switches the inspector to
+  // Properties, which unmounts this panel mid-settle and used to leave
+  // systemAdjusting stuck true — the construction overlay then stayed up
+  // for the rest of the session. Nothing is being adjusted once the
+  // panel is gone, so saying so is simply true.
+  useEffect(() => () => {
+    clearTimeout(settleTimer.current)
+    const s = useStore.getState()
+    if (s.ui.systemAdjusting) s.setUi({ systemAdjusting: false })
+  }, [])
 
   const curve = (patch: Parameters<typeof setT>[0]) => {
     touch()

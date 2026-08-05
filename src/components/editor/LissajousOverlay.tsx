@@ -73,6 +73,7 @@ export function LissajousOverlay() {
         return (
           <g key={g.id}>
             <line
+              className={isSetup ? 'overlay-hit' : undefined}
               x1={isX ? g.pos : box.x}
               x2={isX ? g.pos : box.x + box.w}
               y1={!isX ? g.pos : box.y}
@@ -141,6 +142,7 @@ export function LissajousOverlay() {
             return (
               <g
                 key={n.id}
+                className="overlay-hit"
                 onMouseEnter={() => setHover({ kind: 'node', id: n.id })}
                 onMouseLeave={() => setHover(null)}
                 onClick={() => toggleNode(n.id)}

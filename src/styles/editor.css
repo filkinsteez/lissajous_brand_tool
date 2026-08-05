@@ -257,6 +257,18 @@ a.mode-tab {
   width: 100%;
   height: 100%;
   animation: overlay-reveal 0.35s ease-out;
+  /* construction geometry is an ANNOTATION: it draws over the canvas but
+     must never take the pointer. It sits above every object layer, so
+     without this the guides swallow clicks and drags on images, text and
+     shapes for as long as it is visible — whenever guides are on, or the
+     curve is being adjusted. Setup mode re-enables hits on the pieces
+     that are genuinely interactive (below). */
+  pointer-events: none;
+}
+
+/* setup mode: crossings are clickable and guides highlight on hover */
+.overlay .overlay-hit {
+  pointer-events: auto;
 }
 
 @keyframes overlay-reveal {
