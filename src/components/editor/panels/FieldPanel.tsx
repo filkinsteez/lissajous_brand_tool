@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/core/state/store'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { Toggle } from '@/components/controls/Toggle'
 import { ColorField } from '@/components/controls/ColorField'
 import {
   BACKGROUND_EXPRESSIONS_STORAGE_KEY,

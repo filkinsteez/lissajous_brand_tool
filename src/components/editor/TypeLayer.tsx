@@ -18,7 +18,7 @@ import {
   type Rect,
 } from '@/core/canvas/selection'
 import { consumedShapeIds } from '@/core/canvas/shapeProtos'
-import { clickGuard } from './clickGuard'
+import { suppressNextClick, consumeClickSuppression } from './clickGuard'
 import type { EditorialGrid } from '@/core/grid/types'
 import type { TypeBlockState } from '@/core/state/types'
 
@@ -68,6 +68,51 @@ function snapAnchor(
   return { ...block.anchor, col, row, baselineOffset: 0 }
 }
 
+// A new text block at a canvas point — the TEXT tool's empty-canvas
+// click. Module-level on purpose: it reads everything through
+// getState(), so the click effect can call it without a latest-ref
+// dance (the compiler forbids ref writes during render). Returns the
+// new block's id so the caller can enter edit mode.
+function createBlockAt(
+  layer: HTMLDivElement | null,
+  clientX: number,
+  clientY: number,
+): string | null {
+  if (!layer) return null
+  const st = useStore.getState()
+  const rect = layer.getBoundingClientRect()
+  const scale = rect.width > 0 ? rect.width / st.project.artboard.width : 1
+  const x = (clientX - rect.left) / scale
+  const y = (clientY - rect.top) / scale
+  const grid = getDerived(st.project).grid
+  const id = `text-${Date.now().toString(36)}`
+  const draft: TypeBlockState = {
+    id,
+    role: 'caption',
+    text: 'Text',
+    fontFamily: 'optimistic',
+    size: 40,
+    weight: 520,
+    width: 100,
+    opticalSize: 14,
+    lineHeight: 1.25,
+    tracking: 0,
+    textCase: 'none',
+    align: 'left',
+    anchor: { col: 0, row: 0, colSpan: 2, baselineOffset: 0 },
+    materialInfluence: 0.6,
+  }
+  draft.anchor = snapAnchor(grid, draft, x, y)
+  st.apply({ typeBlocks: [...st.project.typeBlocks, draft] })
+  st.setUi({
+    selectedBlockId: id,
+    selectedBlockIds: [id],
+    activePanel: 'compose',
+    tool: 'select',
+  })
+  return id
+}
+
 // L4: primary typography as DOM — crisp, selectable, never baked into GL.
 // Blocks are draggable in the artboard; drags snap to the grid and commit
 // as a single history entry on release.
@@ -76,7 +121,6 @@ export function TypeLayer() {
   const selectedBlockId = useStore((s) => s.ui.selectedBlockId)
   const selectedBlockIds = useStore((s) => s.ui.selectedBlockIds)
   const isolateLayerId = useStore((s) => s.ui.isolateLayerId)
-  const setUi = useStore((s) => s.setUi)
   const derived = getDerived(project)
   const fallbackTypeColor =
     project.background.mode === 'field' && project.background.ground !== 'neutral' ? PAPER : INK
@@ -393,7 +437,7 @@ export function TypeLayer() {
       })
     }
     const onUp = () => {
-      if (active) clickGuard.suppress = true
+      if (active) suppressNextClick()
       start = null
       active = false
       setMarquee(null)
@@ -423,10 +467,7 @@ export function TypeLayer() {
       return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
     }
     const onClick = (e: MouseEvent) => {
-      if (clickGuard.suppress) {
-        clickGuard.suppress = false
-        return
-      }
+      if (consumeClickSuppression()) return
       // the armed TEXT tool creates on EMPTY canvas only — clicking an
       // existing block puts the caret in it, the way every editor works
       const armedTool = useStore.getState().ui.tool
@@ -438,7 +479,8 @@ export function TypeLayer() {
           setEditingId(id)
           useStore.getState().setUi({ tool: 'select' })
         } else {
-          createBlockAtRef.current(e.clientX, e.clientY)
+          const createdId = createBlockAt(layer, e.clientX, e.clientY)
+          if (createdId) setEditingId(createdId)
         }
         return
       }
@@ -548,49 +590,7 @@ export function TypeLayer() {
     }
     artboard.addEventListener('click', onClick)
     return () => artboard.removeEventListener('click', onClick)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // a new text block at a canvas point, already in edit mode — shared by
-  // the TEXT tool (single click) and the empty-canvas double-click
-  const createBlockAt = (clientX: number, clientY: number) => {
-    const layer = layerRef.current
-    if (!layer) return
-    const st = useStore.getState()
-    const rect = layer.getBoundingClientRect()
-    const scale = rect.width > 0 ? rect.width / st.project.artboard.width : 1
-    const x = (clientX - rect.left) / scale
-    const y = (clientY - rect.top) / scale
-    const grid = getDerived(st.project).grid
-    const id = `text-${Date.now().toString(36)}`
-    const draft: TypeBlockState = {
-      id,
-      role: 'caption',
-      text: 'Text',
-      fontFamily: 'optimistic',
-      size: 40,
-      weight: 520,
-      width: 100,
-      opticalSize: 14,
-      lineHeight: 1.25,
-      tracking: 0,
-      textCase: 'none',
-      align: 'left',
-      anchor: { col: 0, row: 0, colSpan: 2, baselineOffset: 0 },
-      materialInfluence: 0.6,
-    }
-    draft.anchor = snapAnchor(grid, draft, x, y)
-    st.apply({ typeBlocks: [...st.project.typeBlocks, draft] })
-    st.setUi({
-      selectedBlockId: id,
-      selectedBlockIds: [id],
-      activePanel: 'compose',
-      tool: 'select',
-    })
-    setEditingId(id)
-  }
-  const createBlockAtRef = useRef(createBlockAt)
-  createBlockAtRef.current = createBlockAt
 
   // tool shortcuts, the Figma keys plus the shape instruments. Guarded
   // like every other canvas key.
@@ -790,7 +790,7 @@ export function TypeLayer() {
     multiStartRef.current = null
     imageStartRef.current = null
     if (drag.moved) {
-      clickGuard.suppress = true
+      suppressNextClick()
       useStore.getState().commitTransient()
       useStore.getState().setUi({ dragging: false })
     }
@@ -846,7 +846,7 @@ export function TypeLayer() {
     const rs = resizeRef.current
     if (!rs || rs.id !== block.id) return
     resizeRef.current = null
-    clickGuard.suppress = true
+    suppressNextClick()
     useStore.getState().commitTransient()
     useStore.getState().setUi({ dragging: false })
   }

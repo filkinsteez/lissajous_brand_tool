@@ -94,7 +94,6 @@ type SheetLayerT = Extract<ShapeLayer, { type: 'cloner' }>
 
 export function SheetLayer({ layer }: { layer: SheetLayerT }) {
   const project = useStore((s) => s.project)
-  const shapes = useStore((s) => s.project.shapes)
   const sheet = layer.params
 
   // bound drawn protos: non-empty switches the vocabulary to <use> stamps

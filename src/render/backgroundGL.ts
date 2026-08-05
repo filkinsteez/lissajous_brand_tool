@@ -478,19 +478,6 @@ function setUniform3f(
   if (loc !== null) gl.uniform3f(loc, x, y, z)
 }
 
-function setUniform4f(
-  gl: WebGL2RenderingContext,
-  program: WebGLProgram,
-  name: string,
-  x: number,
-  y: number,
-  z: number,
-  w: number,
-): void {
-  const loc = gl.getUniformLocation(program, name)
-  if (loc !== null) gl.uniform4f(loc, x, y, z, w)
-}
-
 function setUniform4fv(gl: WebGL2RenderingContext, program: WebGLProgram, name: string, v: Float32Array): void {
   const loc = gl.getUniformLocation(program, name)
   if (loc !== null) gl.uniform4fv(loc, v)

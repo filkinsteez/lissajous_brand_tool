@@ -18,7 +18,6 @@ type PatternLayerT = Extract<ShapeLayer, { type: 'pattern' }>
 // distance bands, but stamped as <use> instances with a size ladder.
 export function PatternLayer({ layer }: { layer: PatternLayerT }) {
   const project = useStore((s) => s.project)
-  const shapes = useStore((s) => s.project.shapes)
   const pattern = layer.params
 
   const protos = useMemo(

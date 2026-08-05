@@ -24,7 +24,6 @@ type ClonesLayerT = Extract<ShapeLayer, { type: 'clones' }>
 // rings to shapes stamped along the rings (clone-along-path).
 export function ClonesLayer({ layer }: { layer: ClonesLayerT }) {
   const project = useStore((s) => s.project)
-  const shapes = useStore((s) => s.project.shapes)
   const cloner = layer.params
 
   const levels = useMemo(() => {
@@ -73,7 +72,6 @@ export function ClonesLayer({ layer }: { layer: ClonesLayerT }) {
       const size = Math.min(Math.max(ts[i].weight * 5, 6), minDim * 0.05)
       return { size, stamps: stampsAlongContours([level], size * 2.6) }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levels, protos.length, cloner, minDim, project.background.seed])
 
   if (!levels.length) return null

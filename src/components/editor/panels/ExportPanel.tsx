@@ -16,6 +16,13 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
   const [note, setNote] = useState('')
   const [confirming, setConfirming] = useState(false)
 
+  // declared before startNew, which calls it — a later declaration
+  // reads fine to the eye but is a use-before-declare to the compiler
+  const flash = (msg: string) => {
+    setNote(msg)
+    setTimeout(() => setNote(''), 2500)
+  }
+
   // "changes were made" = anything on the undo stack, or a project that
   // simply is not the pristine default (a shared link opens with an
   // empty history but a full composition)
@@ -79,11 +86,6 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
         })
       }
   }, [])
-
-  const flash = (msg: string) => {
-    setNote(msg)
-    setTimeout(() => setNote(''), 2500)
-  }
 
   return (
     <div className="panel">

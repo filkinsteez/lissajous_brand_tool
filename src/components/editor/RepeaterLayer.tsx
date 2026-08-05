@@ -19,7 +19,6 @@ type RepeaterLayerT = Extract<ShapeLayer, { type: 'cloner' }>
 
 export function RepeaterLayer({ layer }: { layer: RepeaterLayerT }) {
   const project = useStore((s) => s.project)
-  const shapes = useStore((s) => s.project.shapes)
   const p = layer.params
   // the repeat engine's view of the merged params: stampSize is its
   // size dial (grid's `size` is per-cell and stays out of reach)

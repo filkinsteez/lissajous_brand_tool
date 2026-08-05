@@ -6,7 +6,7 @@ import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
 import { columnSpanRect, rowSpanRect, type EditorialGrid } from '@/core/grid/types'
 import { importImageFile } from '@/core/images'
-import { clickGuard } from './clickGuard'
+import { suppressNextClick } from './clickGuard'
 import type { ImageItem } from '@/core/state/types'
 
 // L2: imported images as CANVAS OBJECTS — click to select, drag to move
@@ -279,7 +279,7 @@ function ImagesLayerInner() {
     groupImgRef.current = null
     groupTextRef.current = null
     if (drag.moved) {
-      clickGuard.suppress = true
+      suppressNextClick()
       useStore.getState().commitTransient()
       useStore.getState().setUi({ dragging: false })
     }
@@ -344,7 +344,7 @@ function ImagesLayerInner() {
     const rs = resizeRef.current
     if (!rs || rs.id !== im.id) return
     resizeRef.current = null
-    clickGuard.suppress = true
+    suppressNextClick()
     useStore.getState().commitTransient()
     useStore.getState().setUi({ dragging: false })
   }

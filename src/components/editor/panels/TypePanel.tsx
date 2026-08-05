@@ -8,7 +8,6 @@ import { ColorField } from '@/components/controls/ColorField'
 import { Toggle } from '@/components/controls/Toggle'
 import { WEIGHT_RANGE, WIDTH_RANGE } from '@/core/typography/fonts'
 import { INK, PAPER } from '@/core/state/defaults'
-import { getDerived } from '@/core/pipeline'
 import type { TypeAlign, TypeBlockState } from '@/core/state/types'
 
 const int = (v: number) => String(Math.round(v))
@@ -25,9 +24,6 @@ export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
 
   const blocks = project.typeBlocks
   const block = blocks.find((b) => b.id === selectedBlockId) ?? blocks[0]
-  const grid = getDerived(project).grid
-  const nCols = grid.columnBoundaries.length - 1
-  const nRows = grid.rowBoundaries.length - 1
 
   // legibility belongs with type, not with the shader: it thins the
   // field where copy sits, so it is a property of the words. It lives
@@ -60,9 +56,6 @@ export function TypePanel({ embedded = false }: { embedded?: boolean } = {}) {
 
   const patchBlock = (patch: Partial<TypeBlockState>) => {
     setT({ typeBlocks: blocks.map((b) => (b.id === block.id ? { ...b, ...patch } : b)) })
-  }
-  const patchAnchor = (patch: Partial<TypeBlockState['anchor']>) => {
-    patchBlock({ anchor: { ...block.anchor, ...patch } })
   }
 
   return (

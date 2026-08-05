@@ -8,7 +8,7 @@ import { consumedShapeIds } from '@/core/canvas/shapeProtos'
 import { snapAxis, type SnapLines } from '@/core/canvas/snap'
 import { getDerived } from '@/core/pipeline'
 import { PAPER } from '@/core/state/defaults'
-import { clickGuard } from './clickGuard'
+import { suppressNextClick } from './clickGuard'
 import type { ShapeItem, ShapeItemKind } from '@/core/state/types'
 
 const SHAPE_TOOLS: CanvasTool[] = ['rect', 'ellipse', 'poly', 'star', 'line', 'blob']
@@ -183,7 +183,7 @@ export function ShapeItemsLayer() {
         selectedBlockIds: [],
         selectedImageIds: [],
       })
-      clickGuard.suppress = true
+      suppressNextClick()
       active = null
       setDraft(null)
       clearGuides()
@@ -289,7 +289,7 @@ export function ShapeItemsLayer() {
     dragRef.current = null
     clearGuides()
     if (drag.moved) {
-      clickGuard.suppress = true
+      suppressNextClick()
       useStore.getState().commitTransient()
       useStore.getState().setUi({ dragging: false })
     }
@@ -344,7 +344,7 @@ export function ShapeItemsLayer() {
     if (!rs || rs.id !== item.id) return
     resizeRef.current = null
     clearGuides()
-    clickGuard.suppress = true
+    suppressNextClick()
     useStore.getState().commitTransient()
     useStore.getState().setUi({ dragging: false })
   }
