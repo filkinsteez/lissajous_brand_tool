@@ -1,6 +1,6 @@
 import type { ProjectState, ShapeLayer } from '@/core/state/types'
 import { getDerived } from '@/core/pipeline'
-import { columnSpanRect, rowSpanRect } from '@/core/grid/types'
+import { imageRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
 import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
 import { buildContourLevels, dealProtoIndex, stampsAlongContours } from '@/core/cloner/contours'
@@ -601,9 +601,9 @@ export async function exportPNG(
   for (const im of project.images) {
     if (im.id === project.bgImageId) continue
     if (im.id.startsWith('arr-')) continue
-    // same gutterInset=true as ImagesLayer — export must match the canvas
-    const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan, true)
-    const { y, h } = rowSpanRect(grid, im.anchor.row, im.anchor.rowSpan, true)
+    // the SAME rect function as ImagesLayer — anchored or free, the
+    // export cannot drift from the canvas
+    const { x, y, w, h } = imageRect(grid, im.anchor, im.free)
     drawCover(ctx, await loadImage(im.src), x * scale, y * scale, w * scale, h * scale)
   }
 

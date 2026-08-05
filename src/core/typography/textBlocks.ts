@@ -10,7 +10,14 @@ export type BlockLayout = {
 
 // Blocks anchor to grid geometry: x/width from a column span, y from a row
 // boundary. Everything is artboard px; the DOM/text engine does the rest.
+// A block positioned with SNAP OFF carries a free rect instead — it wins
+// outright, here, so every consumer (canvas, export, pressure mask)
+// agrees on where the block is.
 export function layoutTypeBlock(block: TypeBlockState, grid: EditorialGrid): BlockLayout {
+  if (block.free) {
+    const w = Math.max(40, block.free.w)
+    return { x: block.free.x, y: block.free.y, w, estH: estimateHeight(block, w) }
+  }
   const nCols = grid.columnBoundaries.length - 1
   const col = Math.max(0, Math.min(nCols - 1, block.anchor.col))
   const span = Math.max(1, Math.min(nCols - col, block.anchor.colSpan))

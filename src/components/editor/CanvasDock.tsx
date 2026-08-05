@@ -206,7 +206,7 @@ export function CanvasDock() {
         </button>
         <button
           className={snap ? 'dock-chip toggled' : 'dock-chip'}
-          title="Snap — dragged shapes stick to grid lines, canvas edges and other objects"
+          title="Snap — on: objects lock to the grid; off: position anything anywhere"
           aria-label="Snap"
           aria-pressed={snap}
           onClick={() => setUi({ snap: !snap })}

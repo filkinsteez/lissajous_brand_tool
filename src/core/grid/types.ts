@@ -48,6 +48,21 @@ export function columnSpanRect(
   return { x: x0, w: Math.max(8, x1 - x0) }
 }
 
+// An image block's rect: the free rect verbatim when the image has been
+// positioned with snap OFF, else the anchor-derived cell rect (half-
+// gutter inset at interior boundaries). The live layer and the PNG
+// export both call THIS so their rects cannot drift apart.
+export function imageRect(
+  grid: EditorialGrid,
+  anchor: { col: number; row: number; colSpan: number; rowSpan: number },
+  free?: { x: number; y: number; w: number; h: number },
+): { x: number; y: number; w: number; h: number } {
+  if (free) return free
+  const { x, w } = columnSpanRect(grid, anchor.col, anchor.colSpan, true)
+  const { y, h } = rowSpanRect(grid, anchor.row, anchor.rowSpan, true)
+  return { x, y, w, h }
+}
+
 // Vertical twin of columnSpanRect, same gutter/padding contract, so
 // grid tenants (images) get breathing room on all four sides — the
 // live layer and the PNG export must call the SAME function or their

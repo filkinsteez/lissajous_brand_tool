@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { history as projectHistory, useStore } from '@/core/state/store'
 import { shuffleProject } from '@/core/state/shuffle'
+import { takeDesignHandoff } from '@/core/lab/handoff'
 import { getDerived } from '@/core/pipeline'
 import { installDebugHook } from '@/core/state/debug'
 import { renderController } from '@/render/renderController'
@@ -28,13 +29,54 @@ export function EditorShell() {
     installDebugHook()
     renderController.start()
 
+    // /?pristine — a scratch session for verification runs: no restore,
+    // no write-back, so nothing here can touch the saved composition
+    // (the editor twin of /lab?pristine)
+    const pristine = window.location.search.includes('pristine')
+
     // restore: share hash → localStorage autosave → defaults
-    const fromHash = decodeShareHash(window.location.hash)
-    const fromLocal = fromHash ? null : deserializeProject(localStorage.getItem(AUTOSAVE_KEY))
-    if (fromHash || fromLocal) {
-      useStore.getState().replaceProject((fromHash ?? fromLocal)!)
+    if (!pristine) {
+      const fromHash = decodeShareHash(window.location.hash)
+      const fromLocal = fromHash ? null : deserializeProject(localStorage.getItem(AUTOSAVE_KEY))
+      if (fromHash || fromLocal) {
+        useStore.getState().replaceProject((fromHash ?? fromLocal)!)
+      }
     }
     useStore.getState().setUi({ mounted: true })
+
+    // "Send to Design" handoff from the lab: the rendered image lands
+    // as a centered block, selected — one undoable entry
+    const handoff = takeDesignHandoff()
+    if (handoff) {
+      const st = useStore.getState()
+      const grid = getDerived(st.project).grid
+      const nCols = grid.columnBoundaries.length - 1
+      const nRows = grid.rowBoundaries.length - 1
+      const colSpan = Math.max(1, Math.min(2, nCols))
+      const rowSpan = Math.max(1, Math.min(3, nRows))
+      const id = `img-${Date.now().toString(36)}`
+      st.apply({
+        images: [
+          ...st.project.images,
+          {
+            id,
+            src: handoff.src,
+            anchor: {
+              col: Math.max(0, Math.floor((nCols - colSpan) / 2)),
+              row: Math.max(0, Math.floor((nRows - rowSpan) / 2)),
+              colSpan,
+              rowSpan,
+            },
+          },
+        ],
+      })
+      st.setUi({
+        selectedImageIds: [id],
+        selectedBlockId: undefined,
+        selectedBlockIds: [],
+        selectedShapeIds: [],
+      })
+    }
 
     // write-back: debounced autosave + share hash. `dirty` tracks a
     // pending debounce so unmount (Design→Lab navigation) can flush it —
@@ -50,12 +92,14 @@ export function EditorShell() {
         // storage full / privacy mode — hash alone still works
       }
     }
-    const unsub = useStore.subscribe((state, prev) => {
-      if (state.project === prev.project) return
-      clearTimeout(timer)
-      dirty = true
-      timer = setTimeout(() => save(useStore.getState().project), 500)
-    })
+    const unsub = pristine
+      ? () => {}
+      : useStore.subscribe((state, prev) => {
+          if (state.project === prev.project) return
+          clearTimeout(timer)
+          dirty = true
+          timer = setTimeout(() => save(useStore.getState().project), 500)
+        })
 
     // Figma behavior: picking an object (canvas or rail) surfaces its
     // properties on the right. Keyed on the selection so a later section

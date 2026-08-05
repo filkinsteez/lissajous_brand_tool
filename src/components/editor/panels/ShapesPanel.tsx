@@ -15,7 +15,6 @@ import type {
   ClonerState,
   ContourState,
   ImageArrayState,
-  ImageItem,
   LayerBlend,
   LayerColor,
   LayerTexture,
@@ -267,13 +266,8 @@ function ImageProperties({
   const images = project.images.filter((im) => selectedIds.includes(im.id))
   const first = images[0]
   if (!first) return null
-  const patchAnchor = (patch: Partial<ImageItem['anchor']>) => {
-    apply({
-      images: project.images.map((im) =>
-        selectedIds.includes(im.id) ? { ...im, anchor: { ...im.anchor, ...patch } } : im,
-      ),
-    })
-  }
+  // no size dials here — the corner handles ON the image are the size
+  // control; a second slider affordance for the same thing is noise
   return (
     <div className="panel-section">
       <div className="panel-heading">
@@ -287,10 +281,6 @@ function ImageProperties({
           style={{ display: 'block', width: '100%', borderRadius: 4, marginBottom: 8 }}
         />
       ) : null}
-      <Slider label="Cols wide" value={first.anchor.colSpan} min={1} max={8} step={1} format={int}
-        defaultValue={2} onChange={(v) => patchAnchor({ colSpan: Math.round(v) })} />
-      <Slider label="Rows tall" value={first.anchor.rowSpan} min={1} max={12} step={1} format={int}
-        defaultValue={3} onChange={(v) => patchAnchor({ rowSpan: Math.round(v) })} />
       <button
         className="ctl-action primary"
         onClick={() => {

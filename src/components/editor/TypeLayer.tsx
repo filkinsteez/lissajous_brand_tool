@@ -19,7 +19,7 @@ import {
 } from '@/core/canvas/selection'
 import { consumedShapeIds } from '@/core/canvas/shapeProtos'
 import { suppressNextClick, consumeClickSuppression } from './clickGuard'
-import type { EditorialGrid } from '@/core/grid/types'
+import { imageRect, type EditorialGrid } from '@/core/grid/types'
 import type { TypeBlockState } from '@/core/state/types'
 
 type DragState = {
@@ -29,6 +29,7 @@ type DragState = {
   startClientY: number
   boxX: number
   boxY: number
+  boxW: number // width at drag start — the free path keeps it
   moved: boolean
   alt: boolean // alt-drag: a copy stays behind at the original anchor
 }
@@ -133,7 +134,14 @@ export function TypeLayer() {
     string,
     { col: number; row: number; colSpan: number; rowSpan: number }
   > | null>(null)
-  const resizeRef = useRef<{ id: string; pointerId: number } | null>(null)
+  // start RECTS of the same group — the snap-OFF (free) path translates
+  // these instead of stepping anchors
+  const multiRectRef = useRef<Map<string, { x: number; y: number; w: number }> | null>(null)
+  const imageRectStartRef = useRef<Map<
+    string,
+    { x: number; y: number; w: number; h: number }
+  > | null>(null)
+  const resizeRef = useRef<{ id: string; pointerId: number; startBox: BlockLayout } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [marquee, setMarquee] = useState<Rect | null>(null)
 
@@ -329,22 +337,28 @@ export function TypeLayer() {
         // drawn shapes are free-positioned: they nudge in pixels
         const px = e.shiftKey ? 32 : 8
         st.apply({
+          // free objects nudge in pixels like drawn shapes; anchored
+          // ones step grid units
           typeBlocks: st.project.typeBlocks.map((b) =>
             ids.includes(b.id)
-              ? { ...b, anchor: nudgeAnchor(b.anchor, dir, nCols, e.shiftKey) }
+              ? b.free
+                ? { ...b, free: { ...b.free, x: b.free.x + dc * px, y: b.free.y + dr * px } }
+                : { ...b, anchor: nudgeAnchor(b.anchor, dir, nCols, e.shiftKey) }
               : b,
           ),
-          // images nudge whole cells: their vertical unit is the row
+          // anchored images nudge whole cells: their vertical unit is the row
           images: st.project.images.map((im) =>
             imgIds.includes(im.id)
-              ? {
-                  ...im,
-                  anchor: {
-                    ...im.anchor,
-                    col: Math.max(0, Math.min(nCols - im.anchor.colSpan, im.anchor.col + dc)),
-                    row: Math.max(0, Math.min(nRows - im.anchor.rowSpan, im.anchor.row + dr)),
-                  },
-                }
+              ? im.free
+                ? { ...im, free: { ...im.free, x: im.free.x + dc * px, y: im.free.y + dr * px } }
+                : {
+                    ...im,
+                    anchor: {
+                      ...im.anchor,
+                      col: Math.max(0, Math.min(nCols - im.anchor.colSpan, im.anchor.col + dc)),
+                      row: Math.max(0, Math.min(nRows - im.anchor.rowSpan, im.anchor.row + dr)),
+                    },
+                  }
               : im,
           ),
           shapes: st.project.shapes.map((s) =>
@@ -674,19 +688,25 @@ export function TypeLayer() {
     const ids = st.ui.selectedBlockIds
     const imgIds = st.ui.selectedImageIds
     if (ids.includes(block.id) && ids.length + imgIds.length > 1) {
-      multiStartRef.current = new Map(
-        st.project.typeBlocks
-          .filter((b) => ids.includes(b.id))
-          .map((b) => [b.id, { ...b.anchor }]),
+      const g = getDerived(st.project).grid
+      const groupBlocks = st.project.typeBlocks.filter((b) => ids.includes(b.id))
+      const groupImgs = st.project.images.filter((im) => imgIds.includes(im.id))
+      multiStartRef.current = new Map(groupBlocks.map((b) => [b.id, { ...b.anchor }]))
+      imageStartRef.current = new Map(groupImgs.map((im) => [im.id, { ...im.anchor }]))
+      multiRectRef.current = new Map(
+        groupBlocks.map((b) => {
+          const bx = layoutTypeBlock(b, g)
+          return [b.id, { x: bx.x, y: bx.y, w: bx.w }]
+        }),
       )
-      imageStartRef.current = new Map(
-        st.project.images
-          .filter((im) => imgIds.includes(im.id))
-          .map((im) => [im.id, { ...im.anchor }]),
+      imageRectStartRef.current = new Map(
+        groupImgs.map((im) => [im.id, imageRect(g, im.anchor, im.free)]),
       )
     } else {
       multiStartRef.current = null
       imageStartRef.current = null
+      multiRectRef.current = null
+      imageRectStartRef.current = null
     }
     dragRef.current = {
       id: block.id,
@@ -695,6 +715,7 @@ export function TypeLayer() {
       startClientY: e.clientY,
       boxX: box.x,
       boxY: box.y,
+      boxW: box.w,
       moved: false,
       alt: e.altKey,
     }
@@ -736,6 +757,37 @@ export function TypeLayer() {
     }
     const state = useStore.getState()
     const grid = getDerived(state.project).grid
+
+    // SNAP OFF: free translation — the block goes exactly where the
+    // pointer puts it, selected images ride along in px
+    if (!state.ui.snap) {
+      const dx = dxPx / scale
+      const dy = dyPx / scale
+      const rects = multiRectRef.current
+      const imgRects = imageRectStartRef.current
+      if (rects) {
+        state.setTransient({
+          typeBlocks: state.project.typeBlocks.map((b) => {
+            const r = rects.get(b.id)
+            return r ? { ...b, free: { x: r.x + dx, y: r.y + dy, w: r.w } } : b
+          }),
+          images: state.project.images.map((im) => {
+            const r = imgRects?.get(im.id)
+            return r ? { ...im, free: { x: r.x + dx, y: r.y + dy, w: r.w, h: r.h } } : im
+          }),
+        })
+      } else {
+        state.setTransient({
+          typeBlocks: state.project.typeBlocks.map((b) =>
+            b.id === block.id
+              ? { ...b, free: { x: drag.boxX + dx, y: drag.boxY + dy, w: drag.boxW } }
+              : b,
+          ),
+        })
+      }
+      return
+    }
+
     const anchor = snapAnchor(grid, block, drag.boxX + dxPx / scale, drag.boxY + dyPx / scale)
     const multi = multiStartRef.current
     if (multi) {
@@ -754,6 +806,7 @@ export function TypeLayer() {
           if (!s) return b
           return {
             ...b,
+            free: undefined,
             anchor: {
               ...s,
               col: Math.max(0, Math.min(nCols - 1, s.col + dCol)),
@@ -766,6 +819,7 @@ export function TypeLayer() {
           if (!s) return im
           return {
             ...im,
+            free: undefined,
             anchor: {
               ...s,
               col: Math.max(0, Math.min(nCols - s.colSpan, s.col + dCol)),
@@ -777,7 +831,7 @@ export function TypeLayer() {
     } else {
       state.setTransient({
         typeBlocks: state.project.typeBlocks.map((b) =>
-          b.id === block.id ? { ...b, anchor } : b,
+          b.id === block.id ? { ...b, anchor, free: undefined } : b,
         ),
       })
     }
@@ -789,6 +843,8 @@ export function TypeLayer() {
     dragRef.current = null
     multiStartRef.current = null
     imageStartRef.current = null
+    multiRectRef.current = null
+    imageRectStartRef.current = null
     if (drag.moved) {
       suppressNextClick()
       useStore.getState().commitTransient()
@@ -796,13 +852,18 @@ export function TypeLayer() {
     }
   }
 
-  // ---- width handle: drag the block's right edge; the span snaps to
-  // grid columns, so widths stay disciplined while feeling free
+  // ---- width handle: drag the block's right edge. Snap ON: the span
+  // lands on grid columns. Snap OFF: raw px width.
   const onResizeDown = (e: ReactPointerEvent, block: TypeBlockState) => {
     if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
-    resizeRef.current = { id: block.id, pointerId: e.pointerId }
+    const g = getDerived(useStore.getState().project).grid
+    resizeRef.current = {
+      id: block.id,
+      pointerId: e.pointerId,
+      startBox: layoutTypeBlock(block, g),
+    }
     useStore.getState().setUi({ dragging: true, selectedBlockId: block.id })
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -824,6 +885,19 @@ export function TypeLayer() {
     const nCols = bounds.length - 1
     const blk = state.project.typeBlocks.find((b) => b.id === block.id)
     if (!blk) return
+
+    // SNAP OFF: free width from the block's left edge to the pointer
+    if (!state.ui.snap) {
+      const sb = rs.startBox
+      const w = Math.max(40, artX - sb.x)
+      state.setTransient({
+        typeBlocks: state.project.typeBlocks.map((b) =>
+          b.id === block.id ? { ...b, free: { x: sb.x, y: sb.y, w } } : b,
+        ),
+      })
+      return
+    }
+
     let span = 1
     let best = Infinity
     for (let i = blk.anchor.col + 1; i <= nCols; i++) {
@@ -833,10 +907,12 @@ export function TypeLayer() {
         span = i - blk.anchor.col
       }
     }
-    if (span !== blk.anchor.colSpan) {
+    if (span !== blk.anchor.colSpan || blk.free !== undefined) {
       state.setTransient({
         typeBlocks: state.project.typeBlocks.map((b) =>
-          b.id === block.id ? { ...b, anchor: { ...b.anchor, colSpan: span } } : b,
+          b.id === block.id
+            ? { ...b, free: undefined, anchor: { ...b.anchor, colSpan: span } }
+            : b,
         ),
       })
     }

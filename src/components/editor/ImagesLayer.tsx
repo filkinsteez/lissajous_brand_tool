@@ -4,15 +4,20 @@ import { useEffect, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
-import { columnSpanRect, rowSpanRect, type EditorialGrid } from '@/core/grid/types'
+import { imageRect, type EditorialGrid } from '@/core/grid/types'
+import { layoutTypeBlock } from '@/core/typography/textBlocks'
 import { importImageFile } from '@/core/images'
 import { suppressNextClick } from './clickGuard'
 import type { ImageItem } from '@/core/state/types'
 
-// L2: imported images as CANVAS OBJECTS — click to select, drag to move
-// (snapping to grid cells), corner handle to resize (spans snap to
-// column/row boundaries), Delete to remove. Upload by dropping a file
+// L2: imported images as CANVAS OBJECTS — click to select, drag to move,
+// corner handle to resize, Delete to remove. Upload by dropping a file
 // anywhere on the canvas, or via the IMG tool in the strip.
+//
+// THE MAGNET CONTRACT: with snap ON an image is a grid tenant — drags
+// land on cells, resizes land on boundaries. With snap OFF it is a free
+// object — drag and resize in raw artboard px (stored as `free`, which
+// a later snap-ON gesture clears back to an anchor).
 
 const nearestIndex = (boundaries: { pos: number }[], v: number): number => {
   let best = 0
@@ -102,6 +107,8 @@ function useCanvasImageDrop() {
   }, [])
 }
 
+type Rect = { x: number; y: number; w: number; h: number }
+
 type ImgDrag = {
   id: string
   pointerId: number
@@ -109,6 +116,7 @@ type ImgDrag = {
   startY: number
   startCol: number
   startRow: number
+  startRect: Rect // the rect as rendered when the drag began
   moved: boolean
   alt: boolean // alt-drag: a copy stays behind
 }
@@ -124,7 +132,12 @@ function ImagesLayerInner() {
   const grid = getDerived(project).grid
   const layerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<ImgDrag | null>(null)
-  const resizeRef = useRef<{ id: string; pointerId: number; corner: Corner } | null>(null)
+  const resizeRef = useRef<{
+    id: string
+    pointerId: number
+    corner: Corner
+    startRect: Rect
+  } | null>(null)
   useCanvasImageDrop()
 
   const bg = project.images.find((im) => im.id === project.bgImageId) ?? null
@@ -143,34 +156,43 @@ function ImagesLayerInner() {
   }
 
   // when the grabbed image is part of a bigger selection, the whole
-  // mixed group (images AND text blocks) rides the drag
+  // mixed group (images AND text blocks) rides the drag. Anchors drive
+  // the snap-ON path; start RECTS drive the snap-OFF (free) path.
   const groupImgRef = useRef<Map<string, ImageItem['anchor']> | null>(null)
   const groupTextRef = useRef<Map<
     string,
     { col: number; row: number; colSpan: number; baselineOffset?: number }
   > | null>(null)
+  const groupImgRectRef = useRef<Map<string, Rect> | null>(null)
+  const groupTextRectRef = useRef<Map<string, { x: number; y: number; w: number }> | null>(null)
 
   const onPointerDown = (e: ReactPointerEvent, im: ImageItem) => {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     const st = useStore.getState()
+    const g = getDerived(st.project).grid
     const imgIds = st.ui.selectedImageIds
     const textIds = st.ui.selectedBlockIds
     if (imgIds.includes(im.id) && imgIds.length + textIds.length > 1) {
-      groupImgRef.current = new Map(
-        st.project.images
-          .filter((x) => imgIds.includes(x.id))
-          .map((x) => [x.id, { ...x.anchor }]),
+      const groupImgs = st.project.images.filter((x) => imgIds.includes(x.id))
+      const groupTexts = st.project.typeBlocks.filter((b) => textIds.includes(b.id))
+      groupImgRef.current = new Map(groupImgs.map((x) => [x.id, { ...x.anchor }]))
+      groupTextRef.current = new Map(groupTexts.map((b) => [b.id, { ...b.anchor }]))
+      groupImgRectRef.current = new Map(
+        groupImgs.map((x) => [x.id, imageRect(g, x.anchor, x.free)]),
       )
-      groupTextRef.current = new Map(
-        st.project.typeBlocks
-          .filter((b) => textIds.includes(b.id))
-          .map((b) => [b.id, { ...b.anchor }]),
+      groupTextRectRef.current = new Map(
+        groupTexts.map((b) => {
+          const box = layoutTypeBlock(b, g)
+          return [b.id, { x: box.x, y: box.y, w: box.w }]
+        }),
       )
     } else {
       groupImgRef.current = null
       groupTextRef.current = null
+      groupImgRectRef.current = null
+      groupTextRectRef.current = null
     }
     dragRef.current = {
       id: im.id,
@@ -179,6 +201,7 @@ function ImagesLayerInner() {
       startY: e.clientY,
       startCol: im.anchor.col,
       startRow: im.anchor.row,
+      startRect: imageRect(g, im.anchor, im.free),
       moved: false,
       alt: e.altKey,
     }
@@ -221,6 +244,34 @@ function ImagesLayerInner() {
     }
     const state = useStore.getState()
     const g = getDerived(state.project).grid
+
+    // SNAP OFF: pure translation of the start rects — position anywhere
+    if (!state.ui.snap) {
+      const imgRects = groupImgRectRef.current
+      const textRects = groupTextRectRef.current
+      if (imgRects) {
+        state.setTransient({
+          images: state.project.images.map((x) => {
+            const r = imgRects.get(x.id)
+            return r ? { ...x, free: { x: r.x + dx, y: r.y + dy, w: r.w, h: r.h } } : x
+          }),
+          typeBlocks: state.project.typeBlocks.map((b) => {
+            const r = textRects?.get(b.id)
+            return r ? { ...b, free: { x: r.x + dx, y: r.y + dy, w: r.w } } : b
+          }),
+        })
+      } else {
+        const r = drag.startRect
+        state.setTransient({
+          images: state.project.images.map((x) =>
+            x.id === im.id ? { ...x, free: { x: r.x + dx, y: r.y + dy, w: r.w, h: r.h } } : x,
+          ),
+        })
+      }
+      return
+    }
+
+    // SNAP ON: grid tenancy — anchors land on cells, free rects clear
     const startX = g.columnBoundaries[Math.min(drag.startCol, g.columnBoundaries.length - 1)].pos
     const startY = g.rowBoundaries[Math.min(drag.startRow, g.rowBoundaries.length - 1)].pos
     const anchor = placeImageAnchor(
@@ -245,6 +296,7 @@ function ImagesLayerInner() {
           if (!s) return x
           return {
             ...x,
+            free: undefined,
             anchor: {
               ...s,
               col: Math.max(0, Math.min(cols - s.colSpan, s.col + dCol)),
@@ -257,6 +309,7 @@ function ImagesLayerInner() {
           if (!s) return b
           return {
             ...b,
+            free: undefined,
             anchor: {
               ...s,
               col: Math.max(0, Math.min(cols - 1, s.col + dCol)),
@@ -267,7 +320,9 @@ function ImagesLayerInner() {
       })
     } else {
       state.setTransient({
-        images: state.project.images.map((x) => (x.id === im.id ? { ...x, anchor } : x)),
+        images: state.project.images.map((x) =>
+          x.id === im.id ? { ...x, anchor, free: undefined } : x,
+        ),
       })
     }
   }
@@ -293,7 +348,13 @@ function ImagesLayerInner() {
     if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
-    resizeRef.current = { id: im.id, pointerId: e.pointerId, corner }
+    const g = getDerived(useStore.getState().project).grid
+    resizeRef.current = {
+      id: im.id,
+      pointerId: e.pointerId,
+      corner,
+      startRect: imageRect(g, im.anchor, im.free),
+    }
     useStore.getState().setUi({ dragging: true, selectedImageIds: [im.id] })
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -317,6 +378,27 @@ function ImagesLayerInner() {
     const rws = g.rowBoundaries.length - 1
     const blk = state.project.images.find((x) => x.id === im.id)
     if (!blk) return
+
+    // SNAP OFF: free resize — the dragged corner follows the pointer,
+    // the opposite corner stays pinned, raw px
+    if (!state.ui.snap) {
+      const r = rs.startRect
+      let x0 = r.x
+      let y0 = r.y
+      let x1 = r.x + r.w
+      let y1 = r.y + r.h
+      if (rs.corner.includes('w')) x0 = Math.min(artX, x1 - 24)
+      else x1 = Math.max(artX, x0 + 24)
+      if (rs.corner.includes('n')) y0 = Math.min(artY, y1 - 24)
+      else y1 = Math.max(artY, y0 + 24)
+      state.setTransient({
+        images: state.project.images.map((x) =>
+          x.id === im.id ? { ...x, free: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } } : x,
+        ),
+      })
+      return
+    }
+
     const bCol = nearestIndex(g.columnBoundaries, artX)
     const bRow = nearestIndex(g.rowBoundaries, artY)
     let c0 = blk.anchor.col
@@ -329,13 +411,16 @@ function ImagesLayerInner() {
     else r1 = Math.max(r0 + 1, Math.min(rws, bRow))
     const anchor = { col: c0, row: r0, colSpan: c1 - c0, rowSpan: r1 - r0 }
     if (
+      blk.free !== undefined ||
       anchor.col !== blk.anchor.col ||
       anchor.row !== blk.anchor.row ||
       anchor.colSpan !== blk.anchor.colSpan ||
       anchor.rowSpan !== blk.anchor.rowSpan
     ) {
       state.setTransient({
-        images: state.project.images.map((x) => (x.id === im.id ? { ...x, anchor } : x)),
+        images: state.project.images.map((x) =>
+          x.id === im.id ? { ...x, anchor, free: undefined } : x,
+        ),
       })
     }
   }
@@ -356,10 +441,9 @@ function ImagesLayerInner() {
         <img src={bg.src} alt="" className="bg-image" />
       ) : null}
       {blocks.map((im) => {
-        // images are grid tenants: half-gutter inset at interior
-        // boundaries so GUTTER visibly separates neighbouring blocks
-        const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan, true)
-        const { y, h } = rowSpanRect(grid, im.anchor.row, im.anchor.rowSpan, true)
+        // anchored images get the half-gutter cell rect; free images sit
+        // exactly where they were dropped — one shared function decides
+        const { x, y, w, h } = imageRect(grid, im.anchor, im.free)
         const selected = selectedImageIds.includes(im.id)
         return (
           <div

@@ -62,7 +62,11 @@ export function SystemPanel() {
     const rng = mulberry32((project.seed ^ 0x1b3d5f7) + layoutSeed * 911)
     const nCols = derivedGrid.columnBoundaries.length - 1
     const nRows = derivedGrid.rowBoundaries.length - 1
-    const images = project.images.map((im) => ({ ...im, anchor: dealAnchor(rng, nCols, nRows) }))
+    const images = project.images.map((im) => ({
+      ...im,
+      free: undefined,
+      anchor: dealAnchor(rng, nCols, nRows),
+    }))
     apply({ layoutSeed, typeBlocks: shuffleLayout(project, derivedGrid, layoutSeed), images })
   }
 

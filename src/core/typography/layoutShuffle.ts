@@ -108,6 +108,9 @@ export function shuffleLayout(
     return {
       ...b,
       align: p.align,
+      // a shuffle re-deals the layout — a lingering free rect would pin
+      // the block and make the shuffle read as a no-op
+      free: undefined,
       anchor: {
         col: Math.max(0, Math.min(nCols - 1, p.col)),
         row: Math.max(0, Math.min(nRows, p.row)),

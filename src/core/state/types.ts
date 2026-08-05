@@ -66,6 +66,9 @@ export type TypeBlockState = {
   // col/row index into the grid boundaries; baselineOffset shifts the block
   // down from its row boundary in baseline-rhythm steps (drag snapping)
   anchor: { col: number; row: number; colSpan: number; baselineOffset?: number }
+  // free artboard-px position + width, set by dragging with SNAP OFF;
+  // snap-ON gestures and layout shuffles clear it back to the anchor
+  free?: { x: number; y: number; w: number }
   materialInfluence: number // 0..1, weight in the pressure mask
   // styling (all optional so old recipes keep loading): fill color,
   // text outline, and a color plate behind the block
@@ -414,6 +417,10 @@ export type ImageItem = {
   id: string
   src: string
   anchor: { col: number; row: number; colSpan: number; rowSpan: number }
+  // free artboard-px rect, set by dragging with SNAP OFF. Present = the
+  // image is a free object; absent = a grid tenant laid out by anchor.
+  // Dragging or resizing with snap ON clears it (re-anchors).
+  free?: { x: number; y: number; w: number; h: number }
 }
 
 export type PathShape = 'circle' | 'oval' | 'eight' | 'system'
