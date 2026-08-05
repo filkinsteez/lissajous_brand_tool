@@ -58,23 +58,45 @@ export function LissajousOverlay() {
         fill="none" stroke="var(--overlay-line)" strokeWidth={1.5}
       />
 
-      {/* derived guides */}
+      {/* derived guides. Interior boundaries carry the gutter: a faint
+          paired line half a gutter to each side, so the GUTTER dial has
+          a visible referent (edge boundaries have no gutter). */}
       {guides.map((g) => {
         const emphasized =
           hover?.id === g.id ||
           (hoveredNodeId !== null && g.sources.includes(hoveredNodeId))
+        const isX = g.axis === 'x'
+        const interior = isX
+          ? g.pos > box.x + 1 && g.pos < box.x + box.w - 1
+          : g.pos > box.y + 1 && g.pos < box.y + box.h - 1
+        const half = derived.grid.gutter / 2
         return (
-          <line
-            key={g.id}
-            x1={g.axis === 'x' ? g.pos : box.x}
-            x2={g.axis === 'x' ? g.pos : box.x + box.w}
-            y1={g.axis === 'y' ? g.pos : box.y}
-            y2={g.axis === 'y' ? g.pos : box.y + box.h}
-            stroke={emphasized ? 'var(--overlay-strong)' : 'var(--overlay-line)'}
-            strokeWidth={emphasized ? 2.5 : 1.5}
-            onMouseEnter={isSetup ? () => setHover({ kind: 'guide', id: g.id }) : undefined}
-            onMouseLeave={isSetup ? () => setHover(null) : undefined}
-          />
+          <g key={g.id}>
+            <line
+              x1={isX ? g.pos : box.x}
+              x2={isX ? g.pos : box.x + box.w}
+              y1={!isX ? g.pos : box.y}
+              y2={!isX ? g.pos : box.y + box.h}
+              stroke={emphasized ? 'var(--overlay-strong)' : 'var(--overlay-line)'}
+              strokeWidth={emphasized ? 2.5 : 1.5}
+              onMouseEnter={isSetup ? () => setHover({ kind: 'guide', id: g.id }) : undefined}
+              onMouseLeave={isSetup ? () => setHover(null) : undefined}
+            />
+            {interior && half > 1.5
+              ? [-half, half].map((off) => (
+                  <line
+                    key={off}
+                    x1={isX ? g.pos + off : box.x}
+                    x2={isX ? g.pos + off : box.x + box.w}
+                    y1={!isX ? g.pos + off : box.y}
+                    y2={!isX ? g.pos + off : box.y + box.h}
+                    stroke="var(--overlay-line)"
+                    strokeWidth={1}
+                    opacity={0.35}
+                  />
+                ))
+              : null}
+          </g>
         )
       })}
 

@@ -224,6 +224,7 @@ export function createDefaultProject(seed?: number): ProjectState {
       columnBias: 6,
       rowBias: 8,
       gutterScale: 1,
+      paddingScale: 0,
       baselineRhythm: 1,
       selectedNodeIds: [],
       snapStrength: 0.8,

@@ -36,9 +36,12 @@ export type GridState = {
   columnBias: number // target column count 2..8
   rowBias: number // target row count 2..12
   gutterScale: number // 0..2
+  // content inset within cells (the cell-side counterpart of margin);
+  // 0 = flush on the boundary lines, the historical contract
+  paddingScale?: number // 0..2
   baselineRhythm: number // multiplier on base leading
   selectedNodeIds: number[]
-  snapStrength: number // 0..1
+  snapStrength: number // 0..1 — schema kept for old recipes; no consumers
 }
 
 export type TypeRole = 'headline' | 'caption' | 'metadata'

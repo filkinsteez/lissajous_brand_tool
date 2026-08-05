@@ -1,6 +1,6 @@
 import type { ProjectState, ShapeLayer } from '@/core/state/types'
 import { getDerived } from '@/core/pipeline'
-import { columnSpanRect } from '@/core/grid/types'
+import { columnSpanRect, rowSpanRect } from '@/core/grid/types'
 import { loadImage } from '@/core/images'
 import { renderToCanvas as renderBackgroundToCanvas } from '@/render/backgroundGL'
 import { buildContourLevels, dealProtoIndex, stampsAlongContours } from '@/core/cloner/contours'
@@ -11,7 +11,7 @@ import { buildCurveClones, buildRepeats } from '@/core/repeater/repeater'
 import { buildImageCells, paintImageCells, samplePixels } from '@/core/array/imageArray'
 import { buildOrganic } from '@/core/organic/engine'
 import { paintOrganic } from '@/core/organic/paint'
-import { INK, PAPER } from '@/core/state/defaults'
+import { PAPER } from '@/core/state/defaults'
 import { buildTiles } from '@/core/tiles/tiles'
 import { BRAND_PALETTE } from '@/core/color/palette'
 import { layerBaseColor, fieldSampler, type FieldSampler } from '@/core/layers/paint'
@@ -598,16 +598,12 @@ export async function exportPNG(
   const bg = project.images.find((im) => im.id === project.bgImageId)
   if (bg) drawCover(ctx, await loadImage(bg.src), 0, 0, outW, outH)
   const grid = derived.grid
-  const rows = grid.rowBoundaries
-  const nRows = rows.length - 1
   for (const im of project.images) {
     if (im.id === project.bgImageId) continue
     if (im.id.startsWith('arr-')) continue
-    const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan)
-    const r0 = Math.max(0, Math.min(nRows - 1, im.anchor.row))
-    const r1 = Math.max(r0 + 1, Math.min(nRows, r0 + im.anchor.rowSpan))
-    const y = rows[r0].pos
-    const h = rows[r1].pos - y
+    // same gutterInset=true as ImagesLayer — export must match the canvas
+    const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan, true)
+    const { y, h } = rowSpanRect(grid, im.anchor.row, im.anchor.rowSpan, true)
     drawCover(ctx, await loadImage(im.src), x * scale, y * scale, w * scale, h * scale)
   }
 

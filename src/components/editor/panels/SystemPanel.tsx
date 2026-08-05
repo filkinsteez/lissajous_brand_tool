@@ -7,9 +7,7 @@ import { Toggle } from '@/components/controls/Toggle'
 import { createDefaultProject } from '@/core/state/defaults'
 import { getDerived } from '@/core/pipeline'
 import { shuffleLayout } from '@/core/typography/layoutShuffle'
-import { importImageFile } from '@/core/images'
 import { mulberry32, type Rng } from '@/core/math/random'
-import type { ImageItem } from '@/core/state/types'
 
 // slider double-click resets read from the factory defaults
 const DEF = createDefaultProject()
@@ -68,36 +66,10 @@ export function SystemPanel() {
     apply({ layoutSeed, typeBlocks: shuffleLayout(project, derivedGrid, layoutSeed), images })
   }
 
-  const fileRef = useRef<HTMLInputElement>(null)
-  const addFiles = async (files: FileList | null) => {
-    if (!files?.length) return
-    const derivedGrid = getDerived(project).grid
-    const nCols = derivedGrid.columnBoundaries.length - 1
-    const nRows = derivedGrid.rowBoundaries.length - 1
-    const added: ImageItem[] = []
-    for (const file of Array.from(files)) {
-      try {
-        const src = await importImageFile(file)
-        const rng = mulberry32(project.seed + project.images.length + added.length * 7919)
-        added.push({ id: `img-${Date.now()}-${added.length}`, src, anchor: dealAnchor(rng, nCols, nRows) })
-      } catch {
-        // unreadable file — skip it
-      }
-    }
-    if (added.length) apply({ images: [...project.images, ...added] })
-  }
-
-  // uploads sit on the grid as image blocks (the image-as-background
-  // feature was cut: the generated field IS the background); arr- assets
-  // belong to the SHAPES tab's array register and are managed there
-  const uploads = project.images.filter(
-    (im) => !im.id.startsWith('bgi-') && !im.id.startsWith('arr-'),
-  )
-
   return (
     <div className="panel">
       <div className="panel-section">
-        <div className="panel-heading">Curve</div>
+        {/* no heading — the inspector title already says Curve */}
         <Slider label="Freq X" value={liss.frequencyX} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyX}
           onChange={(v) => curve({ lissajous: { frequencyX: v, presetId: undefined } })} onCommit={settle} />
         <Slider label="Freq Y" value={liss.frequencyY} min={1} max={12} step={1} defaultValue={DEF.lissajous.frequencyY}
@@ -128,6 +100,8 @@ export function SystemPanel() {
         </div>
         <Slider label="Margin" value={grid.marginRestraint} min={0} max={1} format={pct} defaultValue={DEF.grid.marginRestraint}
           onChange={(v) => curve({ grid: { marginRestraint: v } })} onCommit={settle} />
+        <Slider label="Padding" value={grid.paddingScale ?? 0} min={0} max={2} format={pct} defaultValue={0}
+          onChange={(v) => curve({ grid: { paddingScale: v } })} onCommit={settle} />
         <Slider label="Columns" value={grid.columnBias} min={2} max={8} step={1} format={int} defaultValue={DEF.grid.columnBias}
           onChange={(v) => curve({ grid: { columnBias: v } })} onCommit={settle} />
         <Slider label="Rows" value={grid.rowBias} min={2} max={12} step={1} format={int} defaultValue={DEF.grid.rowBias}
@@ -136,8 +110,8 @@ export function SystemPanel() {
           onChange={(v) => curve({ grid: { gutterScale: v } })} onCommit={settle} />
         <Slider label="Baseline" value={grid.baselineRhythm} min={0.5} max={2} format={pct} defaultValue={DEF.grid.baselineRhythm}
           onChange={(v) => curve({ grid: { baselineRhythm: v } })} onCommit={settle} />
-        <Slider label="Snap" value={grid.snapStrength} min={0} max={1} format={pct} defaultValue={DEF.grid.snapStrength}
-          onChange={(v) => curve({ grid: { snapStrength: v } })} onCommit={settle} />
+        {/* the old Snap slider had zero consumers — a dead dial; grid
+            snapping is the dock's magnet toggle */}
         <Toggle label="Show guides" value={showGuides} onChange={(v) => setUi({ showGuides: v })} />
         <Toggle
           label="Construction view"

@@ -6,6 +6,7 @@ import { useStore, type CanvasTool } from '@/core/state/store'
 import { shapePathD, dragToBox } from '@/core/canvas/shapeItems'
 import { consumedShapeIds } from '@/core/canvas/shapeProtos'
 import { snapAxis, type SnapLines } from '@/core/canvas/snap'
+import { getDerived } from '@/core/pipeline'
 import { PAPER } from '@/core/state/defaults'
 import { clickGuard } from './clickGuard'
 import type { ShapeItem, ShapeItemKind } from '@/core/state/types'
@@ -66,14 +67,18 @@ export function ShapeItemsLayer() {
   }
 
   // Snap targets, read fresh per gesture: the canvas frame (edges +
-  // centers) and OTHER objects' edges and centers — not the full grid
-  // lattice, which flashed a guide at every intersection and read as
-  // noise. `exclude` keeps a dragged selection from snapping to itself.
+  // centers), the GRID's column/row boundaries (what the magnet
+  // promises — a handful of real lines, not the full lattice of
+  // intersections), and OTHER objects' edges and centers. `exclude`
+  // keeps a dragged selection from snapping to itself.
   const snapLines = (exclude?: Iterable<string>): SnapLines | null => {
     const st = useStore.getState()
     if (!st.ui.snap) return null
     const xs = [0, artW / 2, artW]
     const ys = [0, artH / 2, artH]
+    const grid = getDerived(st.project).grid
+    for (const b of grid.columnBoundaries) xs.push(b.pos)
+    for (const b of grid.rowBoundaries) ys.push(b.pos)
     const skip = new Set(exclude ?? [])
     const consumed = consumedShapeIds(st.project.layers)
     for (const s of st.project.shapes) {

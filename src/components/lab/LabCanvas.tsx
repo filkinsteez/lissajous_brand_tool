@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Eraser, Paintbrush } from 'lucide-react'
 import { useLabStore } from '@/core/lab/labStore'
 import { getLabSource } from '@/core/lab/sourceCache'
-import { renderLab } from '@/core/lab/render'
-import { LAB_VIEWS } from '@/core/lab/types'
+import { renderLab, renderSourceOverlay } from '@/core/lab/render'
 import {
   BRUSH_LEVEL,
   ERASE_LEVEL,
@@ -34,6 +34,7 @@ export function LabCanvas() {
   const sourceNonce = useLabStore((s) => s.ui.sourceNonce)
   const zoom = useLabStore((s) => s.ui.zoom)
   const note = useLabStore((s) => s.ui.note)
+  const focusedSourceId = useLabStore((s) => s.ui.focusedSourceId)
   const setUi = useLabStore((s) => s.setUi)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -44,7 +45,6 @@ export function LabCanvas() {
   const [dragOver, setDragOver] = useState(false)
   const [tool, setTool] = useState<PaintTool>('off')
   const [brush, setBrush] = useState(90) // output px
-  const [showMaps, setShowMaps] = useState(false)
 
   useEffect(() => {
     const el = wrapRef.current
@@ -72,9 +72,13 @@ export function LabCanvas() {
       if (!ctx) return
       ctx.setTransform(scale, 0, 0, scale, 0, 0)
       renderLab(ctx, lab, getLabSource(), resolveBankCached(lab.mark.bank), view)
+      // while a Fields dial drags, that field's contours ride on top
+      if (focusedSourceId && view === 'composite') {
+        renderSourceOverlay(ctx, lab, getLabSource(), focusedSourceId)
+      }
     })
     return () => cancelAnimationFrame(rafRef.current)
-  }, [lab, view, quality, sourceNonce])
+  }, [lab, view, quality, sourceNonce, focusedSourceId])
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -169,9 +173,6 @@ export function LabCanvas() {
     st.apply({ paint: serializePaint(raster) })
   }
 
-  const mapViews = LAB_VIEWS.filter((v) => v.id !== 'composite' && v.id !== 'source')
-  const onMapView = mapViews.some((v) => v.id === view)
-
   return (
     <div className="lab-stage-inner">
       <div className="lab-view-row" role="tablist" aria-label="View">
@@ -191,41 +192,7 @@ export function LabCanvas() {
         >
           Photo
         </button>
-        <button
-          className={onMapView || showMaps ? 'lab-chip active' : 'lab-chip'}
-          onClick={() => {
-            if (showMaps || onMapView) setUi({ view: 'composite' })
-            setShowMaps(!showMaps && !onMapView)
-          }}
-        >
-          Maps
-        </button>
         <span className="lab-view-gap" />
-        <button
-          className={tool === 'brush' ? 'lab-chip active' : 'lab-chip'}
-          title="Paint the effect over the photo"
-          onClick={() => setTool(tool === 'brush' ? 'off' : 'brush')}
-        >
-          Glitch
-        </button>
-        <button
-          className={tool === 'erase' ? 'lab-chip active' : 'lab-chip'}
-          title="Bring the photo back where you paint"
-          onClick={() => setTool(tool === 'erase' ? 'off' : 'erase')}
-        >
-          Restore
-        </button>
-        {tool !== 'off' ? (
-          <input
-            className="lab-brush-size"
-            type="range"
-            min={20}
-            max={320}
-            value={brush}
-            aria-label="Brush size"
-            onChange={(e) => setBrush(Number(e.target.value))}
-          />
-        ) : null}
         <button
           className={zoom === 'fit' ? 'lab-chip active' : 'lab-chip'}
           onClick={() => setUi({ zoom: 'fit' })}
@@ -239,21 +206,6 @@ export function LabCanvas() {
           100%
         </button>
       </div>
-      {showMaps || onMapView ? (
-        <div className="lab-view-row lab-maps-row" role="tablist" aria-label="Maps">
-          {mapViews.map((v) => (
-            <button
-              key={v.id}
-              role="tab"
-              aria-selected={view === v.id}
-              className={view === v.id ? 'lab-chip active' : 'lab-chip'}
-              onClick={() => setUi({ view: v.id })}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
       <div
         ref={wrapRef}
         className={dragOver ? 'lab-canvas-wrap drag' : 'lab-canvas-wrap'}
@@ -282,6 +234,38 @@ export function LabCanvas() {
           </div>
         ) : null}
         {note ? <div className="lab-note">{note}</div> : null}
+        {/* the brush dock — paint the effect in, or the photo back */}
+        <div className="lab-brush-dock" role="toolbar" aria-label="Brush">
+          <button
+            className={tool === 'brush' ? 'lab-dock-chip active' : 'lab-dock-chip'}
+            title="Brush — paint the effect over the photo"
+            aria-pressed={tool === 'brush'}
+            onClick={() => setTool(tool === 'brush' ? 'off' : 'brush')}
+          >
+            <Paintbrush />
+            Brush
+          </button>
+          <button
+            className={tool === 'erase' ? 'lab-dock-chip active' : 'lab-dock-chip'}
+            title="Restore — bring the photo back where you paint"
+            aria-pressed={tool === 'erase'}
+            onClick={() => setTool(tool === 'erase' ? 'off' : 'erase')}
+          >
+            <Eraser />
+            Restore
+          </button>
+          {tool !== 'off' ? (
+            <input
+              className="lab-brush-size"
+              type="range"
+              min={20}
+              max={320}
+              value={brush}
+              aria-label="Brush size"
+              onChange={(e) => setBrush(Number(e.target.value))}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   )

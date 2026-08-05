@@ -322,13 +322,73 @@
   border-color: var(--line-strong);
 }
 
-/* palette swatch grid */
+/* palette swatches — chip-only wells, the swatch is the label */
 .lab-swatch-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2px 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.lab-maps-row {
-  border-bottom: 1px solid var(--line);
+.lab-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.lab-swatch::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.lab-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+/* brush dock — floats over the canvas, the paint tools live here */
+.lab-brush-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--chrome-1);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 0.35);
+}
+
+.lab-dock-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lab-dock-chip svg {
+  width: 14px;
+  height: 14px;
+}
+
+.lab-dock-chip:hover {
+  color: var(--text);
+  background: var(--chrome-2);
+}
+
+.lab-dock-chip.active {
+  color: var(--text);
+  background: var(--chrome-2);
+  border-color: var(--line-strong);
 }

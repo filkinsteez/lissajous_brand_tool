@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useStore } from '@/core/state/store'
 import { getDerived } from '@/core/pipeline'
-import { columnSpanRect, type EditorialGrid } from '@/core/grid/types'
+import { columnSpanRect, rowSpanRect, type EditorialGrid } from '@/core/grid/types'
 import { importImageFile } from '@/core/images'
 import { clickGuard } from './clickGuard'
 import type { ImageItem } from '@/core/state/types'
@@ -132,10 +132,6 @@ function ImagesLayerInner() {
   const blocks = project.images.filter(
     (im) => im.id !== project.bgImageId && !im.id.startsWith('arr-'),
   )
-  const rows = grid.rowBoundaries
-  const nRows = rows.length - 1
-  const nCols = grid.columnBoundaries.length - 1
-
   // keyboard (Delete / Escape / arrows / Ctrl+D / Ctrl+]) lives in the
   // TypeLayer's canvas handler, which owns the whole mixed selection
 
@@ -360,11 +356,10 @@ function ImagesLayerInner() {
         <img src={bg.src} alt="" className="bg-image" />
       ) : null}
       {blocks.map((im) => {
-        const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan)
-        const r0 = Math.max(0, Math.min(nRows - 1, im.anchor.row))
-        const r1 = Math.max(r0 + 1, Math.min(nRows, r0 + im.anchor.rowSpan))
-        const y = rows[r0].pos
-        const h = rows[r1].pos - y
+        // images are grid tenants: half-gutter inset at interior
+        // boundaries so GUTTER visibly separates neighbouring blocks
+        const { x, w } = columnSpanRect(grid, im.anchor.col, im.anchor.colSpan, true)
+        const { y, h } = rowSpanRect(grid, im.anchor.row, im.anchor.rowSpan, true)
         const selected = selectedImageIds.includes(im.id)
         return (
           <div

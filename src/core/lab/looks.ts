@@ -102,7 +102,7 @@ export const LOOKS: Look[] = [
     patch: {
       territory: { bands: ['empty', 'marks', 'contours', 'photo'], boundary: 'hard' },
       structure: { baseCell: 28, maxLevels: 2, subdivide: 0.55 },
-      mark: { colorMode: 'ink', occupancy: 0.85, echo: 0 },
+      mark: { colorMode: 'palette', occupancy: 0.85, echo: 0 },
       finish: { grain: 0.05 },
       sourceVisibility: 0,
     },

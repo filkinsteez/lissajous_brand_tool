@@ -262,6 +262,8 @@ export const MARK_DEFAULTS: MarkParams = {
   rotationInfluence: 0.6,
   flow: 0,
   coherenceScale: 0.45,
-  colorMode: 'ink',
+  // palette by default — 'ink' left the color system dead until the
+  // user found the buried Color-from control
+  colorMode: 'palette',
   echo: 0,
 }

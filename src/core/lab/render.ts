@@ -50,13 +50,17 @@ export function renderLab(
   protos: ShapeProto[],
   view: LabView,
 ): void {
-  const { width: outW, height: outH, transparent } = lab.output
+  const { width: outW, height: outH } = lab.output
   // defensive: a live HMR session may hold pre-`colors` state until the
   // next apply/restore heals it
   const ink = lab.colors?.ink ?? INK
   const paper = lab.colors?.paper ?? PAPER
+  // WYSIWYG transparency: an EMPTY zone is transparency — those cells
+  // keep their alpha in preview and export alike. The old Transparent
+  // toggle exported something the preview never showed.
+  const transparent = view === 'composite' && lab.territory.bands.includes('empty')
   ctx.clearRect(0, 0, outW, outH)
-  if (!transparent || view !== 'composite') {
+  if (!transparent) {
     ctx.fillStyle = paper
     ctx.fillRect(0, 0, outW, outH)
   }
@@ -137,6 +141,15 @@ export function renderLab(
   }
 
   // ---- composite ----
+  // transparent mode lays the paper ground per cell instead of globally,
+  // so exactly the EMPTY zones stay alpha and every other treatment
+  // renders on the same ground it always had
+  if (transparent) {
+    ctx.fillStyle = paper
+    for (const c of cells) {
+      if (c.treatment !== 'empty') ctx.fillRect(c.x, c.y, c.size + 0.35, c.size + 0.35)
+    }
+  }
   if (source && lab.sourceVisibility > 0) {
     ctx.save()
     ctx.globalAlpha = lab.sourceVisibility
@@ -156,7 +169,8 @@ export function renderLab(
   }
 
   // the palette every fill treatment deals from
-  const palette = lab.colors?.palette?.length ? lab.colors.palette : [ink, paper]
+  const hasPalette = !!lab.colors?.palette?.length
+  const palette = hasPalette ? lab.colors.palette : [ink, paper]
   const K = palette.length
   const dealPalette = (x: number, y: number, channel: string) =>
     palette[
@@ -310,9 +324,13 @@ export function renderLab(
     const clip = new Path2D()
     for (const c of scanCells) clip.rect(c.x, c.y, c.size + 0.35, c.size + 0.35)
     ctx.clip(clip)
-    ctx.strokeStyle = ink
     ctx.lineWidth = 1.1
-    for (const pts of lines) strokePolyline(ctx, pts)
+    // lines deal from the palette (coherent patches along the scan) —
+    // hardcoded ink left the palette dead for every line treatment
+    for (const pts of lines) {
+      ctx.strokeStyle = hasPalette ? dealPalette(pts[0], pts[1], 'lab.scan.pal') : ink
+      strokePolyline(ctx, pts)
+    }
     ctx.restore()
   }
 
@@ -320,10 +338,14 @@ export function renderLab(
   // free to travel: walkers obey the field, not the band boundary
   if (vector && cells.some((c) => c.treatment === 'streams')) {
     const streams = buildStreams({ cells, seed: lab.seed, field: vector, outW, outH })
-    ctx.strokeStyle = ink
     ctx.lineWidth = 1
     ctx.globalAlpha = 0.85
-    for (const pts of streams) strokePolyline(ctx, pts)
+    // each stream takes a palette color where it starts — the walker
+    // carries it, so neighbouring seeds make colored braids
+    for (const pts of streams) {
+      ctx.strokeStyle = hasPalette ? dealPalette(pts[0], pts[1], 'lab.stream.pal') : ink
+      strokePolyline(ctx, pts)
+    }
     ctx.globalAlpha = 1
   }
 
@@ -558,6 +580,53 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   const [r, g, b] =
     hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x] : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x]
   return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)]
+}
+
+// The focused field made visible: contour lines of THAT source alone,
+// stroked over the composite while its dial drags — Linear/Radial/The
+// curve get a live referent instead of asking the user to imagine an
+// invisible gradient. Weight is pinned to 1 (a scaled field's fixed-
+// level contours would mislead); invert is kept (it genuinely flips
+// what the contours enclose).
+export function renderSourceOverlay(
+  ctx: CanvasRenderingContext2D,
+  lab: LabState,
+  source: LabSource | null,
+  srcId: string,
+): void {
+  const src = lab.territory.sources.find((s) => s.id === srcId)
+  // the painted mask has its own visual (the strokes themselves)
+  if (!src || !src.enabled || src.kind === 'paint') return
+  const { width: outW, height: outH } = lab.output
+  const maps = source?.maps ?? null
+  const rect: FitRect = source
+    ? fitRect(source.fullW, source.fullH, outW, outH, lab.source?.fit ?? 'contain')
+    : { x: 0, y: 0, w: outW, h: outH }
+  const solo: LabState = {
+    ...lab,
+    territory: {
+      ...lab.territory,
+      gain: 1,
+      sources: [{ ...src, weight: 1, combine: 'add' }],
+    },
+  }
+  const T = compileTerritoryCached(solo, rect, outW, outH, maps, null)
+  const grid = territoryGrid(T, outW, outH)
+  ctx.save()
+  ctx.lineJoin = 'round'
+  for (const level of [0.25, 0.5, 0.75]) {
+    const d = contourAtLevel(grid, level)
+    if (!d) continue
+    const p = new Path2D(d)
+    // white underlay keeps the blue legible on any composite
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+    ctx.lineWidth = 3
+    ctx.stroke(p)
+    ctx.strokeStyle = '#0668e1'
+    ctx.lineWidth = 1.4
+    ctx.stroke(p)
+  }
+  ctx.restore()
 }
 
 // Export renders the SAME painter at full output dimensions on a fresh

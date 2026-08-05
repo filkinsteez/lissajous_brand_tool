@@ -144,6 +144,7 @@ export function extractGrid(
     h: Math.max(8, artH - margin * 2),
   }
   const gutter = Math.max(2, gridState.gutterScale * box.w * 0.015)
+  const padding = Math.max(0, (gridState.paddingScale ?? 0) * Math.min(box.w, box.h) * 0.01)
 
   // baseline rhythm: quantize a target leading into the content height
   const targetLeading = (box.h / 64) * Math.max(0.25, gridState.baselineRhythm)
@@ -197,6 +198,7 @@ export function extractGrid(
     columnBoundaries,
     rowBoundaries,
     gutter,
+    padding,
     baseline,
     anchors,
     ...suggestZones(rowBoundaries, columnBoundaries, usableNodes),

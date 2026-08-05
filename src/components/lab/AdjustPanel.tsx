@@ -7,7 +7,6 @@ import { clearPaintRuntime } from '@/core/lab/paintRuntime'
 import type {
   BoundaryMode,
   CombineMode,
-  CurveSnapshot,
   FieldSourceKind,
   FieldSourceState,
   FlowBasis,
@@ -16,8 +15,7 @@ import type {
   TreatmentId,
 } from '@/core/lab/types'
 import { TREATMENTS } from '@/core/lab/types'
-import type { ShuffleScopes } from '@/core/lab/shuffle'
-import { deserializeProject } from '@/core/state/serialize'
+import { editorCurveSnapshot } from './refreshCurve'
 import { Slider } from '@/components/controls/Slider'
 import { Toggle } from '@/components/controls/Toggle'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
@@ -34,48 +32,17 @@ const KIND_LABEL: Record<FieldSourceKind, string> = {
   paint: 'Painted mask',
 }
 
-const SCOPES: { key: keyof ShuffleScopes; label: string }[] = [
-  { key: 'seed', label: 'Seed' },
-  { key: 'fields', label: 'Fields' },
-  { key: 'bands', label: 'Zones' },
-  { key: 'marks', label: 'Marks' },
-  { key: 'colors', label: 'Color' },
-]
-
-function editorCurveSnapshot(): CurveSnapshot | undefined {
-  try {
-    const raw = localStorage.getItem('lbs-autosave')
-    if (!raw) return undefined
-    const p = deserializeProject(raw)
-    if (!p) return undefined
-    const l = p.lissajous
-    return {
-      frequencyX: l.frequencyX,
-      frequencyY: l.frequencyY,
-      phase: l.phase,
-      amplitudeX: l.amplitudeX,
-      amplitudeY: l.amplitudeY,
-      rotation: l.rotation,
-      offsetX: l.offsetX,
-      offsetY: l.offsetY,
-      curve: l.curve === 'meta' ? 'meta' : undefined,
-    }
-  } catch {
-    return undefined
-  }
-}
-
 // Everything that is not a primary dial lives here, closed by default.
 // Sections gate on relevance: controls only appear when something on
-// the canvas listens to them.
+// the canvas listens to them. The engine-room sections (Zones, Fields)
+// sit one level deeper still, behind MORE.
 export function AdjustPanel() {
   const [open, setOpen] = useState(false)
+  const [more, setMore] = useState(false)
   const territory = useLabStore((s) => s.lab.territory)
   const structure = useLabStore((s) => s.lab.structure)
   const flow = useLabStore((s) => s.lab.flow)
   const mark = useLabStore((s) => s.lab.mark)
-  const seed = useLabStore((s) => s.lab.seed)
-  const scopes = useLabStore((s) => s.ui.shuffleScopes)
   const apply = useLabStore((s) => s.apply)
   const setT = useLabStore((s) => s.setTransient)
   const commit = useLabStore((s) => s.commitTransient)
@@ -96,8 +63,18 @@ export function AdjustPanel() {
     const sources = useLabStore
       .getState()
       .lab.territory.sources.map((s) => (s.id === id ? { ...s, ...patch } : s))
-    if (transient) setT({ territory: { sources } })
-    else apply({ territory: { sources } })
+    if (transient) {
+      // dragging a field dial focuses that field: the canvas overlays
+      // its contours so the dial has a visible referent
+      if (useLabStore.getState().ui.focusedSourceId !== id) setUi({ focusedSourceId: id })
+      setT({ territory: { sources } })
+    } else {
+      apply({ territory: { sources } })
+    }
+  }
+  const commitSource = () => {
+    commit()
+    setUi({ focusedSourceId: null })
   }
 
   if (!open) {
@@ -116,73 +93,6 @@ export function AdjustPanel() {
         <button className="ctl-action" onClick={() => setOpen(false)}>
           Close adjust
         </button>
-        <div className="panel-note">Shuffle changes the unlocked groups:</div>
-        <div className="lab-add-row">
-          {SCOPES.map(({ key, label }) => (
-            <button
-              key={key}
-              className={scopes[key] ? 'lab-chip active' : 'lab-chip'}
-              aria-pressed={scopes[key]}
-              onClick={() => setUi({ shuffleScopes: { ...scopes, [key]: !scopes[key] } })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="panel-section">
-        <div className="panel-heading">Zones</div>
-        <div className="panel-note">From away from the curve to on it.</div>
-        <SegmentedControl<'2' | '3' | '4' | '5'>
-          label="Count"
-          value={String(bands.length) as '2' | '3' | '4' | '5'}
-          options={[
-            { value: '2', label: '2' },
-            { value: '3', label: '3' },
-            { value: '4', label: '4' },
-            { value: '5', label: '5' },
-          ]}
-          onChange={(v) => {
-            const count = Number(v)
-            const next = [...bands]
-            while (next.length < count) next.splice(next.length - 1, 0, 'marks')
-            while (next.length > count) next.splice(next.length - 2, 1)
-            apply({ territory: { bands: next }, look: { id: null } })
-          }}
-        />
-        {bands.map((treatment, i) => (
-          <div className="lab-zone-row" key={i}>
-            <span className="lab-zone-label">
-              {i === 0 ? 'Away' : i === bands.length - 1 ? 'At curve' : `Zone ${i + 1}`}
-            </span>
-            <select
-              className="lab-select"
-              value={treatment}
-              onChange={(e) => {
-                const next = [...bands]
-                next[i] = e.target.value as TreatmentId
-                apply({ territory: { bands: next }, look: { id: null } })
-              }}
-            >
-              {TREATMENTS.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
-        <SegmentedControl<BoundaryMode>
-          label="Edges"
-          value={territory.boundary}
-          options={[
-            { value: 'hard', label: 'Sharp' },
-            { value: 'dither', label: 'Halftone' },
-            { value: 'porous', label: 'Ragged' },
-          ]}
-          onChange={(boundary) => apply({ territory: { boundary } })}
-        />
       </div>
 
       <div className="panel-section">
@@ -299,9 +209,74 @@ export function AdjustPanel() {
         </div>
       ) : null}
 
+      {!more ? (
+        <div className="panel-section">
+          <button className="ctl-action" onClick={() => setMore(true)}>
+            More: zones &amp; fields…
+          </button>
+        </div>
+      ) : (
+        <>
+      <div className="panel-section">
+        <div className="panel-heading">Zones</div>
+        <div className="panel-note">From away from the curve to on it.</div>
+        <SegmentedControl<'2' | '3' | '4' | '5'>
+          label="Count"
+          value={String(bands.length) as '2' | '3' | '4' | '5'}
+          options={[
+            { value: '2', label: '2' },
+            { value: '3', label: '3' },
+            { value: '4', label: '4' },
+            { value: '5', label: '5' },
+          ]}
+          onChange={(v) => {
+            const count = Number(v)
+            const next = [...bands]
+            while (next.length < count) next.splice(next.length - 1, 0, 'marks')
+            while (next.length > count) next.splice(next.length - 2, 1)
+            apply({ territory: { bands: next }, look: { id: null } })
+          }}
+        />
+        {bands.map((treatment, i) => (
+          <div className="lab-zone-row" key={i}>
+            <span className="lab-zone-label">
+              {i === 0 ? 'Away' : i === bands.length - 1 ? 'At curve' : `Zone ${i + 1}`}
+            </span>
+            <select
+              className="lab-select"
+              value={treatment}
+              onChange={(e) => {
+                const next = [...bands]
+                next[i] = e.target.value as TreatmentId
+                apply({ territory: { bands: next }, look: { id: null } })
+              }}
+            >
+              {TREATMENTS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+        <SegmentedControl<BoundaryMode>
+          label="Edges"
+          value={territory.boundary}
+          options={[
+            { value: 'hard', label: 'Sharp' },
+            { value: 'dither', label: 'Halftone' },
+            { value: 'porous', label: 'Ragged' },
+          ]}
+          onChange={(boundary) => apply({ territory: { boundary } })}
+        />
+      </div>
+
       <div className="panel-section">
         <div className="panel-heading">Fields</div>
-        <div className="panel-note">What shapes the effect area.</div>
+        <div className="panel-note">
+          What shapes the effect area. Drag a dial to see that field on
+          the canvas.
+        </div>
         {territory.sources.map((src, i) => (
           <div className="lab-source" key={src.id}>
             <div className="lab-source-head">
@@ -317,48 +292,40 @@ export function AdjustPanel() {
                 ×
               </button>
             </div>
+            {/* an inactive field contributes nothing — its dials would
+                all be dead, so they fold away with it */}
+            {src.enabled ? (
+              <>
             <Slider label="Weight" value={src.weight} min={0} max={1} step={0.01} format={pct}
               defaultValue={0.8}
-              onChange={(weight) => patchSource(src.id, { weight }, true)} onCommit={commit} />
+              onChange={(weight) => patchSource(src.id, { weight }, true)} onCommit={commitSource} />
             {src.kind === 'linear' ? (
               <>
                 <Slider label="Angle" value={src.angle} min={0} max={Math.PI * 2} step={Math.PI / 36}
                   format={deg} defaultValue={Math.PI / 2}
-                  onChange={(angle) => patchSource(src.id, { angle }, true)} onCommit={commit} />
+                  onChange={(angle) => patchSource(src.id, { angle }, true)} onCommit={commitSource} />
                 <Slider label="Position" value={src.offset} min={0} max={1} step={0.01} format={pct}
                   defaultValue={0.5}
-                  onChange={(offset) => patchSource(src.id, { offset }, true)} onCommit={commit} />
+                  onChange={(offset) => patchSource(src.id, { offset }, true)} onCommit={commitSource} />
               </>
             ) : null}
             {src.kind === 'radial' ? (
               <>
                 <Slider label="Center X" value={src.centerX} min={0} max={1} step={0.01} format={pct}
                   defaultValue={0.5}
-                  onChange={(centerX) => patchSource(src.id, { centerX }, true)} onCommit={commit} />
+                  onChange={(centerX) => patchSource(src.id, { centerX }, true)} onCommit={commitSource} />
                 <Slider label="Center Y" value={src.centerY} min={0} max={1} step={0.01} format={pct}
                   defaultValue={0.5}
-                  onChange={(centerY) => patchSource(src.id, { centerY }, true)} onCommit={commit} />
+                  onChange={(centerY) => patchSource(src.id, { centerY }, true)} onCommit={commitSource} />
                 <Slider label="Radius" value={src.radius} min={0.05} max={0.9} step={0.01} format={pct}
                   defaultValue={0.32}
-                  onChange={(radius) => patchSource(src.id, { radius }, true)} onCommit={commit} />
+                  onChange={(radius) => patchSource(src.id, { radius }, true)} onCommit={commitSource} />
               </>
             ) : null}
             {src.kind === 'linear' || src.kind === 'radial' || src.kind === 'curve' ? (
               <Slider label="Softness" value={src.softness} min={0.02} max={1} step={0.01} format={pct}
                 defaultValue={0.3}
-                onChange={(softness) => patchSource(src.id, { softness }, true)} onCommit={commit} />
-            ) : null}
-            {src.kind === 'curve' ? (
-              <button
-                className="ctl-action"
-                title="Copy the curve as it is in the editor right now"
-                onClick={() => {
-                  const snap = editorCurveSnapshot()
-                  if (snap) patchSource(src.id, { curve: snap })
-                }}
-              >
-                Update from editor
-              </button>
+                onChange={(softness) => patchSource(src.id, { softness }, true)} onCommit={commitSource} />
             ) : null}
             {src.kind === 'paint' ? (
               <div className="lab-row">
@@ -388,6 +355,8 @@ export function AdjustPanel() {
                 />
               ) : null}
             </div>
+              </>
+            ) : null}
           </div>
         ))}
         <div className="lab-add-row">
@@ -404,14 +373,9 @@ export function AdjustPanel() {
             </button>
           ))}
         </div>
-        <button
-          className="ctl-action"
-          onClick={() => apply({ seed: ((Date.now() ^ 0x9e3779b9) >>> 0) % 100000 })}
-        >
-          Reroll variation
-        </button>
-        <div className="panel-note">Current seed {seed} — recipes reproduce it exactly.</div>
       </div>
+        </>
+      )}
     </>
   )
 }

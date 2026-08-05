@@ -25,8 +25,10 @@ export function Inspector() {
   const selectionTitle = useStore((s) => {
     const blocks = s.ui.selectedBlockIds.length
     const shapes = s.ui.selectedShapeIds.length
+    const images = s.ui.selectedImageIds.length
     if (blocks) return blocks > 1 ? `${blocks} text blocks` : 'Text properties'
     if (shapes) return shapes > 1 ? `${shapes} shapes` : 'Shape properties'
+    if (images) return images > 1 ? `${images} images` : 'Image properties'
     return 'Properties'
   })
   const panelOpen = useStore((s) => s.ui.panelOpen)

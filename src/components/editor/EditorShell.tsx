@@ -36,35 +36,39 @@ export function EditorShell() {
     }
     useStore.getState().setUi({ mounted: true })
 
-    // write-back: debounced autosave + share hash
+    // write-back: debounced autosave + share hash. `dirty` tracks a
+    // pending debounce so unmount (Design→Lab navigation) can flush it —
+    // without the flush, edits made in the last 500ms silently vanish.
     let timer: ReturnType<typeof setTimeout> | undefined
+    let dirty = false
+    const save = (project: ReturnType<typeof useStore.getState>['project']) => {
+      dirty = false
+      try {
+        localStorage.setItem(AUTOSAVE_KEY, serializeProject(project))
+        history.replaceState(null, '', '#' + encodeShareHash(project))
+      } catch {
+        // storage full / privacy mode — hash alone still works
+      }
+    }
     const unsub = useStore.subscribe((state, prev) => {
       if (state.project === prev.project) return
       clearTimeout(timer)
-      timer = setTimeout(() => {
-        try {
-          localStorage.setItem(AUTOSAVE_KEY, serializeProject(state.project))
-          history.replaceState(null, '', '#' + encodeShareHash(state.project))
-        } catch {
-          // storage full / privacy mode — hash alone still works
-        }
-      }, 500)
+      dirty = true
+      timer = setTimeout(() => save(useStore.getState().project), 500)
     })
 
     // Figma behavior: picking an object (canvas or rail) surfaces its
     // properties on the right. Keyed on the selection so a later section
     // switch is never fought — only a NEW selection moves the panel.
-    let selKey = (() => {
-      const u = useStore.getState().ui
-      return `${u.selectedShapeIds.join()}|${u.selectedBlockIds.join()}|${u.selectedLayerId ?? ''}`
-    })()
+    const keyOf = (u: ReturnType<typeof useStore.getState>['ui']) =>
+      `${u.selectedShapeIds.join()}|${u.selectedBlockIds.join()}|${u.selectedImageIds.join()}|${u.selectedLayerId ?? ''}`
+    let selKey = keyOf(useStore.getState().ui)
     const unsubSel = useStore.subscribe((s) => {
-      const u = s.ui
-      const key = `${u.selectedShapeIds.join()}|${u.selectedBlockIds.join()}|${u.selectedLayerId ?? ''}`
+      const key = keyOf(s.ui)
       if (key === selKey) return
       selKey = key
-      if (key === '||') return // selection cleared — leave the panel alone
-      if (u.designTab !== 'layers' || !u.panelOpen) {
+      if (key === '|||') return // selection cleared — leave the panel alone
+      if (s.ui.designTab !== 'layers' || !s.ui.panelOpen) {
         useStore.getState().setUi({ designTab: 'layers', panelOpen: true })
       }
     })
@@ -91,6 +95,7 @@ export function EditorShell() {
     return () => {
       window.removeEventListener('keydown', onKey)
       clearTimeout(timer)
+      if (dirty) save(useStore.getState().project)
       unsub()
       unsubSel()
       renderController.stop()

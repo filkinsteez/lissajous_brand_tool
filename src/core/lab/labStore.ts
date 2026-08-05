@@ -22,6 +22,9 @@ export type LabUiState = {
   zoom: 'fit' | 'actual'
   note: string
   shuffleScopes: ShuffleScopes
+  // the field source being adjusted right now — the canvas overlays its
+  // contours so Linear/Radial/The curve have a visible referent
+  focusedSourceId: string | null
 }
 
 export type LabStoreState = {
@@ -51,6 +54,7 @@ export const useLabStore = create<LabStoreState>()((set, get) => ({
     zoom: 'fit',
     note: '',
     shuffleScopes: { ...DEFAULT_SCOPES },
+    focusedSourceId: null,
   },
 
   setUi: (patch) => set((s) => ({ ui: { ...s.ui, ...patch } })),

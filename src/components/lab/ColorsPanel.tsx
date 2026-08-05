@@ -32,15 +32,23 @@ export function ColorsPanel() {
           </button>
         ))}
       </div>
+      {/* chip-only wells: a full labeled row per swatch overflowed the
+          panel — the swatch IS the label */}
       <div className="lab-swatch-row">
         {(colors?.palette ?? []).map((c, i) => (
-          <ColorField key={i} label="" value={c}
-            onChange={(v) => {
+          <input
+            key={i}
+            type="color"
+            className="lab-swatch"
+            value={c}
+            aria-label={`Palette color ${i + 1}`}
+            onChange={(e) => {
               const palette = [...(useLabStore.getState().lab.colors.palette ?? [])]
-              palette[i] = v
+              palette[i] = e.target.value
               setT({ colors: { palette } })
             }}
-            onCommit={commit} />
+            onBlur={commit}
+          />
         ))}
       </div>
       <ColorField label="Lines" value={colors?.ink ?? INK}

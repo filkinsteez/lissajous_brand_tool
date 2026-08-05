@@ -1,7 +1,9 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStore } from '@/core/state/store'
+import { setLabHandoff } from '@/core/lab/handoff'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
@@ -13,6 +15,7 @@ import type {
   ClonerState,
   ContourState,
   ImageArrayState,
+  ImageItem,
   LayerBlend,
   LayerColor,
   LayerTexture,
@@ -94,9 +97,14 @@ export function ShapesPanel() {
         // no second heading — the inspector title already names the
         // selection, and two stacked labels never lined up
         <TypePanel embedded />
+      ) : ui.selectedImageIds.length ? (
+        <ImageProperties project={project} selectedIds={ui.selectedImageIds} />
       ) : null}
       {/* the effector's own settings, only when IT is the selection */}
-      {selected && !ui.selectedShapeIds.length && !ui.selectedBlockIds.length ? (
+      {selected &&
+      !ui.selectedShapeIds.length &&
+      !ui.selectedBlockIds.length &&
+      !ui.selectedImageIds.length ? (
         <>
           <LayerControls
             layer={selected}
@@ -239,6 +247,72 @@ function ShapeProperties({
           />
         </>
       ) : null}
+    </div>
+  )
+}
+
+// A selected image block: span controls, remove, and the door into the
+// lab — the crit was that lab editing had no entry point from the
+// design canvas, so the image you're LOOKING AT is the one you edit.
+function ImageProperties({
+  project,
+  selectedIds,
+}: {
+  project: ProjectState
+  selectedIds: string[]
+}) {
+  const apply = useStore((s) => s.apply)
+  const setUi = useStore((s) => s.setUi)
+  const router = useRouter()
+  const images = project.images.filter((im) => selectedIds.includes(im.id))
+  const first = images[0]
+  if (!first) return null
+  const patchAnchor = (patch: Partial<ImageItem['anchor']>) => {
+    apply({
+      images: project.images.map((im) =>
+        selectedIds.includes(im.id) ? { ...im, anchor: { ...im.anchor, ...patch } } : im,
+      ),
+    })
+  }
+  return (
+    <div className="panel-section">
+      <div className="panel-heading">
+        {images.length > 1 ? `${images.length} images` : 'Image'}
+      </div>
+      {images.length === 1 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={first.src}
+          alt=""
+          style={{ display: 'block', width: '100%', borderRadius: 4, marginBottom: 8 }}
+        />
+      ) : null}
+      <Slider label="Cols wide" value={first.anchor.colSpan} min={1} max={8} step={1} format={int}
+        defaultValue={2} onChange={(v) => patchAnchor({ colSpan: Math.round(v) })} />
+      <Slider label="Rows tall" value={first.anchor.rowSpan} min={1} max={12} step={1} format={int}
+        defaultValue={3} onChange={(v) => patchAnchor({ rowSpan: Math.round(v) })} />
+      <button
+        className="ctl-action primary"
+        onClick={() => {
+          setLabHandoff({ src: first.src, name: 'design-image.png' })
+          router.push('/lab')
+        }}
+      >
+        Edit in Lab
+      </button>
+      <div className="panel-note">
+        The lab opens with this image loaded. Export the result there and
+        drop it back onto the canvas.
+      </div>
+      <button
+        className="ctl-action"
+        onClick={() => {
+          apply({ images: project.images.filter((im) => !selectedIds.includes(im.id)) })
+          setUi({ selectedImageIds: [] })
+        }}
+      >
+        {images.length > 1 ? 'Remove images' : 'Remove image'}
+      </button>
     </div>
   )
 }

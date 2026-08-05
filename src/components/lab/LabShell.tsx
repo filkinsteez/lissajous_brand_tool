@@ -4,6 +4,9 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore'
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
+import { takeLabHandoff } from '@/core/lab/handoff'
+import { importLabSource } from './importSource'
+import { refreshCurveSources } from './refreshCurve'
 import { LabCanvas } from './LabCanvas'
 import { LabSourcePanel } from './LabSourcePanel'
 import { LooksPanel } from './LooksPanel'
@@ -65,6 +68,46 @@ export function LabShell() {
       unsub()
       if (dirty) write()
     }
+  }, [])
+
+  // the curve follows the design tab — on mount and whenever the window
+  // refocuses (the user may have reshaped it in another tab)
+  useEffect(() => {
+    refreshCurveSources()
+    window.addEventListener('focus', refreshCurveSources)
+    return () => window.removeEventListener('focus', refreshCurveSources)
+  }, [])
+
+  // dev state hook — the lab twin of __lbs, for scripted verification
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return
+    const w = window as unknown as { __lbsLab?: unknown }
+    w.__lbsLab = {
+      getState: () => useLabStore.getState(),
+      setUi: (p: Record<string, unknown>) => useLabStore.getState().setUi(p),
+      apply: (p: Record<string, unknown>) => useLabStore.getState().apply(p),
+    }
+    return () => {
+      delete (w as { __lbsLab?: unknown }).__lbsLab
+    }
+  }, [])
+
+  // "Edit in Lab" handoff: an image sent over from the design canvas
+  // loads exactly like a drop
+  useEffect(() => {
+    const h = takeLabHandoff()
+    if (!h) return
+    void (async () => {
+      try {
+        const blob = await (await fetch(h.src)).blob()
+        const file = new File([blob], h.name || 'design-image.png', {
+          type: blob.type || 'image/png',
+        })
+        await importLabSource(file)
+      } catch {
+        useLabStore.getState().setUi({ note: 'Could not load the image from the editor.' })
+      }
+    })()
   }, [])
 
   // lab-local undo/redo — window-scoped but unmounts with the route
