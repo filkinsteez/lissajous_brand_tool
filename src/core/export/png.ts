@@ -603,7 +603,7 @@ export async function exportPNG(
     if (im.id.startsWith('arr-')) continue
     // the SAME rect function as ImagesLayer — anchored or free, the
     // export cannot drift from the canvas
-    const { x, y, w, h } = imageRect(grid, im.anchor, im.free, im.aspect)
+    const { x, y, w, h } = imageRect(grid, im.anchor, im.free)
     drawCover(ctx, await loadImage(im.src), x * scale, y * scale, w * scale, h * scale)
   }
 

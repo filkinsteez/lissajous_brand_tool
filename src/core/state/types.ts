@@ -421,11 +421,6 @@ export type ImageItem = {
   // image is a free object; absent = a grid tenant laid out by anchor.
   // Dragging or resizing with snap ON clears it (re-anchors).
   free?: { x: number; y: number; w: number; h: number }
-  // intrinsic aspect (w/h) of an image that must never be cropped — a
-  // lab composition, whose edges carry the effect. Blocks cover-fit, so
-  // this shape is inscribed in whatever cell the block occupies, and
-  // the guarantee survives grid changes, shuffles and re-anchoring.
-  aspect?: number
 }
 
 export type PathShape = 'circle' | 'oval' | 'eight' | 'system'

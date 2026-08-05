@@ -292,7 +292,7 @@ function ImageProperties({
           // the lab swaps this block's pixels, same size and position.
           // rect makes the lab compose at THIS block's shape, so the
           // result lands uncropped (blocks cover-fit their rect).
-          const rect = imageRect(getDerived(project).grid, first.anchor, first.free, first.aspect)
+          const rect = imageRect(getDerived(project).grid, first.anchor, first.free)
           setLabHandoff({
             src: first.src,
             name: 'design-image.png',

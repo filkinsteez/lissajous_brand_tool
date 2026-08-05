@@ -700,7 +700,7 @@ export function TypeLayer() {
         }),
       )
       imageRectStartRef.current = new Map(
-        groupImgs.map((im) => [im.id, imageRect(g, im.anchor, im.free, im.aspect)]),
+        groupImgs.map((im) => [im.id, imageRect(g, im.anchor, im.free)]),
       )
     } else {
       multiStartRef.current = null

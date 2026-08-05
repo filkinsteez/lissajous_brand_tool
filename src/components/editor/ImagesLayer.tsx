@@ -180,7 +180,7 @@ function ImagesLayerInner() {
       groupImgRef.current = new Map(groupImgs.map((x) => [x.id, { ...x.anchor }]))
       groupTextRef.current = new Map(groupTexts.map((b) => [b.id, { ...b.anchor }]))
       groupImgRectRef.current = new Map(
-        groupImgs.map((x) => [x.id, imageRect(g, x.anchor, x.free, x.aspect)]),
+        groupImgs.map((x) => [x.id, imageRect(g, x.anchor, x.free)]),
       )
       groupTextRectRef.current = new Map(
         groupTexts.map((b) => {
@@ -201,7 +201,7 @@ function ImagesLayerInner() {
       startY: e.clientY,
       startCol: im.anchor.col,
       startRow: im.anchor.row,
-      startRect: imageRect(g, im.anchor, im.free, im.aspect),
+      startRect: imageRect(g, im.anchor, im.free),
       moved: false,
       alt: e.altKey,
     }
@@ -353,7 +353,7 @@ function ImagesLayerInner() {
       id: im.id,
       pointerId: e.pointerId,
       corner,
-      startRect: imageRect(g, im.anchor, im.free, im.aspect),
+      startRect: imageRect(g, im.anchor, im.free),
     }
     useStore.getState().setUi({ dragging: true, selectedImageIds: [im.id] })
     try {
@@ -443,7 +443,7 @@ function ImagesLayerInner() {
       {blocks.map((im) => {
         // anchored images get the half-gutter cell rect; free images sit
         // exactly where they were dropped — one shared function decides
-        const { x, y, w, h } = imageRect(grid, im.anchor, im.free, im.aspect)
+        const { x, y, w, h } = imageRect(grid, im.anchor, im.free)
         const selected = selectedImageIds.includes(im.id)
         return (
           <div

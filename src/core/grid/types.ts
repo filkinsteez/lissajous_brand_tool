@@ -48,40 +48,23 @@ export function columnSpanRect(
   return { x: x0, w: Math.max(8, x1 - x0) }
 }
 
-// Largest rect of the given aspect that fits INSIDE `outer`, centred.
-// Image blocks cover-fit, so a block whose shape does not match its
-// image crops it; inscribing shrinks the BLOCK instead, which keeps a
-// fixed-shape artwork whole wherever the grid puts it.
-export function inscribeAspect(
-  outer: { x: number; y: number; w: number; h: number },
-  aspect: number,
-): { x: number; y: number; w: number; h: number } {
-  const a = Math.max(0.01, aspect)
-  const outerAspect = outer.w / Math.max(1, outer.h)
-  const w = outerAspect > a ? outer.h * a : outer.w
-  const h = outerAspect > a ? outer.h : outer.w / a
-  return { x: outer.x + (outer.w - w) / 2, y: outer.y + (outer.h - h) / 2, w, h }
-}
-
 // An image block's rect: the free rect verbatim when the image has been
 // positioned with snap OFF, else the anchor-derived cell rect (half-
-// gutter inset at interior boundaries). `aspect` marks an image that
-// must never be cropped — a lab composition, whose edges ARE the work —
-// and inscribes that shape in the cell, so the guarantee survives every
-// later grid change (curve, columns, rows, margin, gutter, shuffle)
-// instead of holding only at the moment it landed. The live layer and
-// the PNG export both call THIS so their rects cannot drift apart.
+// gutter inset at interior boundaries). EVERY image obeys the same
+// contract — fill the rect, cover-crop the overflow — including images
+// that came back from the lab: a special never-crop mode for those made
+// them behave differently from every other block, which read as a bug.
+// The live layer and the PNG export both call THIS so their rects
+// cannot drift apart.
 export function imageRect(
   grid: EditorialGrid,
   anchor: { col: number; row: number; colSpan: number; rowSpan: number },
   free?: { x: number; y: number; w: number; h: number },
-  aspect?: number,
 ): { x: number; y: number; w: number; h: number } {
   if (free) return free
   const { x, w } = columnSpanRect(grid, anchor.col, anchor.colSpan, true)
   const { y, h } = rowSpanRect(grid, anchor.row, anchor.rowSpan, true)
-  const cell = { x, y, w, h }
-  return aspect && aspect > 0 ? inscribeAspect(cell, aspect) : cell
+  return { x, y, w, h }
 }
 
 // Vertical twin of columnSpanRect, same gutter/padding contract, so
