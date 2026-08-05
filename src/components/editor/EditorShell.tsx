@@ -45,37 +45,53 @@ export function EditorShell() {
     useStore.getState().setUi({ mounted: true })
 
     // "Send to Design" handoff from the lab: the rendered image lands
-    // as a centered block, selected — one undoable entry
+    // as a centered FREE block sized to its own aspect ratio — blocks
+    // cover-fit their rect, so any aspect mismatch would crop the lab
+    // composition's edges (exactly where frame effects live). Decoding
+    // the image first makes the rect exact; one undoable entry.
     const handoff = takeDesignHandoff()
     if (handoff) {
-      const st = useStore.getState()
-      const grid = getDerived(st.project).grid
-      const nCols = grid.columnBoundaries.length - 1
-      const nRows = grid.rowBoundaries.length - 1
-      const colSpan = Math.max(1, Math.min(2, nCols))
-      const rowSpan = Math.max(1, Math.min(3, nRows))
-      const id = `img-${Date.now().toString(36)}`
-      st.apply({
-        images: [
-          ...st.project.images,
-          {
-            id,
-            src: handoff.src,
-            anchor: {
-              col: Math.max(0, Math.floor((nCols - colSpan) / 2)),
-              row: Math.max(0, Math.floor((nRows - rowSpan) / 2)),
-              colSpan,
-              rowSpan,
+      const img = new Image()
+      img.onload = () => {
+        const st = useStore.getState()
+        const { width: artW, height: artH } = st.project.artboard
+        const iw = Math.max(1, img.naturalWidth)
+        const ih = Math.max(1, img.naturalHeight)
+        const k = Math.min((artW * 0.62) / iw, (artH * 0.62) / ih)
+        const w = iw * k
+        const h = ih * k
+        const grid = getDerived(st.project).grid
+        const nCols = grid.columnBoundaries.length - 1
+        const nRows = grid.rowBoundaries.length - 1
+        const colSpan = Math.max(1, Math.min(2, nCols))
+        const rowSpan = Math.max(1, Math.min(3, nRows))
+        const id = `img-${Date.now().toString(36)}`
+        st.apply({
+          images: [
+            ...st.project.images,
+            {
+              id,
+              src: handoff.src,
+              // anchor is the fallback identity if the user later snaps
+              // it to the grid; the free rect is what renders
+              anchor: {
+                col: Math.max(0, Math.floor((nCols - colSpan) / 2)),
+                row: Math.max(0, Math.floor((nRows - rowSpan) / 2)),
+                colSpan,
+                rowSpan,
+              },
+              free: { x: (artW - w) / 2, y: (artH - h) / 2, w, h },
             },
-          },
-        ],
-      })
-      st.setUi({
-        selectedImageIds: [id],
-        selectedBlockId: undefined,
-        selectedBlockIds: [],
-        selectedShapeIds: [],
-      })
+          ],
+        })
+        st.setUi({
+          selectedImageIds: [id],
+          selectedBlockId: undefined,
+          selectedBlockIds: [],
+          selectedShapeIds: [],
+        })
+      }
+      img.src = handoff.src
     }
 
     // write-back: debounced autosave + share hash. `dirty` tracks a
