@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { history, useStore } from '@/core/state/store'
 import { createDefaultProject } from '@/core/state/defaults'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
+import { ConfirmDialog } from '@/components/controls/ConfirmDialog'
 import { downloadPNG, exportPNG } from '@/core/export/png'
 
 // variant 'motion' drops the poster-only PNG render; the share link
@@ -50,27 +51,8 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
     flash('New composition — undo restores')
   }
 
-  // while the confirm is up it owns the keyboard: Enter goes through,
-  // Esc backs out — the same contract as any dialog
-  useEffect(() => {
-    if (!confirming) return
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      const ae = document.activeElement as HTMLElement | null
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        startNew()
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        setConfirming(false)
-      }
-    }
-    // capture: the canvas key handler must not act on the same Esc
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  })
+  // the confirm's keyboard contract (Enter confirms, Esc cancels, and
+  // neither reaches the canvas behind) lives in ConfirmDialog now
 
   // dev capture hook: the REAL export pipeline as a dataURL, so the
   // devshot loop can verify exports without touching the filesystem
@@ -123,32 +105,24 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
       </div>
       ) : null}
       <div className="panel-section">
-        {confirming ? (
-          // starting fresh throws the current composition away, so it
-          // asks first — and says how to get back
-          <>
-            <div className="panel-note">
-              Start a new composition? This replaces what is on the canvas.
-              Enter confirms, Esc cancels — and undo brings it back.
-            </div>
-            <button className="ctl-action primary" onClick={startNew}>
-              Discard and start new
-            </button>
-            <button className="ctl-action" onClick={() => setConfirming(false)}>
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button
-            className="ctl-action"
-            onClick={() => {
-              if (isDirty()) setConfirming(true)
-              else startNew()
-            }}
-          >
-            New Composition
-          </button>
-        )}
+        <button
+          className="ctl-action"
+          onClick={() => {
+            if (isDirty()) setConfirming(true)
+            else startNew()
+          }}
+        >
+          New Composition
+        </button>
+        {/* starting fresh throws the composition away, so it asks first */}
+        <ConfirmDialog
+          open={confirming}
+          title="Start a new composition?"
+          body="This replaces what is on the canvas. Undo brings it back."
+          confirmLabel="Discard and start new"
+          onConfirm={startNew}
+          onCancel={() => setConfirming(false)}
+        />
         {note ? <div className="panel-note">{note}</div> : null}
       </div>
     </div>

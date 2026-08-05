@@ -2450,3 +2450,73 @@ canvas.shape-canvas {
   font-weight: 450;
   letter-spacing: 0;
 }
+
+/* ---------------------------------------------------------------------
+   Confirm modal — portaled to <body>, so it carries dialkit-root itself
+   to pick up the --dial-* tokens. Same surface language as the panels:
+   glass card, 1px border, kit radius, 11px copy. */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 8, 10, 0.62);
+  backdrop-filter: blur(2px);
+  animation: modal-scrim-in 120ms ease-out;
+}
+
+.modal-card {
+  width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--dial-border);
+  border-radius: 10px;
+  background: var(--dial-glass-bg);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.5);
+  animation: modal-card-in 140ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.modal-title {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--dial-text-focus);
+}
+
+.modal-body {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--dial-text-tertiary);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.modal-actions .ctl-action {
+  flex: 1;
+  margin: 0;
+}
+
+@keyframes modal-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-card-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-scrim,
+  .modal-card {
+    animation: none;
+  }
+}

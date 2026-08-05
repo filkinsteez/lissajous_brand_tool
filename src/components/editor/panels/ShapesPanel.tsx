@@ -260,8 +260,6 @@ function ImageProperties({
   project: ProjectState
   selectedIds: string[]
 }) {
-  const apply = useStore((s) => s.apply)
-  const setUi = useStore((s) => s.setUi)
   const router = useRouter()
   const images = project.images.filter((im) => selectedIds.includes(im.id))
   const first = images[0]
@@ -292,19 +290,9 @@ function ImageProperties({
       >
         Edit in Lab
       </button>
-      <div className="panel-note">
-        The lab opens with this image loaded. Send to Design there
-        replaces this image in place.
-      </div>
-      <button
-        className="ctl-action"
-        onClick={() => {
-          apply({ images: project.images.filter((im) => !selectedIds.includes(im.id)) })
-          setUi({ selectedImageIds: [] })
-        }}
-      >
-        {images.length > 1 ? 'Remove images' : 'Remove image'}
-      </button>
+      {/* no explanatory note and no Remove button — the label says what
+          it does, and Delete removes the selection like every other
+          canvas object */}
     </div>
   )
 }

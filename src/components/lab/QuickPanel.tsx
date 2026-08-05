@@ -5,6 +5,7 @@ import { labHistory, useLabStore } from '@/core/lab/labStore'
 import { resetLab } from '@/core/lab/recipe'
 import { mintShuffleSeed, shuffleLab } from '@/core/lab/shuffle'
 import { Slider } from '@/components/controls/Slider'
+import { ConfirmDialog } from '@/components/controls/ConfirmDialog'
 
 const pct = (v: number) => String(Math.round(v * 100))
 const px = (v: number) => String(Math.round(v))
@@ -41,36 +42,20 @@ export function QuickPanel() {
           Reset
         </button>
       </div>
-      {confirmReset ? (
-        <div
-          role="alertdialog"
-          aria-label="Confirm reset"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setConfirmReset(false)
-          }}
-        >
-          <div className="panel-note">
-            Start over with a clean setup? Your image stays. Undo brings this back.
-          </div>
-          <div className="lab-row">
-            <button
-              className="ctl-action primary"
-              autoFocus
-              onClick={() => {
-                const s = useLabStore.getState()
-                labHistory.push(s.lab)
-                s.replaceLab(resetLab(s.lab), { keepHistory: true })
-                setConfirmReset(false)
-              }}
-            >
-              Start over
-            </button>
-            <button className="ctl-action" onClick={() => setConfirmReset(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirmReset}
+        title="Start over?"
+        body="Resets to a clean setup. Your image stays, and undo brings this back."
+        confirmLabel="Start over"
+        onConfirm={() => {
+          const s = useLabStore.getState()
+          labHistory.push(s.lab)
+          s.replaceLab(resetLab(s.lab), { keepHistory: true })
+          setConfirmReset(false)
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
+
       <Slider label="Coarseness" value={baseCell} min={12} max={96} step={1} format={px}
         unit="px" defaultValue={30}
         onChange={(baseCell) => setT({ structure: { baseCell } })} onCommit={commit} />
