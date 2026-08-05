@@ -5,12 +5,18 @@ import { useLabStore } from '@/core/lab/labStore'
 import { getLabSource, clearLabSource } from '@/core/lab/sourceCache'
 import type { LabFit } from '@/core/lab/types'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
+import { Slider } from '@/components/controls/Slider'
 import { importLabSource } from './importSource'
+
+const pct = (v: number) => String(Math.round(v * 100))
 
 export function LabSourcePanel() {
   const source = useLabStore((s) => s.lab.source)
   const sourceNonce = useLabStore((s) => s.ui.sourceNonce)
+  const sourceVisibility = useLabStore((s) => s.lab.sourceVisibility)
   const apply = useLabStore((s) => s.apply)
+  const setT = useLabStore((s) => s.setTransient)
+  const commit = useLabStore((s) => s.commitTransient)
   const setUi = useLabStore((s) => s.setUi)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -38,7 +44,7 @@ export function LabSourcePanel() {
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
     >
-      <div className="panel-heading">Source</div>
+      <div className="panel-heading">Image</div>
       <button
         className={dragOver ? 'ctl-action lab-drop' : 'ctl-action'}
         onClick={() => fileRef.current?.click()}
@@ -77,6 +83,9 @@ export function LabSourcePanel() {
             ]}
             onChange={(fit) => apply({ source: { ...source, fit } })}
           />
+          <Slider label="Show through" value={sourceVisibility} min={0} max={1} step={0.01}
+            format={pct} defaultValue={0}
+            onChange={(v) => setT({ sourceVisibility: v })} onCommit={commit} />
           <button
             className="ctl-action"
             onClick={() => {
@@ -85,7 +94,7 @@ export function LabSourcePanel() {
               setUi({ sourceNonce: useLabStore.getState().ui.sourceNonce + 1 })
             }}
           >
-            Clear source
+            Remove image
           </button>
         </>
       ) : (

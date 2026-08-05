@@ -9,6 +9,7 @@ const TERR: TerritoryState = {
   sources: [],
   bands: ['blocks', 'beads', 'shingle'],
   boundary: 'hard',
+  gain: 1,
 }
 
 function cellsFor(t: number) {

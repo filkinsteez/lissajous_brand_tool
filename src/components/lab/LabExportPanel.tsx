@@ -27,7 +27,7 @@ export function LabExportPanel() {
       const blob = await exportLabPng(s.lab, getLabSource(), resolveBankCached(s.lab.mark.bank))
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = `lab-mark-translation-${s.lab.seed}.png`
+      a.download = `lab-${s.lab.seed}.png`
       a.click()
       URL.revokeObjectURL(a.href)
       flash('PNG exported')

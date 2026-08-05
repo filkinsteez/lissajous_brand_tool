@@ -23,7 +23,7 @@ const DEPS: TerritoryDeps = {
 describe('field sources', () => {
   it('linear ramps along its axis around the offset midpoint', () => {
     const src = { ...createFieldSource('linear', 'l'), angle: 0, offset: 0.5, softness: 0.3 }
-    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard', gain: 1 }, DEPS)
     expect(T(10, 200)).toBeLessThan(0.1)
     expect(T(390, 200)).toBeGreaterThan(0.55) // weight 0.8 caps the top
     expect(T(200, 200)).toBeCloseTo(0.4, 1) // midpoint = 0.5 * weight
@@ -40,7 +40,7 @@ describe('field sources', () => {
       radius: 0.25,
       softness: 0.4,
     }
-    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard', gain: 1 }, DEPS)
     expect(T(200, 200)).toBeGreaterThan(0.9)
     expect(T(10, 10)).toBe(0)
     // on the falloff ramp, past the plateau (radius 100px, ramp 40px)
@@ -59,18 +59,18 @@ describe('field sources', () => {
   it('invert and combine modes compose', () => {
     const a = { ...createFieldSource('linear', 'a'), angle: 0, weight: 1, softness: 0.05 }
     const b = { ...createFieldSource('linear', 'b'), angle: 0, weight: 1, softness: 0.05, invert: true, combine: 'multiply' as const }
-    const T = compileTerritory({ sources: [a, b], bands: [], boundary: 'hard' }, DEPS)
+    const T = compileTerritory({ sources: [a, b], bands: [], boundary: 'hard', gain: 1 }, DEPS)
     // a rises to 1 on the right, b (inverted) falls to 0 there — product ~0 both ends
     expect(T(395, 200)).toBeLessThan(0.05)
     expect(T(5, 200)).toBeLessThan(0.05)
     const c = { ...b, combine: 'max' as const }
-    const Tm = compileTerritory({ sources: [a, c], bands: [], boundary: 'hard' }, DEPS)
+    const Tm = compileTerritory({ sources: [a, c], bands: [], boundary: 'hard', gain: 1 }, DEPS)
     expect(Tm(5, 200)).toBeGreaterThan(0.9) // max keeps the inverted side
   })
 
   it('disabled and zero-weight sources contribute nothing', () => {
     const src = { ...createFieldSource('radial', 'r'), enabled: false }
-    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard' }, DEPS)
+    const T = compileTerritory({ sources: [src], bands: [], boundary: 'hard', gain: 1 }, DEPS)
     expect(T(200, 200)).toBe(0)
   })
 
@@ -78,14 +78,14 @@ describe('field sources', () => {
     const a = { ...createFieldSource('linear', 'a'), angle: 0, weight: 1, softness: 0.05 }
     const carve = { ...createFieldSource('paint', 'p'), weight: 1, combine: 'subtract' as const }
     const T = compileTerritory(
-      { sources: [a, carve], bands: [], boundary: 'hard' },
+      { sources: [a, carve], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, paintField: constantField(0.6) },
     )
     // right edge: linear ≈ 1, minus 0.6 of paint
     expect(T(395, 200)).toBeCloseTo(0.4, 1)
     // subtract folding against nothing stays at zero
     const Tlead = compileTerritory(
-      { sources: [carve], bands: [], boundary: 'hard' },
+      { sources: [carve], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, paintField: constantField(0.6) },
     )
     expect(Tlead(200, 200)).toBe(0)
@@ -97,17 +97,17 @@ describe('field sources', () => {
     expect(paint.combine).toBe('add')
     expect(paint.weight).toBe(1)
     const brushed = compileTerritory(
-      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { sources: [a, paint], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, paintField: constantField(-0.45) },
     )
     expect(brushed(395, 200)).toBeCloseTo(0.55, 1) // photo zone pushed into glitch bands
     const erased = compileTerritory(
-      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { sources: [a, paint], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, paintField: constantField(1) },
     )
     expect(erased(5, 200)).toBe(1) // even the empty zone overrides to photo
     const neutral = compileTerritory(
-      { sources: [a, paint], bands: [], boundary: 'hard' },
+      { sources: [a, paint], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, paintField: constantField(0) },
     )
     expect(neutral(395, 200)).toBeCloseTo(1, 1) // untouched mask changes nothing
@@ -126,7 +126,7 @@ describe('field sources', () => {
     }
     const overrides = new Map([['a', constantField(0.5)]])
     const T = compileTerritory(
-      { sources: [a, b], bands: [], boundary: 'hard' },
+      { sources: [a, b], bands: [], boundary: 'hard', gain: 1 },
       { ...DEPS, fieldOverrides: overrides },
     )
     // left edge: linear ≈ 0 → product ≈ 0 (add semantics would read 0.5)

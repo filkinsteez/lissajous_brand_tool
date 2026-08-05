@@ -102,7 +102,7 @@ describe('buildScanlines', () => {
 })
 
 describe('dabs and streams', () => {
-  const TERR: TerritoryState = { sources: [], bands: ['dabs', 'streams'], boundary: 'hard' }
+  const TERR: TerritoryState = { sources: [], bands: ['dabs', 'streams'], boundary: 'hard', gain: 1 }
   const cells = buildCells({
     T: (x) => (x < 200 ? 0.2 : 0.8), // left = dabs band, right = streams band
     territory: TERR,

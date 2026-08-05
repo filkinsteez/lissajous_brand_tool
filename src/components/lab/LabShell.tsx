@@ -6,9 +6,10 @@ import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
 import { LabCanvas } from './LabCanvas'
 import { LabSourcePanel } from './LabSourcePanel'
-import { ShufflePanel } from './ShufflePanel'
-import { TerritoryPanel } from './TerritoryPanel'
-import { MarkPanel } from './MarkPanel'
+import { LooksPanel } from './LooksPanel'
+import { QuickPanel } from './QuickPanel'
+import { ColorsPanel } from './ColorsPanel'
+import { AdjustPanel } from './AdjustPanel'
 import { LabExportPanel } from './LabExportPanel'
 
 // The research lab shell — an isolated route, deliberately NOT a fourth
@@ -90,31 +91,20 @@ export function LabShell() {
         <Link className="lab-back" href="/">
           ← Editor
         </Link>
-        <span className="lab-title">Research lab</span>
-        <span className="lab-study-name">02 · Territory composition</span>
+        <span className="lab-title">Lab</span>
       </header>
       <div className="lab-columns">
         <aside className="lab-side">
           <LabSourcePanel />
-          <div className="panel-section">
-            <div className="panel-heading">Hypothesis</div>
-            <div className="panel-note">
-              One composition where different areas obey different laws.
-              Masking fields — the brand curve, gradients, a painted mask,
-              the image itself — stack into a territory; its bands decide
-              where the photo survives, where marks carry tone, where
-              contours draw the field, where ink goes flat, and where
-              nothing lives at all.
-            </div>
-          </div>
         </aside>
         <main className="lab-stage">
           <LabCanvas />
         </main>
         <aside className="lab-side lab-side-right">
-          <ShufflePanel />
-          <TerritoryPanel />
-          <MarkPanel />
+          <LooksPanel />
+          <QuickPanel />
+          <ColorsPanel />
+          <AdjustPanel />
           <LabExportPanel />
         </aside>
       </div>

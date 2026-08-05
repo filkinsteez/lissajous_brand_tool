@@ -248,3 +248,87 @@
   outline: 1px dashed var(--text-dim);
   outline-offset: 2px;
 }
+
+/* looks strip */
+.lab-looks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.lab-look {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+  background: var(--chrome-0);
+  align-items: stretch;
+}
+
+.lab-look:hover {
+  border-color: var(--line-strong);
+}
+
+.lab-look.active {
+  border-color: var(--text);
+}
+
+.lab-look-thumb {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 5px;
+  background: var(--chrome-2);
+}
+
+.lab-look-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.lab-look.active .lab-look-label {
+  color: var(--text);
+}
+
+/* zone rows */
+.lab-zone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lab-zone-label {
+  width: 64px;
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.lab-select {
+  flex: 1;
+  background: var(--chrome-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.lab-select:focus {
+  outline: none;
+  border-color: var(--line-strong);
+}
+
+/* palette swatch grid */
+.lab-swatch-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px 6px;
+}
+
+.lab-maps-row {
+  border-bottom: 1px solid var(--line);
+}

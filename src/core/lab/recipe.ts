@@ -30,6 +30,7 @@ export function createDefaultLab(seed = 1913): LabState {
       ],
       bands: ['mosaic', 'shingle', 'beads', 'blocks'],
       boundary: 'hard',
+      gain: 1,
     },
     structure: { baseCell: 28, maxLevels: 2, subdivide: 0.55 },
     mark: { ...MARK_DEFAULTS },
@@ -38,6 +39,7 @@ export function createDefaultLab(seed = 1913): LabState {
     colors: { ink: META_BLUE, paper: PAPER, palette: [...PALETTES[0].colors] },
     flow: { ...FLOW_DEFAULTS },
     finish: { grain: 0.12 },
+    look: { id: null, strength: 1 },
   }
 }
 
@@ -51,7 +53,11 @@ export function resetLab(current: LabState): LabState {
   const lab = createDefaultLab(current.seed)
   lab.output = { ...current.output }
   lab.source = current.source ? { ...current.source } : null
-  if (lab.source) lab.territory.bands = ['blocks', 'beads', 'shingle', 'photo']
+  if (lab.source) {
+    lab.territory.bands = ['blocks', 'beads', 'shingle', 'photo']
+    // this IS the Frame look — the strip should say so
+    lab.look = { id: 'frame', strength: 1 }
+  }
   return lab
 }
 
@@ -73,6 +79,9 @@ export function deserializeLab(json: string): LabState | null {
     lab.structure.baseCell = Math.max(8, Math.min(160, lab.structure.baseCell))
     lab.structure.maxLevels = Math.max(0, Math.min(2, Math.round(lab.structure.maxLevels))) as 0 | 1 | 2
     if (!lab.territory.bands.length) lab.territory.bands = ['empty', 'marks']
+    lab.territory.bands = lab.territory.bands.slice(0, 5)
+    while (lab.territory.bands.length < 2) lab.territory.bands.push('photo')
+    lab.territory.gain = Math.max(0.2, Math.min(1.6, lab.territory.gain ?? 1))
     lab.mark.echo = Math.max(0, Math.min(6, Math.round(lab.mark.echo)))
     if (!Array.isArray(lab.colors.palette) || !lab.colors.palette.length) {
       lab.colors.palette = [...PALETTES[0].colors]
@@ -82,6 +91,7 @@ export function deserializeLab(json: string): LabState | null {
     lab.flow.scale = Math.max(0, Math.min(1, lab.flow.scale))
     lab.flow.warp = Math.max(0, Math.min(1, lab.flow.warp))
     lab.finish.grain = Math.max(0, Math.min(1, lab.finish.grain))
+    lab.look.strength = Math.max(0, Math.min(1, lab.look.strength))
     return lab
   } catch {
     return null

@@ -1,5 +1,6 @@
 import { commitLabSource, decodeLabSourceFile, discardLabSource } from '@/core/lab/sourceCache'
 import { useLabStore } from '@/core/lab/labStore'
+import type { TreatmentId } from '@/core/lab/types'
 
 // Bring a dropped/picked file into the lab: decode + analyze into the
 // module cache, then reflect ONLY metadata into the store and bump the
@@ -22,21 +23,36 @@ export async function importLabSource(file: File): Promise<void> {
       return
     }
     commitLabSource(src)
+    // re-read AFTER the await — the pre-decode snapshot can be stale
+    const live = useLabStore.getState()
     const k = Math.min(1, OUTPUT_CAP / Math.max(src.fullW, src.fullH))
-    store.apply({
+    // a FIRST image must be visible on the next frame — if no zone
+    // shows the photo, take the photo-framing zones. Replacing an
+    // image never touches an authored zone stack.
+    const firstImage = !live.lab.source
+    const bands = live.lab.territory.bands
+    const bandsPatch =
+      firstImage && !bands.includes('photo')
+        ? {
+            territory: { bands: ['blocks', 'beads', 'shingle', 'photo'] as TreatmentId[] },
+            look: { id: 'frame', strength: 1 },
+          }
+        : {}
+    live.apply({
+      ...bandsPatch,
       source: {
         filename: src.filename,
         width: src.fullW,
         height: src.fullH,
         contentHash: src.hash,
-        fit: store.lab.source?.fit ?? 'contain',
+        fit: live.lab.source?.fit ?? 'contain',
       },
       output: {
         width: Math.max(64, Math.round((src.fullW * k) / 2) * 2),
         height: Math.max(64, Math.round((src.fullH * k) / 2) * 2),
       },
     })
-    store.setUi({ sourceNonce: store.ui.sourceNonce + 1, note: '' })
+    live.setUi({ sourceNonce: live.ui.sourceNonce + 1, note: '' })
   } catch (e) {
     store.setUi({ note: e instanceof Error ? e.message : 'Could not load that file.' })
   }

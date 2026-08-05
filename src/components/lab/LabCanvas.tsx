@@ -44,6 +44,7 @@ export function LabCanvas() {
   const [dragOver, setDragOver] = useState(false)
   const [tool, setTool] = useState<PaintTool>('off')
   const [brush, setBrush] = useState(90) // output px
+  const [showMaps, setShowMaps] = useState(false)
 
   useEffect(() => {
     const el = wrapRef.current
@@ -168,32 +169,51 @@ export function LabCanvas() {
     st.apply({ paint: serializePaint(raster) })
   }
 
+  const mapViews = LAB_VIEWS.filter((v) => v.id !== 'composite' && v.id !== 'source')
+  const onMapView = mapViews.some((v) => v.id === view)
+
   return (
     <div className="lab-stage-inner">
       <div className="lab-view-row" role="tablist" aria-label="View">
-        {LAB_VIEWS.map((v) => (
-          <button
-            key={v.id}
-            role="tab"
-            aria-selected={view === v.id}
-            className={view === v.id ? 'lab-chip active' : 'lab-chip'}
-            onClick={() => setUi({ view: v.id })}
-          >
-            {v.label}
-          </button>
-        ))}
+        <button
+          role="tab"
+          aria-selected={view === 'composite'}
+          className={view === 'composite' ? 'lab-chip active' : 'lab-chip'}
+          onClick={() => setUi({ view: 'composite' })}
+        >
+          Result
+        </button>
+        <button
+          role="tab"
+          aria-selected={view === 'source'}
+          className={view === 'source' ? 'lab-chip active' : 'lab-chip'}
+          onClick={() => setUi({ view: 'source' })}
+        >
+          Photo
+        </button>
+        <button
+          className={onMapView || showMaps ? 'lab-chip active' : 'lab-chip'}
+          onClick={() => {
+            if (showMaps || onMapView) setUi({ view: 'composite' })
+            setShowMaps(!showMaps && !onMapView)
+          }}
+        >
+          Maps
+        </button>
         <span className="lab-view-gap" />
         <button
           className={tool === 'brush' ? 'lab-chip active' : 'lab-chip'}
+          title="Paint the effect over the photo"
           onClick={() => setTool(tool === 'brush' ? 'off' : 'brush')}
         >
-          Brush
+          Glitch
         </button>
         <button
           className={tool === 'erase' ? 'lab-chip active' : 'lab-chip'}
+          title="Bring the photo back where you paint"
           onClick={() => setTool(tool === 'erase' ? 'off' : 'erase')}
         >
-          Erase
+          Restore
         </button>
         {tool !== 'off' ? (
           <input
@@ -219,6 +239,21 @@ export function LabCanvas() {
           100%
         </button>
       </div>
+      {showMaps || onMapView ? (
+        <div className="lab-view-row lab-maps-row" role="tablist" aria-label="Maps">
+          {mapViews.map((v) => (
+            <button
+              key={v.id}
+              role="tab"
+              aria-selected={view === v.id}
+              className={view === v.id ? 'lab-chip active' : 'lab-chip'}
+              onClick={() => setUi({ view: v.id })}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div
         ref={wrapRef}
         className={dragOver ? 'lab-canvas-wrap drag' : 'lab-canvas-wrap'}

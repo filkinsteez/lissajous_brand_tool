@@ -28,7 +28,7 @@ function fakeMaps(detail = 0): AnalysisMaps {
 }
 
 const RECT = { x: 0, y: 0, w: 320, h: 320 }
-const TERR: TerritoryState = { sources: [], bands: ['empty', 'marks'], boundary: 'hard' }
+const TERR: TerritoryState = { sources: [], bands: ['empty', 'marks'], boundary: 'hard', gain: 1 }
 const STRUCT: StructureState = { baseCell: 40, maxLevels: 0, subdivide: 0.5 }
 
 describe('buildCells', () => {

@@ -225,11 +225,14 @@ export function renderLab(
   // SHINGLE — per-cell linear gradients between palette neighbors,
   // direction alternating in a weave, leaned by the flow angle
   if (cells.some((c) => c.treatment === 'shingle')) {
+    // lean deliberately 0: the flow-angle coupling was unreachable from
+    // the UI (shingle never opens the Direction section) — a hidden
+    // input that could silently tilt the weave is worse than none
     const fills = buildShingleFills({
       cells,
       paletteSize: K,
       seed: lab.seed,
-      lean: lab.flow?.basis === 'angle' ? lab.flow.angle : 0,
+      lean: 0,
     })
     for (const f of fills) {
       const { cell } = f
@@ -403,6 +406,17 @@ export function renderLab(
       }
       stampProto(ctx, proto, s.x, s.y, s.rot, s.size, fill, alpha)
     }
+  }
+
+  // STRENGTH — the Amount blend: below 1, the photo fades back over
+  // the whole result, so the effect reads as a modifier of the image
+  // rather than its replacement
+  const strength = lab.look?.strength ?? 1
+  if (source && strength < 1) {
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, Math.max(0, 1 - strength))
+    ctx.drawImage(source.image, rect.x, rect.y, rect.w, rect.h)
+    ctx.restore()
   }
 
   // GRAIN — the shared surface pass: seeded hash noise over the whole

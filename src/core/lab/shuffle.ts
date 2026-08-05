@@ -29,6 +29,10 @@ export function shuffleLab(lab: LabState, shuffleSeed: number, scopes: ShuffleSc
   const rng = mulberry32(shuffleSeed >>> 0)
   const patch: LabPatch = {}
 
+  // any shuffle leaves the composition somewhere no look describes —
+  // the look highlight must not keep claiming it
+  patch.look = { id: null }
+
   if (scopes.seed) patch.seed = Math.floor(rng() * 100000)
 
   if (scopes.fields) {

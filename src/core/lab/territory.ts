@@ -132,6 +132,7 @@ export function compileTerritory(state: TerritoryState, deps: TerritoryDeps): Fi
     if (f) active.push({ f, src })
   }
   if (!active.length) return () => 0
+  const gain = state.gain ?? 1
   return (x, y) => {
     let acc = 0
     let first = true
@@ -149,7 +150,7 @@ export function compileTerritory(state: TerritoryState, deps: TerritoryDeps): Fi
       else if (src.combine === 'subtract') acc -= v
       else acc += v
     }
-    return Math.max(0, Math.min(1, acc))
+    return Math.max(0, Math.min(1, acc * gain))
   }
 }
 

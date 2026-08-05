@@ -73,19 +73,21 @@ export type TreatmentId =
   | 'beads'
   | 'shingle'
 
+// labels are perceptual — what the zone will look like, not how the
+// renderer works
 export const TREATMENTS: { id: TreatmentId; label: string }[] = [
-  { id: 'empty', label: 'Empty' },
-  { id: 'flat', label: 'Flat ink' },
-  { id: 'mosaic', label: 'Mosaic' },
   { id: 'photo', label: 'Photo' },
+  { id: 'empty', label: 'None' },
+  { id: 'mosaic', label: 'Pixels' },
+  { id: 'blocks', label: 'Color blocks' },
+  { id: 'beads', label: 'Dot grid' },
+  { id: 'shingle', label: 'Gradients' },
   { id: 'marks', label: 'Marks' },
-  { id: 'contours', label: 'Contours' },
-  { id: 'scan', label: 'Scan' },
-  { id: 'dabs', label: 'Dabs' },
-  { id: 'streams', label: 'Streams' },
-  { id: 'blocks', label: 'Blocks' },
-  { id: 'beads', label: 'Beads' },
-  { id: 'shingle', label: 'Shingle' },
+  { id: 'contours', label: 'Contour lines' },
+  { id: 'scan', label: 'Scanlines' },
+  { id: 'dabs', label: 'Brush dabs' },
+  { id: 'streams', label: 'Flow lines' },
+  { id: 'flat', label: 'Ink fill' },
 ]
 
 // The vector field: WHICH WAY the process treatments move. The scalar
@@ -107,6 +109,10 @@ export type TerritoryState = {
   sources: FieldSourceState[]
   bands: TreatmentId[] // band 0 = territory 0 (far), last = territory 1 (near)
   boundary: BoundaryMode
+  // global territory gain — the COVERAGE dial: how far the effect
+  // reaches. Works in every composition because it shifts every band
+  // boundary at once.
+  gain: number
 }
 
 // the multiscale carrier: base cells that subdivide where image detail
@@ -160,6 +166,9 @@ export type LabState = {
   flow: FlowState
   // shared surface pass over the whole composite
   finish: { grain: number }
+  // the applied look and its strength: 1 = full effect, lower blends
+  // the photo back over the result (the Lightroom-Amount read)
+  look: { id: string | null; strength: number }
 }
 
 // Views are ui, not recipe: composite plus the intermediate maps that
@@ -175,11 +184,11 @@ export type LabView =
   | 'orient'
 
 export const LAB_VIEWS: { id: LabView; label: string }[] = [
-  { id: 'composite', label: 'Composite' },
-  { id: 'source', label: 'Source' },
-  { id: 'territory', label: 'Territory' },
-  { id: 'bands', label: 'Bands' },
-  { id: 'cells', label: 'Cells' },
+  { id: 'composite', label: 'Result' },
+  { id: 'source', label: 'Photo' },
+  { id: 'territory', label: 'Effect area' },
+  { id: 'bands', label: 'Zones' },
+  { id: 'cells', label: 'Grid' },
   { id: 'lum', label: 'Tone' },
   { id: 'edge', label: 'Edges' },
   { id: 'orient', label: 'Direction' },

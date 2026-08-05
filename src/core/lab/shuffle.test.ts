@@ -23,13 +23,14 @@ describe('shuffleLab', () => {
     )
   })
 
-  it('touches nothing outside its scopes', () => {
+  it('touches nothing outside its scopes (plus the look-highlight clear)', () => {
     const lab = labWithSource()
-    expect(shuffleLab(lab, 5, NONE)).toEqual({})
+    // every shuffle clears the applied-look highlight and nothing else
+    expect(shuffleLab(lab, 5, NONE)).toEqual({ look: { id: null } })
     const seedOnly = shuffleLab(lab, 5, { ...NONE, seed: true })
-    expect(Object.keys(seedOnly)).toEqual(['seed'])
+    expect(Object.keys(seedOnly).sort()).toEqual(['look', 'seed'])
     const marksOnly = shuffleLab(lab, 5, { ...NONE, marks: true })
-    expect(Object.keys(marksOnly)).toEqual(['mark'])
+    expect(Object.keys(marksOnly).sort()).toEqual(['look', 'mark'])
   })
 
   it('never touches the painted mask or the stack structure', () => {
