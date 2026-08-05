@@ -1,4 +1,5 @@
 import { commitLabSource, decodeLabSourceFile, discardLabSource } from '@/core/lab/sourceCache'
+import { setLabReturnTarget } from '@/core/lab/handoff'
 import { useLabStore } from '@/core/lab/labStore'
 import type { TreatmentId } from '@/core/lab/types'
 
@@ -16,6 +17,12 @@ let importGen = 0
 export async function importLabSource(file: File): Promise<void> {
   const store = useLabStore.getState()
   const gen = ++importGen
+  // a fresh source severs the link to any design block a previous
+  // handoff established — Send to Design must not overwrite a design
+  // image with a composition built from a DIFFERENT photo. The handoff
+  // consumer re-sets the target right after this import when the source
+  // IS the design block's image.
+  setLabReturnTarget(null)
   try {
     const src = await decodeLabSourceFile(file)
     if (gen !== importGen) {

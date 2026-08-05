@@ -284,15 +284,17 @@ function ImageProperties({
       <button
         className="ctl-action primary"
         onClick={() => {
-          setLabHandoff({ src: first.src, name: 'design-image.png' })
+          // imageId makes the round trip a REPLACE: Send to Design in
+          // the lab swaps this block's pixels, same size and position
+          setLabHandoff({ src: first.src, name: 'design-image.png', imageId: first.id })
           router.push('/lab')
         }}
       >
         Edit in Lab
       </button>
       <div className="panel-note">
-        The lab opens with this image loaded. Export the result there and
-        drop it back onto the canvas.
+        The lab opens with this image loaded. Send to Design there
+        replaces this image in place.
       </div>
       <button
         className="ctl-action"

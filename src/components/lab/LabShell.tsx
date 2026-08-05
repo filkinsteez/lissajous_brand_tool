@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore'
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
-import { takeLabHandoff } from '@/core/lab/handoff'
+import { setLabReturnTarget, takeLabHandoff } from '@/core/lab/handoff'
 import { importLabSource } from './importSource'
 import { refreshCurveSources } from './refreshCurve'
 import { LabCanvas } from './LabCanvas'
@@ -104,6 +104,9 @@ export function LabShell() {
           type: blob.type || 'image/png',
         })
         await importLabSource(file)
+        // AFTER the import (which clears any stale target): this lab
+        // session now edits that design block — sends replace it
+        if (h.imageId) setLabReturnTarget(h.imageId)
       } catch {
         useLabStore.getState().setUi({ note: 'Could not load the image from the editor.' })
       }
