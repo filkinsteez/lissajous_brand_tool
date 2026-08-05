@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultLab, deserializeLab, labContentHash, serializeLab } from './recipe'
+import { createDefaultLab, deserializeLab, labContentHash, resetLab, serializeLab } from './recipe'
 import { LAB_VERSION } from './types'
 
 describe('lab recipes', () => {
@@ -46,6 +46,30 @@ describe('lab recipes', () => {
     expect(lab!.structure.baseCell).toBe(8)
     expect(lab!.structure.maxLevels).toBe(2)
     expect(lab!.territory.bands.length).toBeGreaterThan(0)
+  })
+})
+
+describe('resetLab', () => {
+  it('keeps the loaded source and gives it the near band', () => {
+    const messy = createDefaultLab(9)
+    messy.territory.bands = ['mosaic', 'mosaic']
+    messy.mark.echo = 5
+    messy.source = { filename: 'p.jpg', width: 800, height: 600, contentHash: 'aa', fit: 'cover' }
+    messy.output = { width: 640, height: 480, transparent: true }
+    const fresh = resetLab(messy)
+    expect(fresh.source).toEqual(messy.source)
+    expect(fresh.output).toEqual(messy.output)
+    expect(fresh.territory.bands[fresh.territory.bands.length - 1]).toBe('photo')
+    expect(fresh.mark.echo).toBe(0)
+  })
+
+  it('without a source it is the plain default at the current size', () => {
+    const messy = createDefaultLab(9)
+    messy.output.width = 500
+    const fresh = resetLab(messy)
+    expect(fresh.source).toBeNull()
+    expect(fresh.territory.bands).toEqual(createDefaultLab().territory.bands)
+    expect(fresh.output.width).toBe(500)
   })
 })
 

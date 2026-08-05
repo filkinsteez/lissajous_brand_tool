@@ -44,6 +44,17 @@ export function createDefaultLab(seed = 1913): LabState {
 // Meta's primary brand blue — the lab's default shape color
 export const META_BLUE = '#0668e1'
 
+// A clean start that keeps the loaded source: with an image present the
+// near band is the PHOTO (the image must never silently vanish into a
+// treatment on reset), fills take the field around it.
+export function resetLab(current: LabState): LabState {
+  const lab = createDefaultLab(current.seed)
+  lab.output = { ...current.output }
+  lab.source = current.source ? { ...current.source } : null
+  if (lab.source) lab.territory.bands = ['blocks', 'beads', 'shingle', 'photo']
+  return lab
+}
+
 export function serializeLab(lab: LabState): string {
   return JSON.stringify(lab)
 }

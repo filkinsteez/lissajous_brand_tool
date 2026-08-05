@@ -2,6 +2,7 @@
 
 import { useLabStore } from '@/core/lab/labStore'
 import { labHistory } from '@/core/lab/labStore'
+import { resetLab } from '@/core/lab/recipe'
 import { mintShuffleSeed, shuffleLab } from '@/core/lab/shuffle'
 import type { ShuffleScopes } from '@/core/lab/shuffle'
 
@@ -41,6 +42,17 @@ export function ShufflePanel() {
         </button>
         <button className="ctl-action" disabled={labHistory.depth.past === 0} onClick={undo}>
           Back
+        </button>
+        <button
+          className="ctl-action"
+          title="Fresh default recipe — keeps the loaded image, undo restores"
+          onClick={() => {
+            const s = useLabStore.getState()
+            labHistory.push(s.lab)
+            s.replaceLab(resetLab(s.lab), { keepHistory: true })
+          }}
+        >
+          Reset
         </button>
       </div>
       <div className="lab-add-row">

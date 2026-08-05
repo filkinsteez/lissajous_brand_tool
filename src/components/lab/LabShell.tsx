@@ -23,8 +23,12 @@ export function LabShell() {
   // restore autosave -> defaults ONCE PER PAGE LOAD (the store outlives
   // route mounts — restoring on every mount would replace live state
   // with storage and wipe undo), then keep a debounced write-back that
-  // FLUSHES on unmount so leaving the lab never drops the last edit
+  // FLUSHES on unmount so leaving the lab never drops the last edit.
+  // /lab?pristine skips BOTH directions — a scratch session that can
+  // never touch the user's saved composition (verification runs burned
+  // an autosave once through a restore/debounce race; never again).
   useEffect(() => {
+    if (typeof location !== 'undefined' && location.search.includes('pristine')) return
     if (!labHydration.done) {
       labHydration.done = true
       try {
