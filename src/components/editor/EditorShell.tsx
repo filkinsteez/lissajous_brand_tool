@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect } from 'react'
-import { history as projectHistory, useStore } from '@/core/state/store'
+import { useStore } from '@/core/state/store'
 import { shuffleProject } from '@/core/state/shuffle'
 import { consumeDesignHandoff } from './consumeDesignHandoff'
+import { NewCompositionButton } from './NewCompositionButton'
 import { getDerived } from '@/core/pipeline'
 import { installDebugHook, lbsDebug } from '@/core/state/debug'
 import { renderController } from '@/render/renderController'
@@ -29,9 +30,6 @@ const hydration = { done: false }
 export function EditorShell() {
   const mounted = useStore((s) => s.ui.mounted)
   const mode = useStore((s) => s.ui.mode)
-  // subscribing to historyVersion keeps the depth-derived disabled states live
-  useStore((s) => s.historyVersion)
-  const depth = projectHistory.depth
 
   useEffect(() => {
     installDebugHook()
@@ -154,26 +152,11 @@ export function EditorShell() {
               s.apply(shuffleProject(s.project, getDerived(s.project).grid, s.project.layoutSeed + 1))
             }}
           >
-            Shuffle
+            Shuffle Composition
           </button>
-          <button
-            className="topbar-history"
-            aria-label="Undo"
-            title="Undo (Ctrl+Z)"
-            disabled={!depth.past}
-            onClick={() => useStore.getState().undo()}
-          >
-            ↶
-          </button>
-          <button
-            className="topbar-history"
-            aria-label="Redo"
-            title="Redo (Ctrl+Shift+Z)"
-            disabled={!depth.future}
-            onClick={() => useStore.getState().redo()}
-          >
-            ↷
-          </button>
+          <NewCompositionButton />
+          {/* undo/redo are Ctrl+Z and Ctrl+Shift+Z — the arrows were
+              chrome for a shortcut everyone already reaches for */}
         </div>
       </header>
       <div className="editor-body">

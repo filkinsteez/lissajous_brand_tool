@@ -94,7 +94,7 @@ export function LabShell() {
     }
   }, [])
 
-  // "Edit in Lab" handoff: an image sent over from the design canvas
+  // "Edit Image" handoff: an image sent over from the design canvas
   // loads exactly like a drop
   useEffect(() => {
     const h = takeLabHandoff()

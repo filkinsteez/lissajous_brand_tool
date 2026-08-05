@@ -1,10 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { history, useStore } from '@/core/state/store'
-import { createDefaultProject } from '@/core/state/defaults'
+import { useStore } from '@/core/state/store'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
-import { ConfirmDialog } from '@/components/controls/ConfirmDialog'
 import { downloadPNG, exportPNG } from '@/core/export/png'
 
 // variant 'motion' drops the poster-only PNG render; the share link
@@ -15,44 +13,11 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
   const apply = useStore((s) => s.apply)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
-  const [confirming, setConfirming] = useState(false)
 
-  // declared before startNew, which calls it — a later declaration
-  // reads fine to the eye but is a use-before-declare to the compiler
   const flash = (msg: string) => {
     setNote(msg)
     setTimeout(() => setNote(''), 2500)
   }
-
-  // "changes were made" = anything on the undo stack, or a project that
-  // simply is not the pristine default (a shared link opens with an
-  // empty history but a full composition)
-  const isDirty = () => {
-    const s = useStore.getState()
-    if (history.depth.past > 0) return true
-    return JSON.stringify(s.project) !== JSON.stringify(createDefaultProject(s.project.seed))
-  }
-
-  const startNew = () => {
-    // the outgoing composition goes onto the undo stack, so Ctrl+Z
-    // brings it straight back
-    const s = useStore.getState()
-    history.push(s.project)
-    s.replaceProject(createDefaultProject(), { keepHistory: true })
-    s.setUi({
-      selectedLayerId: undefined,
-      selectedBlockId: 'headline',
-      selectedBlockIds: ['headline'],
-      selectedShapeIds: [],
-      selectedImageIds: [],
-      isolateLayerId: undefined,
-    })
-    setConfirming(false)
-    flash('New composition — undo restores')
-  }
-
-  // the confirm's keyboard contract (Enter confirms, Esc cancels, and
-  // neither reaches the canvas behind) lives in ConfirmDialog now
 
   // dev capture hook: the REAL export pipeline as a dataURL, so the
   // devshot loop can verify exports without touching the filesystem
@@ -104,27 +69,9 @@ export function ExportPanel({ variant = 'compose' }: { variant?: 'compose' | 'mo
         </button>
       </div>
       ) : null}
-      <div className="panel-section">
-        <button
-          className="ctl-action"
-          onClick={() => {
-            if (isDirty()) setConfirming(true)
-            else startNew()
-          }}
-        >
-          New Composition
-        </button>
-        {/* starting fresh throws the composition away, so it asks first */}
-        <ConfirmDialog
-          open={confirming}
-          title="Start a new composition?"
-          body="This replaces what is on the canvas. Undo brings it back."
-          confirmLabel="Discard and start new"
-          onConfirm={startNew}
-          onCancel={() => setConfirming(false)}
-        />
-        {note ? <div className="panel-note">{note}</div> : null}
-      </div>
+      {/* New Composition moved to the topbar beside Shuffle Composition:
+          both act on the whole document, and neither is about export */}
+      {note ? <div className="panel-note">{note}</div> : null}
     </div>
   )
 }

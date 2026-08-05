@@ -302,10 +302,10 @@ function ImageProperties({
           router.push(labHref())
         }}
       >
-        Edit in Lab
+        Edit Image
       </button>
       ) : (
-        <div className="panel-note">Select a single image to edit it in the lab.</div>
+        <div className="panel-note">Select a single image to edit it.</div>
       )}
       {/* no explanatory note and no Remove button — the label says what
           it does, and Delete removes the selection like every other

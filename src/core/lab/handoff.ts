@@ -1,5 +1,5 @@
 // Image handoffs between the design editor and the lab, both ways:
-// "Edit in Lab" on a selected image block stashes it design→lab, and
+// "Edit Image" on a selected image block stashes it design→lab, and
 // "Send to Design" stashes the lab's rendered output lab→design; the
 // receiving shell picks it up on mount. Memory first (a client-side
 // route change keeps the JS context alive), sessionStorage as backup so
@@ -67,7 +67,7 @@ export const takeDesignHandoff = (): LabHandoff | null => toDesign.take()
 // It is BOUND TO THE SOURCE the block handed over (contentHash), and a
 // send only honours it while the lab is still working on that source.
 // Without that binding, a target left in sessionStorage by an earlier
-// Edit in Lab could let a later, unrelated composition overwrite a
+// Edit Image could let a later, unrelated composition overwrite a
 // design block. Binding by identity rather than by mount timing also
 // survives React's development double-mount, which a "clear whenever no
 // handoff arrives" rule would not.
