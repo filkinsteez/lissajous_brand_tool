@@ -1,6 +1,21 @@
 import { takeDesignHandoff } from '@/core/lab/handoff'
 import { getDerived } from '@/core/pipeline'
+import { imageRect } from '@/core/grid/types'
 import { useStore } from '@/core/state/store'
+
+// Reshape a rect to `aspect` keeping its centre and its area — the
+// block occupies the same visual weight in the same place, but now
+// matches the image inside it, so cover-fit crops nothing.
+export function refitToAspect(
+  rect: { x: number; y: number; w: number; h: number },
+  aspect: number,
+): { x: number; y: number; w: number; h: number } {
+  const area = Math.max(1, rect.w * rect.h)
+  const a = Math.max(0.01, aspect)
+  const h = Math.sqrt(area / a)
+  const w = h * a
+  return { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h }
+}
 
 // "Send to Design" landing, called once on editor mount.
 //
@@ -20,17 +35,35 @@ export function consumeDesignHandoff(): void {
     : undefined
 
   if (target) {
-    st.apply({
-      images: st.project.images.map((im) =>
-        im.id === target.id ? { ...im, src: handoff.src } : im,
-      ),
-    })
-    st.setUi({
-      selectedImageIds: [target.id],
-      selectedBlockId: undefined,
-      selectedBlockIds: [],
-      selectedShapeIds: [],
-    })
+    // Replace in place. The lab composed at this block's aspect, so the
+    // rect normally stays untouched. If it does NOT match (the output
+    // dims were changed by hand in the lab), keep the block's centre and
+    // area but take the image's aspect — a mismatched rect would
+    // cover-crop the composition's edges away, which reads as "my edit
+    // did not come through".
+    const rect = imageRect(getDerived(st.project).grid, target.anchor, target.free)
+    const probe = new Image()
+    probe.onload = () => {
+      const live = useStore.getState()
+      const block = live.project.images.find((im) => im.id === target.id)
+      if (!block) return
+      const imgAspect = Math.max(1, probe.naturalWidth) / Math.max(1, probe.naturalHeight)
+      const rectAspect = rect.w / Math.max(1, rect.h)
+      const matches = Math.abs(imgAspect - rectAspect) / rectAspect < 0.01
+      const free = matches ? block.free : refitToAspect(rect, imgAspect)
+      live.apply({
+        images: live.project.images.map((im) =>
+          im.id === target.id ? { ...im, src: handoff.src, free } : im,
+        ),
+      })
+      live.setUi({
+        selectedImageIds: [target.id],
+        selectedBlockId: undefined,
+        selectedBlockIds: [],
+        selectedShapeIds: [],
+      })
+    }
+    probe.src = handoff.src
     return
   }
 

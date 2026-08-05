@@ -104,9 +104,29 @@ export function LabShell() {
           type: blob.type || 'image/png',
         })
         await importLabSource(file)
+        const afterImport = useLabStore.getState()
         // AFTER the import (which clears any stale target): this lab
-        // session now edits that design block — sends replace it
-        if (h.imageId) setLabReturnTarget(h.imageId)
+        // session now edits that design block — sends replace it, but
+        // only while the source is still the one it handed over
+        if (h.imageId) {
+          setLabReturnTarget({
+            imageId: h.imageId,
+            sourceHash: afterImport.lab.source?.contentHash,
+          })
+        }
+        // compose at the BLOCK's shape, not the photo's: the block
+        // cover-fits whatever comes back, so authoring at a different
+        // aspect would crop the composition's edges off on return
+        if (h.rect && h.rect.w > 0 && h.rect.h > 0) {
+          const live = useLabStore.getState()
+          const src = live.lab.source
+          const long = Math.min(2048, Math.max(1200, src ? Math.max(src.width, src.height) : 1400))
+          const aspect = h.rect.w / h.rect.h
+          const w = aspect >= 1 ? long : Math.round(long * aspect)
+          const hh = aspect >= 1 ? Math.round(long / aspect) : long
+          const even = (v: number) => Math.max(64, Math.min(8192, Math.round(v / 2) * 2))
+          live.apply({ output: { width: even(w), height: even(hh) } })
+        }
       } catch {
         useLabStore.getState().setUi({ note: 'Could not load the image from the editor.' })
       }

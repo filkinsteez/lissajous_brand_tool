@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLabStore } from '@/core/lab/labStore'
 import { getLabSource } from '@/core/lab/sourceCache'
 import { exportLabPng } from '@/core/lab/render'
-import { getLabReturnTarget, setDesignHandoff } from '@/core/lab/handoff'
+import { designHref, resolveReturnImageId, setDesignHandoff } from '@/core/lab/handoff'
 import { resolveBankCached } from './bankCache'
 
 // Export is WYSIWYG: the PNG is the preview's exact painter at full
@@ -57,13 +57,15 @@ export function LabExportPanel() {
         reader.onerror = () => reject(reader.error)
         reader.readAsDataURL(blob)
       })
+      const live = useLabStore.getState()
       setDesignHandoff({
         src,
-        name: `lab-${useLabStore.getState().lab.seed}.png`,
-        // came in via EDIT IN LAB → the send REPLACES that block
-        imageId: getLabReturnTarget() ?? undefined,
+        name: `lab-${live.lab.seed}.png`,
+        // came in via EDIT IN LAB and still working on that image → the
+        // send REPLACES that block; otherwise it lands as a new one
+        imageId: resolveReturnImageId(live.lab.source?.contentHash) ?? undefined,
       })
-      router.push('/')
+      router.push(designHref())
     } catch {
       flash('Could not render the image')
       setBusy(false)

@@ -8,8 +8,17 @@
 
 // imageId threads OBJECT IDENTITY through the round trip: design→lab it
 // names the design block being edited; lab→design it names the block to
-// REPLACE in place (absent = a lab-first composition, lands as a new block)
-export type LabHandoff = { src: string; name: string; imageId?: string }
+// REPLACE in place (absent = a lab-first composition, lands as a new
+// block). rect is the block's artboard-px size, sent design→lab so the
+// lab COMPOSES AT THE SHAPE IT WILL OCCUPY — blocks cover-fit, so a lab
+// render authored at the photo's aspect gets center-cropped back into a
+// grid-shaped block and every edge effect disappears.
+export type LabHandoff = {
+  src: string
+  name: string
+  imageId?: string
+  rect?: { w: number; h: number }
+}
 
 function makeChannel(key: string) {
   let pending: LabHandoff | null = null
@@ -53,25 +62,60 @@ export const takeDesignHandoff = (): LabHandoff | null => toDesign.take()
 
 // The design block the CURRENT lab session is editing. Set when EDIT IN
 // LAB opens the lab; read (not consumed) by every Send to Design so
-// repeated sends keep updating the same block; cleared when a different
-// source is loaded into the lab (that session no longer edits the block).
+// repeated sends keep updating the same block.
+//
+// It is BOUND TO THE SOURCE the block handed over (contentHash), and a
+// send only honours it while the lab is still working on that source.
+// Without that binding, a target left in sessionStorage by an earlier
+// Edit in Lab could let a later, unrelated composition overwrite a
+// design block. Binding by identity rather than by mount timing also
+// survives React's development double-mount, which a "clear whenever no
+// handoff arrives" rule would not.
 const RETURN_KEY = 'lbs-lab-return-image'
-let returnMem: string | null = null
 
-export function setLabReturnTarget(id: string | null): void {
-  returnMem = id
+export type LabReturnTarget = { imageId: string; sourceHash?: string }
+
+let returnMem: LabReturnTarget | null = null
+
+export function setLabReturnTarget(target: LabReturnTarget | null): void {
+  returnMem = target
   try {
-    if (id) sessionStorage.setItem(RETURN_KEY, id)
+    if (target) sessionStorage.setItem(RETURN_KEY, JSON.stringify(target))
     else sessionStorage.removeItem(RETURN_KEY)
   } catch {
     // storage unavailable — the in-memory copy carries it
   }
 }
 
-export function getLabReturnTarget(): string | null {
+// Navigation between the two routes keeps ?pristine — a scratch session
+// must not dump you into the real one halfway through a round trip.
+function keepPristine(path: string): string {
+  try {
+    return location.search.includes('pristine') ? `${path}?pristine` : path
+  } catch {
+    return path
+  }
+}
+
+export const labHref = (): string => keepPristine('/lab')
+export const designHref = (): string => keepPristine('/')
+
+// The block a send should replace, or null when this composition is no
+// longer the one that block handed over.
+export function resolveReturnImageId(currentSourceHash: string | undefined): string | null {
+  const target = getLabReturnTarget()
+  if (!target) return null
+  if (target.sourceHash && target.sourceHash !== currentSourceHash) return null
+  return target.imageId
+}
+
+export function getLabReturnTarget(): LabReturnTarget | null {
   if (returnMem) return returnMem
   try {
-    return sessionStorage.getItem(RETURN_KEY)
+    const raw = sessionStorage.getItem(RETURN_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as LabReturnTarget
+    return parsed && typeof parsed.imageId === 'string' ? parsed : null
   } catch {
     return null
   }

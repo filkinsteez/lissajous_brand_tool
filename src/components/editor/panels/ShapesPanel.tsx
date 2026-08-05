@@ -3,7 +3,9 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/core/state/store'
-import { setLabHandoff } from '@/core/lab/handoff'
+import { getDerived } from '@/core/pipeline'
+import { imageRect } from '@/core/grid/types'
+import { labHref, setLabHandoff } from '@/core/lab/handoff'
 import { Slider } from '@/components/controls/Slider'
 import { SegmentedControl } from '@/components/controls/SegmentedControl'
 import { Toggle } from '@/components/controls/Toggle'
@@ -283,9 +285,17 @@ function ImageProperties({
         className="ctl-action primary"
         onClick={() => {
           // imageId makes the round trip a REPLACE: Send to Design in
-          // the lab swaps this block's pixels, same size and position
-          setLabHandoff({ src: first.src, name: 'design-image.png', imageId: first.id })
-          router.push('/lab')
+          // the lab swaps this block's pixels, same size and position.
+          // rect makes the lab compose at THIS block's shape, so the
+          // result lands uncropped (blocks cover-fit their rect).
+          const rect = imageRect(getDerived(project).grid, first.anchor, first.free)
+          setLabHandoff({
+            src: first.src,
+            name: 'design-image.png',
+            imageId: first.id,
+            rect: { w: rect.w, h: rect.h },
+          })
+          router.push(labHref())
         }}
       >
         Edit in Lab
