@@ -14,7 +14,14 @@ const OUTPUT_CAP = 2048
 // image dropped first must not overwrite the small one dropped after
 let importGen = 0
 
-export async function importLabSource(file: File): Promise<void> {
+// Returns the committed source's contentHash, or null if this import
+// failed or was superseded. Callers that bind state to "the image that
+// just loaded" (the design→lab handoff) MUST gate on that: a swallowed
+// failure would otherwise leave them bound to the previous photo.
+export async function importLabSource(
+  file: File,
+  opts?: { fit?: 'contain' | 'cover' },
+): Promise<string | null> {
   const store = useLabStore.getState()
   const gen = ++importGen
   // a fresh source severs the link to any design block a previous
@@ -27,7 +34,7 @@ export async function importLabSource(file: File): Promise<void> {
     const src = await decodeLabSourceFile(file)
     if (gen !== importGen) {
       discardLabSource(src)
-      return
+      return null
     }
     commitLabSource(src)
     // re-read AFTER the await — the pre-decode snapshot can be stale
@@ -52,7 +59,9 @@ export async function importLabSource(file: File): Promise<void> {
         width: src.fullW,
         height: src.fullH,
         contentHash: src.hash,
-        fit: live.lab.source?.fit ?? 'contain',
+        // a handoff import reproduces the framing the design canvas
+        // already showed (blocks cover-fit), so it arrives as 'cover'
+        fit: opts?.fit ?? live.lab.source?.fit ?? 'contain',
       },
       output: {
         width: Math.max(64, Math.round((src.fullW * k) / 2) * 2),
@@ -60,7 +69,9 @@ export async function importLabSource(file: File): Promise<void> {
       },
     })
     live.setUi({ sourceNonce: live.ui.sourceNonce + 1, note: '' })
+    return src.hash
   } catch (e) {
     store.setUi({ note: e instanceof Error ? e.message : 'Could not load that file.' })
   }
+  return null
 }

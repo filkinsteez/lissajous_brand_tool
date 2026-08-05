@@ -65,9 +65,13 @@ describe('return target is bound to the source it came from', () => {
     expect(resolveReturnImageId('abc123')).toBeNull()
   })
 
-  it('an unbound target (no hash recorded) still resolves', () => {
+  // fails CLOSED: an entry with no recorded hash — an old-format target
+  // still in sessionStorage, or one written when the import produced no
+  // source — would otherwise match every composition forever, which is
+  // precisely the overwrite this guard exists to prevent
+  it('refuses an unbound target rather than matching everything', () => {
     setLabReturnTarget({ imageId: 'img-1' })
-    expect(resolveReturnImageId('anything')).toBe('img-1')
-    expect(resolveReturnImageId(undefined)).toBe('img-1')
+    expect(resolveReturnImageId('anything')).toBeNull()
+    expect(resolveReturnImageId(undefined)).toBeNull()
   })
 })

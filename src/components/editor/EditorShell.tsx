@@ -7,7 +7,7 @@ import { consumeDesignHandoff } from './consumeDesignHandoff'
 import { getDerived } from '@/core/pipeline'
 import { installDebugHook, lbsDebug } from '@/core/state/debug'
 import { renderController } from '@/render/renderController'
-import { decodeShareHash, encodeShareHash } from '@/core/state/compress'
+import { decodeShareHash } from '@/core/state/compress'
 import { deserializeProject, serializeProject } from '@/core/state/serialize'
 import { CanvasStage } from './CanvasStage'
 import { Inspector } from './Inspector'
@@ -17,6 +17,14 @@ import { MotionLab } from '@/components/motion/MotionLab'
 import { PathLab } from '@/components/path/PathLab'
 
 const AUTOSAVE_KEY = 'lbs-autosave'
+
+// Restore runs ONCE PER PAGE LOAD, not once per mount. The store is a
+// module singleton that outlives client-side navigation, so restoring on
+// every mount would replace live state with storage — and replaceProject
+// clears the undo stack, so a Design → Lab → Design round trip would
+// erase every step taken before the trip. (The lab has always had this
+// guard; the editor did not.)
+const hydration = { done: false }
 
 export function EditorShell() {
   const mounted = useStore((s) => s.ui.mounted)
@@ -34,13 +42,18 @@ export function EditorShell() {
     // (the editor twin of /lab?pristine)
     const pristine = window.location.search.includes('pristine')
 
-    // restore: share hash → localStorage autosave → defaults
-    if (!pristine) {
+    // restore: incoming share link → localStorage autosave → defaults.
+    // The hash only wins when it is a link someone actually opened: our
+    // own save() rewrites it constantly, and encodeShareHash STRIPS
+    // uploaded images (they would blow up the URL), so preferring our
+    // own hash on a later restore would silently drop every image in the
+    // composition.
+    if (!pristine && !hydration.done) {
+      hydration.done = true
       const fromHash = decodeShareHash(window.location.hash)
-      const fromLocal = fromHash ? null : deserializeProject(localStorage.getItem(AUTOSAVE_KEY))
-      if (fromHash || fromLocal) {
-        useStore.getState().replaceProject((fromHash ?? fromLocal)!)
-      }
+      const fromLocal = deserializeProject(localStorage.getItem(AUTOSAVE_KEY))
+      const restored = fromHash ?? fromLocal
+      if (restored) useStore.getState().replaceProject(restored)
     }
     useStore.getState().setUi({ mounted: true })
 
@@ -49,18 +62,24 @@ export function EditorShell() {
     consumeDesignHandoff()
     lbsDebug('consumeDesignHandoff', consumeDesignHandoff)
 
-    // write-back: debounced autosave + share hash. `dirty` tracks a
-    // pending debounce so unmount (Design→Lab navigation) can flush it —
-    // without the flush, edits made in the last 500ms silently vanish.
+    // write-back: debounced autosave. `dirty` tracks a pending debounce
+    // so unmount (Design→Lab navigation) can flush it — without the
+    // flush, edits made in the last 500ms silently vanish.
+    //
+    // The URL hash is NOT written here. It used to be rewritten on every
+    // save, but encodeShareHash strips uploaded images, so that hash
+    // then won the next restore and silently emptied the composition of
+    // every image. Share links are produced on demand (__lbs.shareHash)
+    // and are still honoured on load; localStorage is the one place
+    // persistence lives.
     let timer: ReturnType<typeof setTimeout> | undefined
     let dirty = false
     const save = (project: ReturnType<typeof useStore.getState>['project']) => {
       dirty = false
       try {
         localStorage.setItem(AUTOSAVE_KEY, serializeProject(project))
-        history.replaceState(null, '', '#' + encodeShareHash(project))
       } catch {
-        // storage full / privacy mode — hash alone still works
+        // quota or privacy mode — the session keeps working, unsaved
       }
     }
     const unsub = pristine

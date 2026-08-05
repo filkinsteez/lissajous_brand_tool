@@ -281,6 +281,10 @@ function ImageProperties({
           style={{ display: 'block', width: '100%', borderRadius: 4, marginBottom: 8 }}
         />
       ) : null}
+      {/* one image only: with a multi-selection there is no unambiguous
+          "this image" to hand over, and silently taking the first in
+          z-order is rarely the one in focus */}
+      {images.length === 1 ? (
       <button
         className="ctl-action primary"
         onClick={() => {
@@ -288,7 +292,7 @@ function ImageProperties({
           // the lab swaps this block's pixels, same size and position.
           // rect makes the lab compose at THIS block's shape, so the
           // result lands uncropped (blocks cover-fit their rect).
-          const rect = imageRect(getDerived(project).grid, first.anchor, first.free)
+          const rect = imageRect(getDerived(project).grid, first.anchor, first.free, first.aspect)
           setLabHandoff({
             src: first.src,
             name: 'design-image.png',
@@ -300,6 +304,9 @@ function ImageProperties({
       >
         Edit in Lab
       </button>
+      ) : (
+        <div className="panel-note">Select a single image to edit it in the lab.</div>
+      )}
       {/* no explanatory note and no Remove button — the label says what
           it does, and Delete removes the selection like every other
           canvas object */}

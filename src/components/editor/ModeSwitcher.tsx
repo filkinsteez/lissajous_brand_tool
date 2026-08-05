@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePristineHref } from '@/components/usePristineHref'
 import { useStore } from '@/core/state/store'
 
 // Two tabs plus a door: DESIGN is the poster (canvas, field, shapes,
@@ -14,6 +15,7 @@ export function ModeSwitcher() {
   const setUi = useStore((s) => s.setUi)
   const designActive = mode === 'compose' || mode === 'setup'
   const motionActive = mode === 'motion' || mode === 'path'
+  const labPath = usePristineHref('/lab')
   return (
     <div className="mode-switcher" role="tablist" aria-label="Editor mode">
       <button
@@ -32,7 +34,9 @@ export function ModeSwitcher() {
       >
         Motion
       </button>
-      <Link className="mode-tab" href="/lab">
+      {/* keeps ?pristine — a scratch session must never navigate into
+          the real one and start writing its autosave */}
+      <Link className="mode-tab" href={labPath}>
         Lab
       </Link>
     </div>

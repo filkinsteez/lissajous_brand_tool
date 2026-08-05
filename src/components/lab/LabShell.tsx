@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { LAB_AUTOSAVE_KEY, labHydration, useLabStore } from '@/core/lab/labStore'
 import { serializeLab, deserializeLab } from '@/core/lab/recipe'
 import { setLabReturnTarget, takeLabHandoff } from '@/core/lab/handoff'
+import { usePristineHref } from '@/components/usePristineHref'
 import { importLabSource } from './importSource'
 import { refreshCurveSources } from './refreshCurve'
 import { LabCanvas } from './LabCanvas'
@@ -23,6 +24,7 @@ import { LabExportPanel } from './LabExportPanel'
 export function LabShell() {
   const undo = useLabStore((s) => s.undo)
   const redo = useLabStore((s) => s.redo)
+  const designPath = usePristineHref('/')
 
   // restore autosave -> defaults ONCE PER PAGE LOAD (the store outlives
   // route mounts — restoring on every mount would replace live state
@@ -103,28 +105,45 @@ export function LabShell() {
         const file = new File([blob], h.name || 'design-image.png', {
           type: blob.type || 'image/png',
         })
-        await importLabSource(file)
-        const afterImport = useLabStore.getState()
-        // AFTER the import (which clears any stale target): this lab
-        // session now edits that design block — sends replace it, but
-        // only while the source is still the one it handed over
-        if (h.imageId) {
-          setLabReturnTarget({
-            imageId: h.imageId,
-            sourceHash: afterImport.lab.source?.contentHash,
-          })
+        // 'cover' reproduces the framing the design block already shows
+        const hash = await importLabSource(file, { fit: 'cover' })
+        // Gate BOTH the return binding and the output reshape on the
+        // import actually succeeding. importLabSource swallows failures
+        // (it only sets a note), so without this the lab would keep the
+        // PREVIOUS composition on screen while claiming to be editing
+        // this block — and Send to Design would overwrite the block with
+        // an unrelated image.
+        if (!hash) {
+          useLabStore
+            .getState()
+            .setUi({ note: 'Could not open that image in the lab — it was left unchanged.' })
+          return
         }
+        if (h.imageId) setLabReturnTarget({ imageId: h.imageId, sourceHash: hash })
         // compose at the BLOCK's shape, not the photo's: the block
         // cover-fits whatever comes back, so authoring at a different
         // aspect would crop the composition's edges off on return
-        if (h.rect && h.rect.w > 0 && h.rect.h > 0) {
+        if (h.rect && Number.isFinite(h.rect.w) && Number.isFinite(h.rect.h) &&
+            h.rect.w > 0 && h.rect.h > 0) {
           const live = useLabStore.getState()
           const src = live.lab.source
           const long = Math.min(2048, Math.max(1200, src ? Math.max(src.width, src.height) : 1400))
           const aspect = h.rect.w / h.rect.h
-          const w = aspect >= 1 ? long : Math.round(long * aspect)
-          const hh = aspect >= 1 ? Math.round(long / aspect) : long
-          const even = (v: number) => Math.max(64, Math.min(8192, Math.round(v / 2) * 2))
+          // Size the LONG edge, then rescale if the short edge would
+          // fall under the 64px floor — flooring the short edge in place
+          // would silently change the aspect (a 24×1080 sliver block
+          // asked for 0.022 and got 0.046, and the block then visibly
+          // fattened on return).
+          let w = aspect >= 1 ? long : long * aspect
+          let hh = aspect >= 1 ? long / aspect : long
+          const short = Math.min(w, hh)
+          if (short < 64) {
+            const k = 64 / short
+            w *= k
+            hh *= k
+          }
+          const cap = Math.max(w, hh) > 8192 ? 8192 / Math.max(w, hh) : 1
+          const even = (v: number) => Math.max(64, Math.min(8192, Math.round((v * cap) / 2) * 2))
           live.apply({ output: { width: even(w), height: even(hh) } })
         }
       } catch {
@@ -154,7 +173,7 @@ export function LabShell() {
   return (
     <div className="lab-root dialkit-root">
       <header className="lab-topbar">
-        <Link className="lab-back" href="/">
+        <Link className="lab-back" href={designPath}>
           ← Editor
         </Link>
         <span className="lab-title">Lab</span>

@@ -105,7 +105,11 @@ export const designHref = (): string => keepPristine('/')
 export function resolveReturnImageId(currentSourceHash: string | undefined): string | null {
   const target = getLabReturnTarget()
   if (!target) return null
-  if (target.sourceHash && target.sourceHash !== currentSourceHash) return null
+  // fail CLOSED: a target with no recorded hash (an old-format entry, or
+  // one written when the import had not produced a source) would
+  // otherwise match every composition forever — including one built from
+  // a different photo, which is the overwrite this guard exists to stop
+  if (!target.sourceHash || target.sourceHash !== currentSourceHash) return null
   return target.imageId
 }
 
